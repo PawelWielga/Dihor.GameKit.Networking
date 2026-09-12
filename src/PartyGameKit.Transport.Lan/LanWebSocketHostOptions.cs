@@ -20,7 +20,7 @@ public sealed class LanWebSocketHostOptions
             throw new ArgumentOutOfRangeException(nameof(port), port, "Port must be between 0 and 65535.");
         }
 
-        if (!path.StartsWith('/', StringComparison.Ordinal) || path.Contains('?'))
+        if (!path.StartsWith("/", StringComparison.Ordinal) || path.Contains('?'))
         {
             throw new ArgumentException("WebSocket path must start with '/' and cannot contain a query string.", nameof(path));
         }
