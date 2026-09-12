@@ -2,13 +2,24 @@ using System.Net;
 using Microsoft.Extensions.FileProviders;
 using PartyGameKit.Protocol;
 using PartyGameKit.Sample.SharedCounter;
+using PartyGameKit.Transport.SignalR;
 
 var advertisedHost = ReadOption(args, "--host") ?? "127.0.0.1";
+var transportMode = (ReadOption(args, "--transport") ?? "lan").ToLowerInvariant();
 var websocketPort = ReadPort(args, "--ws-port", 5042);
 var httpPort = ReadPort(args, "--http-port", 8080);
 var repositoryRoot = Directory.GetCurrentDirectory();
 var webRoot = Path.Combine(repositoryRoot, "samples", "SharedCounter", "web");
 var sdkRoot = Path.Combine(repositoryRoot, "clients", "typescript", "dist");
+var signalRBrowserRoot = Path.Combine(
+    repositoryRoot,
+    "clients",
+    "typescript",
+    "node_modules",
+    "@microsoft",
+    "signalr",
+    "dist",
+    "browser");
 
 if (!File.Exists(Path.Combine(webRoot, "index.html")))
 {
@@ -22,38 +33,90 @@ if (!File.Exists(Path.Combine(sdkRoot, "index.js")))
         "TypeScript SDK output is missing. Run `npm install` and `npm run build` in clients/typescript first.");
 }
 
-await using var counterHost = await SharedCounterHost.StartAsync(
-    advertisedHost,
-    IPAddress.Any,
-    websocketPort);
+if (transportMode is not ("lan" or "signalr"))
+{
+    throw new ArgumentException("--transport must be either 'lan' or 'signalr'.");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls($"http://0.0.0.0:{httpPort}");
+if (transportMode == "signalr")
+{
+    if (!File.Exists(Path.Combine(signalRBrowserRoot, "signalr.min.js")))
+    {
+        throw new InvalidOperationException(
+            "SignalR browser runtime is missing. Run `npm install` in clients/typescript first.");
+    }
+    builder.Services.AddPartyGameKitSignalR();
+}
+
 var app = builder.Build();
 using var webFiles = new PhysicalFileProvider(webRoot);
 using var sdkFiles = new PhysicalFileProvider(sdkRoot);
+PhysicalFileProvider? signalRBrowserFiles = null;
+SharedCounterHost counterHost;
 
-app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = webFiles });
-app.UseStaticFiles(new StaticFileOptions { FileProvider = webFiles });
-app.UseStaticFiles(new StaticFileOptions
+if (transportMode == "signalr")
 {
-    FileProvider = sdkFiles,
-    RequestPath = "/sdk",
-});
-app.MapGet("/config.json", () => Results.Json(new
+    var registry = app.Services.GetRequiredService<SignalRRoomRegistry>();
+    var transport = registry.RegisterRoom(SharedCounterHost.RoomId, SharedCounterHost.JoinCode);
+    var endpoint = $"http://{advertisedHost}:{httpPort}/partygamekit";
+    var descriptor = new JoinDescriptor(
+        SharedCounterHost.RoomId,
+        SharedCounterHost.JoinCode,
+        "signalr",
+        endpoint,
+        ProtocolVersions.Current);
+    counterHost = SharedCounterHost.StartWithTransport(transport, descriptor);
+    app.MapPartyGameKitSignalR("/partygamekit");
+    signalRBrowserFiles = new PhysicalFileProvider(signalRBrowserRoot);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = signalRBrowserFiles,
+        RequestPath = "/signalr-runtime",
+    });
+}
+else
 {
-    joinDescriptor = JoinDescriptorCodec.SerializeText(counterHost.JoinDescriptor),
-    roomId = counterHost.JoinDescriptor.RoomId.Value,
-    joinCode = counterHost.JoinDescriptor.JoinCode.Value,
-}));
+    counterHost = await SharedCounterHost.StartAsync(
+        advertisedHost,
+        IPAddress.Any,
+        websocketPort);
+}
 
-Console.WriteLine("PartyGameKit Shared Counter sample");
-Console.WriteLine($"Shared screen: http://{advertisedHost}:{httpPort}/?role=shared-screen");
-Console.WriteLine($"Player:        http://{advertisedHost}:{httpPort}/?role=player");
-Console.WriteLine($"Join payload:  {JoinDescriptorCodec.SerializeText(counterHost.JoinDescriptor)}");
-Console.WriteLine("Use two different phones/browser profiles for two players because player identity is persisted per browser profile.");
+await using (counterHost)
+{
+    app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = webFiles });
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = webFiles });
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = sdkFiles,
+        RequestPath = "/sdk",
+    });
+    app.MapGet("/config.json", () => Results.Json(new
+    {
+        joinDescriptor = JoinDescriptorCodec.SerializeText(counterHost.JoinDescriptor),
+        roomId = counterHost.JoinDescriptor.RoomId.Value,
+        joinCode = counterHost.JoinDescriptor.JoinCode.Value,
+        transport = counterHost.JoinDescriptor.Transport,
+    }));
 
-await app.RunAsync();
+    Console.WriteLine("PartyGameKit Shared Counter sample");
+    Console.WriteLine($"Transport:     {transportMode}");
+    Console.WriteLine($"Shared screen: http://{advertisedHost}:{httpPort}/?role=shared-screen");
+    Console.WriteLine($"Player:        http://{advertisedHost}:{httpPort}/?role=player");
+    Console.WriteLine($"Join payload:  {JoinDescriptorCodec.SerializeText(counterHost.JoinDescriptor)}");
+    Console.WriteLine("Use two different phones/browser profiles for two players because player identity is persisted per browser profile.");
+
+    try
+    {
+        await app.RunAsync();
+    }
+    finally
+    {
+        signalRBrowserFiles?.Dispose();
+    }
+}
 
 static string? ReadOption(string[] arguments, string name)
 {
