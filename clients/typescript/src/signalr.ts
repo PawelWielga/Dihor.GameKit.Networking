@@ -1,4 +1,3 @@
-import { HubConnectionBuilder } from "@microsoft/signalr";
 import type { WebSocketLike } from "./client.js";
 
 interface SignalRConnectionLike {
@@ -7,6 +6,12 @@ interface SignalRConnectionLike {
   send(methodName: string, ...args: unknown[]): Promise<void>;
   on(methodName: string, handler: (...args: unknown[]) => void): void;
   onclose(callback: (error?: Error) => void): void;
+}
+
+interface SignalRBrowserGlobal {
+  HubConnectionBuilder: new () => {
+    withUrl(url: string): { build(): SignalRConnectionLike };
+  };
 }
 
 export type SignalRConnectionFactory = (url: string) => SignalRConnectionLike;
@@ -117,7 +122,13 @@ class SignalRSocket implements WebSocketLike {
 }
 
 function defaultConnectionFactory(url: string): SignalRConnectionLike {
-  return new HubConnectionBuilder().withUrl(url).build();
+  const signalR = (globalThis as typeof globalThis & { signalR?: SignalRBrowserGlobal }).signalR;
+  if (signalR === undefined) {
+    throw new Error(
+      "SignalR browser runtime is unavailable. Load @microsoft/signalr/dist/browser/signalr.min.js or provide a SignalRConnectionFactory.",
+    );
+  }
+  return new signalR.HubConnectionBuilder().withUrl(url).build();
 }
 
 async function toBytes(data: string | ArrayBufferLike | Blob | ArrayBufferView): Promise<Uint8Array> {
