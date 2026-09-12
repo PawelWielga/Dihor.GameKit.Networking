@@ -55,3 +55,20 @@ jobs:
       - name: Test Dart canonical fixtures
         working-directory: interop/dart
         run: dart test
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install TypeScript client dependencies
+        working-directory: clients/typescript
+        run: npm install --no-audit --no-fund
+
+      - name: Build and test TypeScript browser client
+        working-directory: clients/typescript
+        run: npm test
+
+      - name: Verify TypeScript package contents
+        working-directory: clients/typescript
+        run: npm pack --dry-run
