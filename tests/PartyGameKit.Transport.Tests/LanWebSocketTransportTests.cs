@@ -208,6 +208,58 @@ public sealed class LanWebSocketTransportTests
     }
 
     [Fact]
+    public async Task ShutdownPublishesCloseEventsInConnectionOpenOrder()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var transport = await StartHostAsync(cancellationToken);
+        await using var events = transport.ReadEventsAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
+        await using var first = await LanWebSocketClient.ConnectAsync(
+            transport.CreateClientUri("127.0.0.1"),
+            JoinRequest("player-1", "join-order-1"),
+            cancellationToken: cancellationToken);
+        var firstConnection = await ReadHandshakeAsync(events, "join-order-1", cancellationToken);
+        await using var second = await LanWebSocketClient.ConnectAsync(
+            transport.CreateClientUri("127.0.0.1"),
+            JoinRequest("player-2", "join-order-2"),
+            cancellationToken: cancellationToken);
+        var secondConnection = await ReadHandshakeAsync(events, "join-order-2", cancellationToken);
+        await using var third = await LanWebSocketClient.ConnectAsync(
+            transport.CreateClientUri("127.0.0.1"),
+            JoinRequest("player-3", "join-order-3"),
+            cancellationToken: cancellationToken);
+        var thirdConnection = await ReadHandshakeAsync(events, "join-order-3", cancellationToken);
+
+        await transport.StopAsync(cancellationToken);
+
+        var expected = new[] { firstConnection, secondConnection, thirdConnection };
+        foreach (var expectedConnection in expected)
+        {
+            Assert.True(await events.MoveNextAsync());
+            var closed = Assert.IsType<TransportConnectionClosed>(events.Current);
+            Assert.Equal(expectedConnection, closed.ConnectionId);
+            Assert.Equal(TransportCloseReason.TransportStopped, closed.Reason);
+        }
+    }
+
+    [Fact]
+    public async Task PreCanceledStopDoesNotPreventLaterCleanup()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var transport = await StartHostAsync(cancellationToken);
+        var port = transport.BoundPort;
+        using var canceled = new CancellationTokenSource();
+        canceled.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => transport.StopAsync(canceled.Token).AsTask());
+        await transport.DisposeAsync();
+
+        using var listener = new TcpListener(IPAddress.Loopback, port);
+        listener.Start();
+        Assert.NotEqual(0, ((IPEndPoint)listener.LocalEndpoint).Port);
+    }
+
+    [Fact]
     public async Task DisposalReleasesKestrelListener()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
