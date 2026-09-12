@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Deterministic in-memory reference transport for PartyGameKit tests and samples.</Description>
-    <IsPackable>false</IsPackable>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
