@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PartyGameKit Dungeon Prototype</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <p class="eyebrow">PartyGameKit validation sample</p>
+      <h1>Dungeon Prototype</h1>
+      <p id="roleLabel" class="muted"></p>
+    </header>
+
+    <section class="status-card">
+      <span id="statusDot" class="dot"></span>
+      <strong id="status">Connecting…</strong>
+      <small id="identity"></small>
+    </section>
+
+    <section class="game-card">
+      <div class="turn-line">
+        <span>Turn</span>
+        <strong id="turn">Lobby</strong>
+        <span>AP <strong id="ap">0</strong></span>
+      </div>
+      <div id="map" class="map" aria-label="Dungeon map"></div>
+    </section>
+
+    <section id="playerControls" hidden>
+      <div id="characterPanel" class="panel">
+        <h2>Choose character</h2>
+        <div class="buttons">
+          <button data-character="scout">Scout</button>
+          <button data-character="guardian">Guardian</button>
+        </div>
+      </div>
+
+      <div id="actionPanel" class="panel" hidden>
+        <h2>Actions</h2>
+        <div class="move-grid">
+          <button data-move="0,-1">↑</button>
+          <button data-move="-1,0">←</button>
+          <button data-move="1,0">→</button>
+          <button data-move="0,1">↓</button>
+        </div>
+        <div class="buttons">
+          <button id="attack">Attack</button>
+          <button id="endTurn">End turn</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Private state</h2>
+        <p>Character: <strong id="character">not selected</strong></p>
+        <p>Inventory: <strong id="inventory">empty</strong></p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Players</h2>
+      <div id="players" class="players"><p>No players yet.</p></div>
+    </section>
+
+    <details>
+      <summary>Join descriptor</summary>
+      <code id="descriptor"></code>
+    </details>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
