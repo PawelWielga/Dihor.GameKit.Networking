@@ -44,7 +44,9 @@ jobs:
 
       - name: Check Dart formatting
         working-directory: interop/dart
-        run: dart format --set-exit-if-changed .
+        run: |
+          dart format .
+          git diff --exit-code -- .
 
       - name: Analyze Dart conformance adapter
         working-directory: interop/dart
