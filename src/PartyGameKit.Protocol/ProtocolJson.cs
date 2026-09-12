@@ -115,6 +115,8 @@ public static class ProtocolJson
         options.Converters.Add(new IdentifierJsonConverter<ConnectionId>(value => new ConnectionId(value), value => value.Value));
         options.Converters.Add(new IdentifierJsonConverter<AuthorityId>(value => new AuthorityId(value), value => value.Value));
         options.Converters.Add(new IdentifierJsonConverter<JoinCode>(value => new JoinCode(value), value => value.Value));
+        options.Converters.Add(new SnapshotSequenceJsonConverter());
+        options.Converters.Add(new SnapshotTargetJsonConverter());
         options.Converters.Add(new ClientRoleJsonConverter());
         options.Converters.Add(new JoinRejectionCodeJsonConverter());
         return options;
@@ -155,6 +157,108 @@ public static class ProtocolJson
             }
 
             writer.WriteStringValue(serialized);
+        }
+    }
+
+    private sealed class SnapshotSequenceJsonConverter : JsonConverter<SnapshotSequence>
+    {
+        public override SnapshotSequence Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (!reader.TryGetInt64(out var value))
+            {
+                throw new JsonException("Snapshot sequence must be an integer.");
+            }
+
+            try
+            {
+                return new SnapshotSequence(value);
+            }
+            catch (ArgumentOutOfRangeException exception)
+            {
+                throw new JsonException("Snapshot sequence must be positive.", exception);
+            }
+        }
+
+        public override void Write(Utf8JsonWriter writer, SnapshotSequence value, JsonSerializerOptions options) =>
+            writer.WriteNumberValue(value.Value);
+    }
+
+    private sealed class SnapshotTargetJsonConverter : JsonConverter<SnapshotTarget>
+    {
+        public override SnapshotTarget Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.StartObject)
+            {
+                throw new JsonException("Snapshot target must be an object.");
+            }
+
+            using var document = JsonDocument.ParseValue(ref reader);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("kind", out var kindProperty) || kindProperty.ValueKind != JsonValueKind.String)
+            {
+                throw new JsonException("Snapshot target kind is required.");
+            }
+
+            return kindProperty.GetString() switch
+            {
+                "public" when !root.TryGetProperty("playerId", out _) => SnapshotTarget.Public,
+                "public" => throw new JsonException("Public snapshot target cannot contain playerId."),
+                "player" => ReadPlayerTarget(root),
+                _ => throw new JsonException("Unknown snapshot target kind."),
+            };
+        }
+
+        public override void Write(Utf8JsonWriter writer, SnapshotTarget value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+            switch (value.Audience)
+            {
+                case SnapshotAudience.Public:
+                    if (value.PlayerId is not null)
+                    {
+                        throw new JsonException("Public snapshot target cannot contain playerId.");
+                    }
+
+                    writer.WriteString("kind", "public");
+                    break;
+                case SnapshotAudience.Player:
+                    if (value.PlayerId is not { } playerId)
+                    {
+                        throw new JsonException("Player snapshot target requires playerId.");
+                    }
+
+                    writer.WriteString("kind", "player");
+                    writer.WriteString("playerId", playerId.Value);
+                    break;
+                default:
+                    throw new JsonException("Unknown snapshot target audience.");
+            }
+
+            writer.WriteEndObject();
+        }
+
+        private static SnapshotTarget ReadPlayerTarget(JsonElement root)
+        {
+            if (!root.TryGetProperty("playerId", out var playerIdProperty) ||
+                playerIdProperty.ValueKind != JsonValueKind.String)
+            {
+                throw new JsonException("Player snapshot target requires playerId.");
+            }
+
+            var value = playerIdProperty.GetString();
+            if (value is null)
+            {
+                throw new JsonException("Player snapshot target requires playerId.");
+            }
+
+            try
+            {
+                return SnapshotTarget.ForPlayer(new PlayerId(value));
+            }
+            catch (ArgumentException exception)
+            {
+                throw new JsonException("Invalid playerId in snapshot target.", exception);
+            }
         }
     }
 
