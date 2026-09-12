@@ -87,6 +87,45 @@ void main() {
       expect(fromUri.toJsonString(), canonical);
     });
 
+    test('descriptor canonicalization matches C# percent escaping', () {
+      final descriptor = PartyGameKitJoinDescriptor(
+        protocolVersion: 1,
+        roomId: ' room 001 ',
+        joinCode: ' room 42 ',
+        transport: ' LAN WebSocket ',
+        endpoint: ' ws://192.168.1.20:5042/partygamekit ',
+      );
+
+      expect(descriptor.roomId, 'room 001');
+      expect(descriptor.joinCode, 'ROOM 42');
+      expect(descriptor.transport, 'lan websocket');
+      expect(descriptor.endpoint, 'ws://192.168.1.20:5042/partygamekit');
+      expect(
+        descriptor.toUriString(),
+        'partygamekit://join?protocolVersion=1&roomId=room%20001'
+        '&joinCode=ROOM%2042&transport=lan%20websocket'
+        '&endpoint=ws%3A%2F%2F192.168.1.20%3A5042%2Fpartygamekit',
+      );
+
+      final roundTrip = PartyGameKitJoinDescriptor.parseUri(
+        descriptor.toUriString(),
+      );
+      expect(roundTrip.roomId, descriptor.roomId);
+      expect(roundTrip.joinCode, descriptor.joinCode);
+      expect(roundTrip.transport, descriptor.transport);
+      expect(roundTrip.endpoint, descriptor.endpoint);
+    });
+
+    test('URI parser preserves literal plus as data', () {
+      final descriptor = PartyGameKitJoinDescriptor.parseUri(
+        'partygamekit://join?protocolVersion=1&roomId=room%2B001'
+        '&joinCode=ROOM42&transport=lan-websocket'
+        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fpartygamekit',
+      );
+
+      expect(descriptor.roomId, 'room+001');
+    });
+
     test('discovery announcement carries only the portable descriptor', () {
       final announcement = PartyGameKitDiscoveryAnnouncement.parse(
         _fixture('discovery-announcement.json'),
