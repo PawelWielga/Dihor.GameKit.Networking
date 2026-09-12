@@ -2,6 +2,46 @@
 
 All notable PartyGameKit changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
+## 0.2.0-preview.1 - unreleased
+
+Breaking correction of the public architecture boundary. PartyGameKit is now a communication/networking library rather than a generic party/game-session runtime.
+
+### Breaking changes
+
+- wire protocol incremented from `1` to `2`;
+- `PlayerId` was replaced by neutral `PeerId` for optional communication continuity;
+- `RoomId`/`JoinCode`/`JoinDescriptor` were removed from the base connection model and replaced by optional `ChannelId` plus `ConnectionDescriptor`;
+- `ClientRole`, `AuthorityId`, `RoomSession`, player membership/capacity/lifecycle and game snapshot projection APIs were removed from production packages;
+- `SessionContinuityCoordinator` was replaced by neutral `ConnectionContinuityCoordinator`;
+- `SnapshotSequence`/`SnapshotSequenceGate` became generic `MessageSequence`/`SequenceGate` utilities;
+- `IGameTransport` became `IMessageTransport`;
+- `PartyGameTransportException` became `TransportException`;
+- `InMemoryGameTransport` became `InMemoryTransport`;
+- `LanJoinDescriptor` became `LanConnectionDescriptor`;
+- `DiscoveredSessionRegistry` became `DiscoveredEndpointRegistry`.
+
+### Protocol v2
+
+- connection lifecycle messages use `connection.connect.*`, `connection.resume.*`, `connection.heartbeat` and `connection.disconnect`;
+- consumer data is carried as `application.message` with an opaque consumer-owned payload;
+- LAN WebSocket handshake accepts connect/resume control messages only;
+- LAN discovery advertises technical `ConnectionDescriptor` data rather than product/game sessions;
+- protocol version mismatch remains deterministic.
+
+### Validation
+
+- neutral peer continuity tests prove replacement connections resume the same logical peer without duplication;
+- in-memory transport tests cover generic targeted and broadcast payloads;
+- LAN WebSocket integration tests cover opaque bidirectional messaging and protocol mismatch rejection;
+- UDP discovery tests cover endpoint discovery and direct-descriptor independence;
+- public API guard tests prevent the removed v0.1 product/session abstractions from returning to production assemblies.
+
+### Migration
+
+See `docs/migration-0.1-to-0.2.md`.
+
+Cross-language TypeScript/Dart alignment and sample migration are intentionally completed in ordered issue `[17]`. Legacy protocol-v1 fixtures remain temporarily in the repository until that issue removes the transition bridge.
+
 ## 0.1.0-preview.1 - 2026-09-12
 
 First packaged preview of the foundation validated by two mechanically different games.
@@ -23,8 +63,8 @@ First packaged preview of the foundation validated by two mechanically different
 
 ### Validation outcome
 
-The Shared Counter and Dungeon Prototype both use the same generic room/session/protocol/transport/reconnect foundation. No Countries & Cities, counter, dungeon, monster, loot, tile, attack, inventory or other game-domain concept is part of the generic PartyGameKit packages.
+The preview proved the networking mechanisms but also exposed that the generic package boundary was too broad. Player/session/authority/snapshot semantics are therefore historical v0.1 behavior, not the target architecture.
 
 ### Distribution
 
-`0.1.0-preview.1` is intentionally a prerelease. CI produces NuGet, npm and Dart-source artifacts, and a matching Git tag can publish them as a GitHub prerelease. Public NuGet/npm/pub.dev registry publication is not automated in this preview.
+`0.1.0-preview.1` is intentionally a prerelease. CI produced NuGet, npm and Dart-source artifacts. It remains the legacy protocol-v1 line.
