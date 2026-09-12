@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Language-neutral wire contract implementation for PartyGameKit.</Description>
+    <Description>Versioned communication control protocol and connection descriptors for PartyGameKit.</Description>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>

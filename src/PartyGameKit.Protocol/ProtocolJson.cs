@@ -47,18 +47,19 @@ public static class ProtocolJson
                 return new(null, ProtocolReadError.InvalidContract);
             }
 
-            if (!document.RootElement.TryGetProperty("type", out var typeProperty) || typeProperty.ValueKind != JsonValueKind.String)
+            if (!document.RootElement.TryGetProperty("type", out var typeProperty) ||
+                typeProperty.ValueKind != JsonValueKind.String)
             {
                 return new(null, ProtocolReadError.MissingMessageType);
             }
 
-            var messageType = typeProperty.GetString();
-            if (!string.Equals(messageType, expectedType, StringComparison.Ordinal))
+            if (!string.Equals(typeProperty.GetString(), expectedType, StringComparison.Ordinal))
             {
                 return new(null, ProtocolReadError.MessageTypeMismatch);
             }
 
-            if (!document.RootElement.TryGetProperty("protocolVersion", out var versionProperty) || !versionProperty.TryGetInt32(out var version))
+            if (!document.RootElement.TryGetProperty("protocolVersion", out var versionProperty) ||
+                !versionProperty.TryGetInt32(out var version))
             {
                 return new(null, ProtocolReadError.MissingProtocolVersion);
             }
@@ -71,7 +72,7 @@ public static class ProtocolJson
             var message = JsonSerializer.Deserialize<ProtocolEnvelope<TPayload>>(json, Options);
             if (message is null)
             {
-                return new(null, ProtocolReadError.InvalidContract);
+                return new(null, ProtocolReadError.InvalidContract, version);
             }
 
             ValidateEnvelope(message.Type, message.ProtocolVersion, message.MessageId, message.CorrelationId);
@@ -87,13 +88,20 @@ public static class ProtocolJson
         }
     }
 
-    private static void ValidateEnvelope(string type, int protocolVersion, string messageId, string? correlationId)
+    private static void ValidateEnvelope(
+        string type,
+        int protocolVersion,
+        string messageId,
+        string? correlationId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
         if (protocolVersion != ProtocolVersions.Current)
         {
-            throw new ArgumentOutOfRangeException(nameof(protocolVersion), protocolVersion, "Only the current protocol version can be serialized.");
+            throw new ArgumentOutOfRangeException(
+                nameof(protocolVersion),
+                protocolVersion,
+                "Only the current protocol version can be serialized.");
         }
 
         if (correlationId is not null && string.IsNullOrWhiteSpace(correlationId))
@@ -110,15 +118,11 @@ public static class ProtocolJson
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             WriteIndented = false,
         };
-        options.Converters.Add(new IdentifierJsonConverter<RoomId>(value => new RoomId(value), value => value.Value));
-        options.Converters.Add(new IdentifierJsonConverter<PlayerId>(value => new PlayerId(value), value => value.Value));
+        options.Converters.Add(new IdentifierJsonConverter<PeerId>(value => new PeerId(value), value => value.Value));
         options.Converters.Add(new IdentifierJsonConverter<ConnectionId>(value => new ConnectionId(value), value => value.Value));
-        options.Converters.Add(new IdentifierJsonConverter<AuthorityId>(value => new AuthorityId(value), value => value.Value));
-        options.Converters.Add(new IdentifierJsonConverter<JoinCode>(value => new JoinCode(value), value => value.Value));
-        options.Converters.Add(new SnapshotSequenceJsonConverter());
-        options.Converters.Add(new SnapshotTargetJsonConverter());
-        options.Converters.Add(new ClientRoleJsonConverter());
-        options.Converters.Add(new JoinRejectionCodeJsonConverter());
+        options.Converters.Add(new IdentifierJsonConverter<ChannelId>(value => new ChannelId(value), value => value.Value));
+        options.Converters.Add(new MessageSequenceJsonConverter());
+        options.Converters.Add(new ConnectionRejectionCodeJsonConverter());
         return options;
     }
 
@@ -160,168 +164,69 @@ public static class ProtocolJson
         }
     }
 
-    private sealed class SnapshotSequenceJsonConverter : JsonConverter<SnapshotSequence>
+    private sealed class MessageSequenceJsonConverter : JsonConverter<MessageSequence>
     {
-        public override SnapshotSequence Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override MessageSequence Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (!reader.TryGetInt64(out var value))
             {
-                throw new JsonException("Snapshot sequence must be an integer.");
+                throw new JsonException("Message sequence must be an integer.");
             }
 
             try
             {
-                return new SnapshotSequence(value);
+                return new MessageSequence(value);
             }
             catch (ArgumentOutOfRangeException exception)
             {
-                throw new JsonException("Snapshot sequence must be positive.", exception);
+                throw new JsonException("Message sequence must be positive.", exception);
             }
         }
 
-        public override void Write(Utf8JsonWriter writer, SnapshotSequence value, JsonSerializerOptions options) =>
+        public override void Write(Utf8JsonWriter writer, MessageSequence value, JsonSerializerOptions options) =>
             writer.WriteNumberValue(value.Value);
     }
 
-    private sealed class SnapshotTargetJsonConverter : JsonConverter<SnapshotTarget>
+    private sealed class ConnectionRejectionCodeJsonConverter : JsonConverter<ConnectionRejectionCode>
     {
-        public override SnapshotTarget Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            if (reader.TokenType != JsonTokenType.StartObject)
-            {
-                throw new JsonException("Snapshot target must be an object.");
-            }
-
-            using var document = JsonDocument.ParseValue(ref reader);
-            var root = document.RootElement;
-            if (!root.TryGetProperty("kind", out var kindProperty) || kindProperty.ValueKind != JsonValueKind.String)
-            {
-                throw new JsonException("Snapshot target kind is required.");
-            }
-
-            return kindProperty.GetString() switch
-            {
-                "public" when !root.TryGetProperty("playerId", out _) => SnapshotTarget.Public,
-                "public" => throw new JsonException("Public snapshot target cannot contain playerId."),
-                "player" => ReadPlayerTarget(root),
-                _ => throw new JsonException("Unknown snapshot target kind."),
-            };
-        }
-
-        public override void Write(Utf8JsonWriter writer, SnapshotTarget value, JsonSerializerOptions options)
-        {
-            writer.WriteStartObject();
-            switch (value.Audience)
-            {
-                case SnapshotAudience.Public:
-                    if (value.PlayerId is not null)
-                    {
-                        throw new JsonException("Public snapshot target cannot contain playerId.");
-                    }
-
-                    writer.WriteString("kind", "public");
-                    break;
-                case SnapshotAudience.Player:
-                    if (value.PlayerId is not { } playerId)
-                    {
-                        throw new JsonException("Player snapshot target requires playerId.");
-                    }
-
-                    writer.WriteString("kind", "player");
-                    writer.WriteString("playerId", playerId.Value);
-                    break;
-                default:
-                    throw new JsonException("Unknown snapshot target audience.");
-            }
-
-            writer.WriteEndObject();
-        }
-
-        private static SnapshotTarget ReadPlayerTarget(JsonElement root)
-        {
-            if (!root.TryGetProperty("playerId", out var playerIdProperty) ||
-                playerIdProperty.ValueKind != JsonValueKind.String)
-            {
-                throw new JsonException("Player snapshot target requires playerId.");
-            }
-
-            var value = playerIdProperty.GetString();
-            if (value is null)
-            {
-                throw new JsonException("Player snapshot target requires playerId.");
-            }
-
-            try
-            {
-                return SnapshotTarget.ForPlayer(new PlayerId(value));
-            }
-            catch (ArgumentException exception)
-            {
-                throw new JsonException("Invalid playerId in snapshot target.", exception);
-            }
-        }
-    }
-
-    private sealed class ClientRoleJsonConverter : JsonConverter<ClientRole>
-    {
-        public override ClientRole Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override ConnectionRejectionCode Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options)
         {
             if (reader.TokenType != JsonTokenType.String)
             {
-                throw new JsonException("Client role must be a string.");
+                throw new JsonException("Connection rejection code must be a string.");
             }
 
             return reader.GetString() switch
             {
-                "host" => ClientRole.Host,
-                "player" => ClientRole.Player,
-                "shared-screen" => ClientRole.SharedScreen,
-                _ => throw new JsonException("Unknown client role."),
+                "protocol-mismatch" => ConnectionRejectionCode.ProtocolMismatch,
+                "invalid-request" => ConnectionRejectionCode.InvalidRequest,
+                "unknown-peer" => ConnectionRejectionCode.UnknownPeer,
+                "invalid-resume-credential" => ConnectionRejectionCode.InvalidResumeCredential,
+                "reconnect-window-expired" => ConnectionRejectionCode.ReconnectWindowExpired,
+                "peer-already-connected" => ConnectionRejectionCode.PeerAlreadyConnected,
+                "connection-already-bound" => ConnectionRejectionCode.ConnectionAlreadyBound,
+                _ => throw new JsonException("Unknown connection rejection code."),
             };
         }
 
-        public override void Write(Utf8JsonWriter writer, ClientRole value, JsonSerializerOptions options)
+        public override void Write(
+            Utf8JsonWriter writer,
+            ConnectionRejectionCode value,
+            JsonSerializerOptions options)
         {
             writer.WriteStringValue(value switch
             {
-                ClientRole.Host => "host",
-                ClientRole.Player => "player",
-                ClientRole.SharedScreen => "shared-screen",
-                _ => throw new JsonException("Unknown client role."),
-            });
-        }
-    }
-
-    private sealed class JoinRejectionCodeJsonConverter : JsonConverter<JoinRejectionCode>
-    {
-        public override JoinRejectionCode Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            if (reader.TokenType != JsonTokenType.String)
-            {
-                throw new JsonException("Join rejection code must be a string.");
-            }
-
-            return reader.GetString() switch
-            {
-                "room-not-found" => JoinRejectionCode.RoomNotFound,
-                "room-closed" => JoinRejectionCode.RoomClosed,
-                "room-full" => JoinRejectionCode.RoomFull,
-                "protocol-mismatch" => JoinRejectionCode.ProtocolMismatch,
-                "resume-rejected" => JoinRejectionCode.ResumeRejected,
-                _ => throw new JsonException("Unknown join rejection code."),
-            };
-        }
-
-        public override void Write(Utf8JsonWriter writer, JoinRejectionCode value, JsonSerializerOptions options)
-        {
-            writer.WriteStringValue(value switch
-            {
-                JoinRejectionCode.RoomNotFound => "room-not-found",
-                JoinRejectionCode.RoomClosed => "room-closed",
-                JoinRejectionCode.RoomFull => "room-full",
-                JoinRejectionCode.ProtocolMismatch => "protocol-mismatch",
-                JoinRejectionCode.ResumeRejected => "resume-rejected",
-                _ => throw new JsonException("Unknown join rejection code."),
+                ConnectionRejectionCode.ProtocolMismatch => "protocol-mismatch",
+                ConnectionRejectionCode.InvalidRequest => "invalid-request",
+                ConnectionRejectionCode.UnknownPeer => "unknown-peer",
+                ConnectionRejectionCode.InvalidResumeCredential => "invalid-resume-credential",
+                ConnectionRejectionCode.ReconnectWindowExpired => "reconnect-window-expired",
+                ConnectionRejectionCode.PeerAlreadyConnected => "peer-already-connected",
+                ConnectionRejectionCode.ConnectionAlreadyBound => "connection-already-bound",
+                _ => throw new JsonException("Unknown connection rejection code."),
             });
         }
     }
