@@ -7,18 +7,10 @@
     <Project Path="src/PartyGameKit.Transport.InMemory/PartyGameKit.Transport.InMemory.csproj" />
     <Project Path="src/PartyGameKit.Transport.Lan/PartyGameKit.Transport.Lan.csproj" />
   </Folder>
-  <Folder Name="/samples/">
-    <Project Path="samples/SharedCounter/SharedCounter.Sample/SharedCounter.Sample.csproj" />
-    <Project Path="samples/SharedCounter/SharedCounter.Host/SharedCounter.Host.csproj" />
-    <Project Path="samples/DungeonPrototype/DungeonPrototype.Sample/DungeonPrototype.Sample.csproj" />
-    <Project Path="samples/DungeonPrototype/DungeonPrototype.Host/DungeonPrototype.Host.csproj" />
-  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PartyGameKit.Core.Tests/PartyGameKit.Core.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Protocol.Tests/PartyGameKit.Protocol.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Discovery.Tests/PartyGameKit.Discovery.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Transport.Tests/PartyGameKit.Transport.Tests.csproj" />
-    <Project Path="tests/PartyGameKit.Sample.SharedCounter.Tests/PartyGameKit.Sample.SharedCounter.Tests.csproj" />
-    <Project Path="tests/PartyGameKit.Sample.DungeonPrototype.Tests/PartyGameKit.Sample.DungeonPrototype.Tests.csproj" />
   </Folder>
 </Solution>

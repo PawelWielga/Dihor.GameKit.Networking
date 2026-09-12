@@ -19,14 +19,13 @@ using PartyGameKit.Transport.Abstractions;
 
 namespace PartyGameKit.Transport.Lan;
 
-public sealed class LanWebSocketTransport : IGameTransport
+public sealed class LanWebSocketTransport : IMessageTransport
 {
     private const string ProtocolMismatchReason = "protocol-version-mismatch";
     private const string InvalidHandshakeReason = "invalid-handshake";
     private readonly LanWebSocketHostOptions _options;
     private readonly Func<string> _connectionIdFactory;
     private readonly ConcurrentDictionary<ConnectionId, LanConnection> _connections = new();
-    private readonly ConcurrentQueue<LanConnection> _connectionOrder = new();
     private readonly Channel<TransportEvent> _events = Channel.CreateUnbounded<TransportEvent>(
         new UnboundedChannelOptions
         {
@@ -156,7 +155,6 @@ public sealed class LanWebSocketTransport : IGameTransport
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
         Task stopTask;
         lock (_stopGate)
         {
@@ -183,12 +181,58 @@ public sealed class LanWebSocketTransport : IGameTransport
         }
     }
 
+    private async Task StartCoreAsync(CancellationToken cancellationToken)
+    {
+        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
+        {
+            ApplicationName = typeof(LanWebSocketTransport).Assembly.FullName,
+            EnvironmentName = Environments.Production,
+        });
+        builder.Logging.ClearProviders();
+        builder.WebHost.ConfigureKestrel(serverOptions =>
+        {
+            serverOptions.Listen(_options.BindAddress, _options.Port, listenOptions =>
+            {
+                listenOptions.Protocols = HttpProtocols.Http1;
+            });
+        });
+
+        var application = builder.Build();
+        application.UseWebSockets(new WebSocketOptions
+        {
+            KeepAliveInterval = _options.KeepAliveInterval,
+        });
+        application.Run(HandleRequestAsync);
+
+        try
+        {
+            await application.StartAsync(cancellationToken).ConfigureAwait(false);
+            var server = application.Services.GetRequiredService<IServer>();
+            var addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
+            var boundAddress = addresses?.FirstOrDefault();
+            if (boundAddress is null ||
+                !Uri.TryCreate(boundAddress, UriKind.Absolute, out var uri) ||
+                uri.Port <= 0)
+            {
+                throw new InvalidOperationException("Kestrel did not report a bound LAN endpoint.");
+            }
+
+            BoundPort = uri.Port;
+            _application = application;
+        }
+        catch
+        {
+            await application.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
     private async Task StopCoreAsync()
     {
         Interlocked.Exchange(ref _stopped, 1);
         try
         {
-            foreach (var connection in _connectionOrder.ToArray())
+            foreach (var connection in _connections.Values.ToArray())
             {
                 if (!RemoveConnection(connection, TransportCloseReason.TransportStopped))
                 {
@@ -223,50 +267,6 @@ public sealed class LanWebSocketTransport : IGameTransport
         }
     }
 
-    private async Task StartCoreAsync(CancellationToken cancellationToken)
-    {
-        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
-        {
-            ApplicationName = typeof(LanWebSocketTransport).Assembly.FullName,
-            EnvironmentName = Environments.Production,
-        });
-        builder.Logging.ClearProviders();
-        builder.WebHost.ConfigureKestrel(serverOptions =>
-        {
-            serverOptions.Listen(_options.BindAddress, _options.Port, listenOptions =>
-            {
-                listenOptions.Protocols = HttpProtocols.Http1;
-            });
-        });
-
-        var application = builder.Build();
-        application.UseWebSockets(new WebSocketOptions
-        {
-            KeepAliveInterval = _options.KeepAliveInterval,
-        });
-        application.Run(HandleRequestAsync);
-
-        try
-        {
-            await application.StartAsync(cancellationToken).ConfigureAwait(false);
-            var server = application.Services.GetRequiredService<IServer>();
-            var addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
-            var boundAddress = addresses?.FirstOrDefault();
-            if (boundAddress is null || !Uri.TryCreate(boundAddress, UriKind.Absolute, out var uri) || uri.Port <= 0)
-            {
-                throw new InvalidOperationException("Kestrel did not report a bound LAN endpoint.");
-            }
-
-            BoundPort = uri.Port;
-            _application = application;
-        }
-        catch
-        {
-            await application.DisposeAsync().ConfigureAwait(false);
-            throw;
-        }
-    }
-
     private async Task HandleRequestAsync(HttpContext context)
     {
         if (Volatile.Read(ref _stopped) != 0)
@@ -294,6 +294,7 @@ public sealed class LanWebSocketTransport : IGameTransport
                 context.RequestAborted,
                 _stopSource.Token);
             handshakeTimeout.CancelAfter(_options.HandshakeTimeout);
+
             LanWebSocketFrame handshake;
             try
             {
@@ -350,7 +351,8 @@ public sealed class LanWebSocketTransport : IGameTransport
 
             await ReceiveLoopAsync(connection, context.RequestAborted).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (_stopSource.IsCancellationRequested || context.RequestAborted.IsCancellationRequested)
+        catch (OperationCanceledException) when (
+            _stopSource.IsCancellationRequested || context.RequestAborted.IsCancellationRequested)
         {
         }
         catch (LanMessageTooLargeException exception)
@@ -378,7 +380,8 @@ public sealed class LanWebSocketTransport : IGameTransport
         var closeReason = TransportCloseReason.RemoteClosed;
         try
         {
-            while (IsCurrent(connection) && connection.Socket.State is WebSocketState.Open or WebSocketState.CloseSent)
+            while (IsCurrent(connection) &&
+                   connection.Socket.State is WebSocketState.Open or WebSocketState.CloseSent)
             {
                 var message = await LanWebSocketMessageReader.ReadAsync(
                     connection.Socket,
@@ -404,7 +407,8 @@ public sealed class LanWebSocketTransport : IGameTransport
                     new ReadOnlyMemory<byte>(message.Payload.ToArray())));
             }
         }
-        catch (OperationCanceledException) when (_stopSource.IsCancellationRequested || requestAborted.IsCancellationRequested)
+        catch (OperationCanceledException) when (
+            _stopSource.IsCancellationRequested || requestAborted.IsCancellationRequested)
         {
             closeReason = Volatile.Read(ref _stopped) != 0
                 ? TransportCloseReason.TransportStopped
@@ -414,7 +418,10 @@ public sealed class LanWebSocketTransport : IGameTransport
         {
             closeReason = TransportCloseReason.Faulted;
             _events.Writer.TryWrite(new TransportFaulted(
-                new TransportError(TransportErrorCode.DeliveryFailed, exception.Message, connection.ConnectionId)));
+                new TransportError(
+                    TransportErrorCode.DeliveryFailed,
+                    exception.Message,
+                    connection.ConnectionId)));
             await CloseSocketAsync(
                 connection.Socket,
                 WebSocketCloseStatus.MessageTooBig,
@@ -425,7 +432,10 @@ public sealed class LanWebSocketTransport : IGameTransport
         {
             closeReason = TransportCloseReason.Faulted;
             _events.Writer.TryWrite(new TransportFaulted(
-                new TransportError(TransportErrorCode.DeliveryFailed, exception.Message, connection.ConnectionId)));
+                new TransportError(
+                    TransportErrorCode.DeliveryFailed,
+                    exception.Message,
+                    connection.ConnectionId)));
         }
         finally
         {
@@ -446,7 +456,6 @@ public sealed class LanWebSocketTransport : IGameTransport
             var connection = new LanConnection(new ConnectionId(rawId), socket);
             if (_connections.TryAdd(connection.ConnectionId, connection))
             {
-                _connectionOrder.Enqueue(connection);
                 return connection;
             }
         }
@@ -456,12 +465,14 @@ public sealed class LanWebSocketTransport : IGameTransport
 
     private bool RemoveConnection(LanConnection connection, TransportCloseReason reason)
     {
-        if (!_connections.TryGetValue(connection.ConnectionId, out var current) || !ReferenceEquals(current, connection))
+        if (!_connections.TryGetValue(connection.ConnectionId, out var current) ||
+            !ReferenceEquals(current, connection))
         {
             return false;
         }
 
-        if (!_connections.TryRemove(new KeyValuePair<ConnectionId, LanConnection>(connection.ConnectionId, connection)))
+        if (!_connections.TryRemove(
+                new KeyValuePair<ConnectionId, LanConnection>(connection.ConnectionId, connection)))
         {
             return false;
         }
@@ -471,7 +482,8 @@ public sealed class LanWebSocketTransport : IGameTransport
     }
 
     private bool IsCurrent(LanConnection connection) =>
-        _connections.TryGetValue(connection.ConnectionId, out var current) && ReferenceEquals(current, connection);
+        _connections.TryGetValue(connection.ConnectionId, out var current) &&
+        ReferenceEquals(current, connection);
 
     private async ValueTask SendCoreAsync(
         LanConnection connection,
@@ -495,7 +507,7 @@ public sealed class LanWebSocketTransport : IGameTransport
                 endOfMessage: true,
                 cancellationToken).ConfigureAwait(false);
         }
-        catch (PartyGameTransportException)
+        catch (TransportException)
         {
             throw;
         }
@@ -505,7 +517,7 @@ public sealed class LanWebSocketTransport : IGameTransport
         }
         catch (Exception exception) when (exception is WebSocketException or InvalidOperationException)
         {
-            throw new PartyGameTransportException(
+            throw new TransportException(
                 $"Unable to deliver to connection '{connection.ConnectionId}'.",
                 exception);
         }
@@ -519,7 +531,7 @@ public sealed class LanWebSocketTransport : IGameTransport
     {
         if (payload.Length > _options.MaxMessageBytes)
         {
-            throw new PartyGameTransportException(new TransportError(
+            throw new TransportException(new TransportError(
                 TransportErrorCode.DeliveryFailed,
                 $"Message exceeds the configured limit of {_options.MaxMessageBytes} bytes."));
         }
@@ -535,10 +547,9 @@ public sealed class LanWebSocketTransport : IGameTransport
 
     private static HandshakeValidation ValidateHandshake(ReadOnlyMemory<byte> payload)
     {
-        string json;
         try
         {
-            json = Encoding.UTF8.GetString(payload.Span);
+            var json = Encoding.UTF8.GetString(payload.Span);
             using var document = JsonDocument.Parse(payload);
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object ||
@@ -557,8 +568,14 @@ public sealed class LanWebSocketTransport : IGameTransport
 
             return typeElement.GetString() switch
             {
-                ProtocolMessageTypes.JoinRequest => ValidateJoin(json),
-                ProtocolMessageTypes.RejoinRequest => ValidateRejoin(json),
+                ProtocolMessageTypes.ConnectRequest =>
+                    ProtocolJson.Read<ConnectRequestPayload>(json, ProtocolMessageTypes.ConnectRequest).IsSuccess
+                        ? new(true, string.Empty)
+                        : new(false, InvalidHandshakeReason),
+                ProtocolMessageTypes.ResumeRequest =>
+                    ProtocolJson.Read<ResumeRequestPayload>(json, ProtocolMessageTypes.ResumeRequest).IsSuccess
+                        ? new(true, string.Empty)
+                        : new(false, InvalidHandshakeReason),
                 _ => new(false, InvalidHandshakeReason),
             };
         }
@@ -568,17 +585,7 @@ public sealed class LanWebSocketTransport : IGameTransport
         }
     }
 
-    private static HandshakeValidation ValidateJoin(string json) =>
-        ProtocolJson.Read<JoinRequestPayload>(json, ProtocolMessageTypes.JoinRequest).IsSuccess
-            ? new(true, string.Empty)
-            : new(false, InvalidHandshakeReason);
-
-    private static HandshakeValidation ValidateRejoin(string json) =>
-        ProtocolJson.Read<RejoinRequestPayload>(json, ProtocolMessageTypes.RejoinRequest).IsSuccess
-            ? new(true, string.Empty)
-            : new(false, InvalidHandshakeReason);
-
-    private static PartyGameTransportException CreateException(
+    private static TransportException CreateException(
         TransportErrorCode code,
         string message,
         ConnectionId? connectionId = null) =>

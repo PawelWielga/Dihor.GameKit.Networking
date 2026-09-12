@@ -4,21 +4,18 @@ using PartyGameKit.Protocol;
 
 namespace PartyGameKit.Discovery.Lan;
 
-public sealed record DiscoveredSession(
-    JoinDescriptor Descriptor,
+public sealed record DiscoveredEndpoint(
+    ConnectionDescriptor Descriptor,
     DateTimeOffset LastSeenAt,
-    IPAddress? SourceAddress = null)
-{
-    public RoomId RoomId => Descriptor.RoomId;
-}
+    IPAddress? SourceAddress = null);
 
-public sealed class DiscoveredSessionRegistry
+public sealed class DiscoveredEndpointRegistry
 {
     private readonly object _gate = new();
-    private readonly Dictionary<RoomId, DiscoveredSession> _sessions = new();
+    private readonly Dictionary<string, DiscoveredEndpoint> _endpoints = new(StringComparer.Ordinal);
     private readonly Func<DateTimeOffset> _utcNow;
 
-    public DiscoveredSessionRegistry(
+    public DiscoveredEndpointRegistry(
         TimeSpan? timeToLive = null,
         Func<DateTimeOffset>? utcNow = null)
     {
@@ -33,37 +30,37 @@ public sealed class DiscoveredSessionRegistry
 
     public TimeSpan TimeToLive { get; }
 
-    public IReadOnlyList<DiscoveredSession> Sessions
+    public IReadOnlyList<DiscoveredEndpoint> Endpoints
     {
         get
         {
             lock (_gate)
             {
-                return _sessions.Values
-                    .OrderBy(item => item.RoomId.Value, StringComparer.Ordinal)
+                return _endpoints.Values
+                    .OrderBy(item => GetKey(item.Descriptor), StringComparer.Ordinal)
                     .ToArray();
             }
         }
     }
 
-    public bool Upsert(JoinDescriptor descriptor, IPAddress? sourceAddress = null)
+    public bool Upsert(ConnectionDescriptor descriptor, IPAddress? sourceAddress = null)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         lock (_gate)
         {
-            var now = _utcNow();
-            var next = new DiscoveredSession(descriptor, now, sourceAddress);
-            var changed = !_sessions.TryGetValue(descriptor.RoomId, out var previous) ||
+            var key = GetKey(descriptor);
+            var next = new DiscoveredEndpoint(descriptor, _utcNow(), sourceAddress);
+            var changed = !_endpoints.TryGetValue(key, out var previous) ||
                 previous.Descriptor != descriptor ||
                 !Equals(previous.SourceAddress, sourceAddress);
-            _sessions[descriptor.RoomId] = next;
+            _endpoints[key] = next;
             return changed;
         }
     }
 
     public bool AddAnnouncement(string json, IPAddress? sourceAddress = null)
     {
-        var announcement = DiscoveryAnnouncementCodec.Parse(json);
+        var announcement = DiscoveryEndpointAnnouncementCodec.Parse(json);
         return Upsert(announcement.Descriptor, sourceAddress);
     }
 
@@ -72,16 +69,21 @@ public sealed class DiscoveredSessionRegistry
         lock (_gate)
         {
             var now = _utcNow();
-            var expired = _sessions
+            var expired = _endpoints
                 .Where(pair => now - pair.Value.LastSeenAt > TimeToLive)
                 .Select(pair => pair.Key)
                 .ToArray();
-            foreach (var roomId in expired)
+            foreach (var key in expired)
             {
-                _sessions.Remove(roomId);
+                _endpoints.Remove(key);
             }
 
             return expired.Length > 0;
         }
     }
+
+    private static string GetKey(ConnectionDescriptor descriptor) =>
+        descriptor.ChannelId is { } channelId
+            ? $"channel:{channelId.Value}"
+            : $"endpoint:{descriptor.Transport}:{descriptor.Endpoint}";
 }

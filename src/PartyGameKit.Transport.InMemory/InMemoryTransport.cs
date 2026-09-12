@@ -5,7 +5,7 @@ using PartyGameKit.Transport.Abstractions;
 
 namespace PartyGameKit.Transport.InMemory;
 
-public sealed class InMemoryGameTransport : IGameTransport
+public sealed class InMemoryTransport : IMessageTransport
 {
     private readonly object _gate = new();
     private readonly Dictionary<ConnectionId, InMemoryConnectionState> _connections = new();
@@ -263,7 +263,7 @@ public sealed class InMemoryGameTransport : IGameTransport
     private static ReadOnlyMemory<byte> CopyPayload(ReadOnlyMemory<byte> payload) =>
         new(payload.ToArray());
 
-    private static PartyGameTransportException CreateException(
+    private static TransportException CreateException(
         TransportErrorCode code,
         string message,
         ConnectionId? connectionId = null) =>
@@ -278,12 +278,12 @@ internal sealed class InMemoryConnectionState(
 
 public sealed class InMemoryTransportPeer : IAsyncDisposable
 {
-    private readonly InMemoryGameTransport _transport;
+    private readonly InMemoryTransport _transport;
     private readonly InMemoryConnectionState _state;
     private int _disposed;
 
     internal InMemoryTransportPeer(
-        InMemoryGameTransport transport,
+        InMemoryTransport transport,
         ConnectionId connectionId,
         InMemoryConnectionState state)
     {

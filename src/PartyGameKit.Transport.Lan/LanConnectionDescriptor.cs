@@ -3,15 +3,14 @@ using PartyGameKit.Protocol;
 
 namespace PartyGameKit.Transport.Lan;
 
-public static class LanJoinDescriptor
+public static class LanConnectionDescriptor
 {
     public const string TransportName = "lan-websocket";
 
-    public static JoinDescriptor Create(
-        RoomId roomId,
-        JoinCode joinCode,
+    public static ConnectionDescriptor Create(
         string host,
         int port,
+        ChannelId? channelId = null,
         string path = "/partygamekit",
         bool secure = false)
     {
@@ -28,20 +27,19 @@ public static class LanJoinDescriptor
         }
 
         var endpoint = new UriBuilder(secure ? "wss" : "ws", host.Trim(), port, path).Uri;
-        return new JoinDescriptor(
-            roomId,
-            joinCode,
+        return new ConnectionDescriptor(
             TransportName,
             endpoint.AbsoluteUri,
-            ProtocolVersions.Current);
+            ProtocolVersions.Current,
+            channelId);
     }
 
-    public static Uri GetEndpointUri(JoinDescriptor descriptor)
+    public static Uri GetEndpointUri(ConnectionDescriptor descriptor)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         if (!string.Equals(descriptor.Transport, TransportName, StringComparison.Ordinal))
         {
-            throw new ArgumentException("Join descriptor is not a LAN WebSocket descriptor.", nameof(descriptor));
+            throw new ArgumentException("Connection descriptor is not a LAN WebSocket descriptor.", nameof(descriptor));
         }
 
         var uri = new Uri(descriptor.Endpoint, UriKind.Absolute);
