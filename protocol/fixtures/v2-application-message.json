@@ -1,0 +1,1 @@
+{"type":"application.message","protocolVersion":2,"messageId":"application-1","payload":{"applicationType":"example.command","data":{"value":42}}}

@@ -5,28 +5,20 @@ namespace PartyGameKit.Core.Tests;
 public sealed class IdentityPrimitivesTests
 {
     [Fact]
-    public void PlayerAndConnectionIdentityRemainDistinctTypes()
+    public void CommunicationIdentifiers_TrimValues()
     {
-        var playerId = new PlayerId("same-text");
-        var connectionId = new ConnectionId("same-text");
-
-        Assert.Equal("same-text", playerId.Value);
-        Assert.Equal("same-text", connectionId.Value);
-        Assert.NotEqual(typeof(PlayerId), typeof(ConnectionId));
-    }
-
-    [Fact]
-    public void IdentifiersTrimInputAndJoinCodeNormalizesCase()
-    {
-        Assert.Equal("room-1", new RoomId("  room-1 ").Value);
-        Assert.Equal("ROOM42", new JoinCode(" room42 ").Value);
+        Assert.Equal("connection-1", new ConnectionId("  connection-1  ").Value);
+        Assert.Equal("peer-1", new PeerId("  peer-1  ").Value);
+        Assert.Equal("channel-1", new ChannelId("  channel-1  ").Value);
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void IdentifiersRejectBlankValues(string value)
+    public void CommunicationIdentifiers_RejectBlankValues(string value)
     {
-        Assert.Throws<ArgumentException>(() => new PlayerId(value));
+        Assert.Throws<ArgumentException>(() => new ConnectionId(value));
+        Assert.Throws<ArgumentException>(() => new PeerId(value));
+        Assert.Throws<ArgumentException>(() => new ChannelId(value));
     }
 }

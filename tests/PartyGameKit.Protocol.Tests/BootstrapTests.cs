@@ -1,14 +1,12 @@
-using System.Reflection;
+using PartyGameKit.Protocol;
 
 namespace PartyGameKit.Protocol.Tests;
 
 public sealed class BootstrapTests
 {
     [Fact]
-    public void ProtocolAssemblyBuildsAndLoads()
+    public void ProtocolVersion_IsCommunicationProtocolV2()
     {
-        var assembly = Assembly.Load("PartyGameKit.Protocol");
-
-        Assert.Equal("PartyGameKit.Protocol", assembly.GetName().Name);
+        Assert.Equal(2, ProtocolVersions.Current);
     }
 }
