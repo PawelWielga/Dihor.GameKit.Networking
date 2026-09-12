@@ -95,9 +95,8 @@ public sealed class DungeonPrototypeHappyPathTests
                 InventoryContains(snapshot.State.GetProperty("privateState"), "Rusty Key") &&
                 snapshot.State.GetProperty("privateState").GetProperty("actionPoints").GetInt32() == 1,
             cancellationToken);
-        Assert.Equal(
-            JsonValueKind.Null,
-            keyPickedUp.State.GetProperty("publicState").GetProperty("keyPosition").ValueKind);
+        Assert.False(
+            keyPickedUp.State.GetProperty("publicState").TryGetProperty("keyPosition", out _));
 
         await SendCommandAsync(
             player1,
