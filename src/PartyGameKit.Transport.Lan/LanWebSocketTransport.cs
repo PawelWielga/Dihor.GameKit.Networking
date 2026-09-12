@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -7,9 +6,9 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,6 +36,7 @@ public sealed class LanWebSocketTransport : IGameTransport
     private readonly CancellationTokenSource _stopSource = new();
     private WebApplication? _application;
     private int _stopped;
+    private int _disposed;
 
     private LanWebSocketTransport(
         LanWebSocketHostOptions options,
@@ -59,8 +59,16 @@ public sealed class LanWebSocketTransport : IGameTransport
     {
         ArgumentNullException.ThrowIfNull(options);
         var transport = new LanWebSocketTransport(options, connectionIdFactory);
-        await transport.StartCoreAsync(cancellationToken).ConfigureAwait(false);
-        return transport;
+        try
+        {
+            await transport.StartCoreAsync(cancellationToken).ConfigureAwait(false);
+            return transport;
+        }
+        catch
+        {
+            transport._stopSource.Dispose();
+            throw;
+        }
     }
 
     public Uri CreateClientUri(string host)
@@ -149,7 +157,6 @@ public sealed class LanWebSocketTransport : IGameTransport
             return;
         }
 
-        _stopSource.Cancel();
         foreach (var connection in _connections.Values.ToArray())
         {
             if (!RemoveConnection(connection, TransportCloseReason.TransportStopped))
@@ -164,6 +171,7 @@ public sealed class LanWebSocketTransport : IGameTransport
                 cancellationToken).ConfigureAwait(false);
         }
 
+        _stopSource.Cancel();
         var application = _application;
         if (application is not null)
         {
@@ -177,6 +185,11 @@ public sealed class LanWebSocketTransport : IGameTransport
 
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         try
         {
             await StopAsync().ConfigureAwait(false);
@@ -350,6 +363,11 @@ public sealed class LanWebSocketTransport : IGameTransport
                     receiveCancellation.Token).ConfigureAwait(false);
                 if (message.IsClose())
                 {
+                    await CloseSocketAsync(
+                        connection.Socket,
+                        WebSocketCloseStatus.NormalClosure,
+                        "remote-closed",
+                        CancellationToken.None).ConfigureAwait(false);
                     break;
                 }
 
@@ -568,13 +586,16 @@ public sealed class LanWebSocketTransport : IGameTransport
         {
             if (socket.State is WebSocketState.Open or WebSocketState.CloseReceived)
             {
-                await socket.CloseAsync(status, description, cancellationToken).ConfigureAwait(false);
+                await socket.CloseOutputAsync(status, description, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
         {
         }
         catch (WebSocketException)
+        {
+        }
+        catch (InvalidOperationException)
         {
         }
     }
