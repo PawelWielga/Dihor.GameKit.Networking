@@ -1,0 +1,1 @@
+{"type":"state.snapshot","protocolVersion":1,"messageId":"snapshot-42-player-1","payload":{"roomId":"room-001","authorityId":"authority-001","sequence":42,"target":{"kind":"player","playerId":"player-001"},"state":{"revision":"player-42"}}}

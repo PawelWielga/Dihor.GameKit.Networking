@@ -17,6 +17,7 @@ public static class ProtocolMessageTypes
     public const string Disconnected = "session.disconnected";
     public const string RejoinRequest = "session.rejoin.request";
     public const string RejoinAccepted = "session.rejoin.accepted";
+    public const string StateSnapshot = "state.snapshot";
 }
 
 public sealed record ProtocolEnvelope<TPayload>(
@@ -75,6 +76,13 @@ public sealed record RejoinAcceptedPayload(
     [property: JsonPropertyName("playerId"), JsonPropertyOrder(1)] PlayerId PlayerId,
     [property: JsonPropertyName("connectionId"), JsonPropertyOrder(2)] ConnectionId ConnectionId,
     [property: JsonPropertyName("authorityId"), JsonPropertyOrder(3)] AuthorityId AuthorityId);
+
+public sealed record StateSnapshotPayload<TState>(
+    [property: JsonPropertyName("roomId"), JsonPropertyOrder(0)] RoomId RoomId,
+    [property: JsonPropertyName("authorityId"), JsonPropertyOrder(1)] AuthorityId AuthorityId,
+    [property: JsonPropertyName("sequence"), JsonPropertyOrder(2)] SnapshotSequence Sequence,
+    [property: JsonPropertyName("target"), JsonPropertyOrder(3)] SnapshotTarget Target,
+    [property: JsonPropertyName("state"), JsonPropertyOrder(4)] TState State);
 
 public static class PartyGameKitMessages
 {

@@ -1,0 +1,1 @@
+{"type":"state.snapshot","protocolVersion":1,"messageId":"snapshot-42-public","payload":{"roomId":"room-001","authorityId":"authority-001","sequence":42,"target":{"kind":"public"},"state":{"revision":"public-42"}}}
