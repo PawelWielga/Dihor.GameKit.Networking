@@ -87,7 +87,9 @@ final class PartyGameKitJoinDescriptor {
 
     String requiredSingle(String key) {
       final values = uri.queryParametersAll[key];
-      if (values == null || values.length != 1 || values.single.trim().isEmpty) {
+      if (values == null ||
+          values.length != 1 ||
+          values.single.trim().isEmpty) {
         throw FormatException('Join URI must contain exactly one $key.');
       }
       return values.single;
@@ -95,7 +97,8 @@ final class PartyGameKitJoinDescriptor {
 
     final version = int.tryParse(requiredSingle('protocolVersion'));
     if (version == null) {
-      throw const FormatException('Join URI protocolVersion must be an integer.');
+      throw const FormatException(
+          'Join URI protocolVersion must be an integer.');
     }
 
     return PartyGameKitJoinDescriptor(
