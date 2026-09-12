@@ -10,91 +10,92 @@ The primary interaction model is:
 - the same game can run locally over LAN or use an optional backend/cloud path,
 - game logic must not depend on SignalR, WebRTC, sockets or any other concrete transport.
 
-The first real-world source of requirements is the existing **Państwa Miasta** game. A second, mechanically different game such as a dungeon crawler will be used to validate that the extracted API is genuinely reusable and not just a renamed copy of one game's networking layer.
+The first real-world source of requirements is the existing **Państwa Miasta** game. A second, mechanically different dungeon-style sample will validate that the extracted API is genuinely reusable and not a renamed copy of one game's networking layer.
 
 ## Goals
 
-PartyGameKit should eventually provide reusable building blocks for:
+PartyGameKit should incrementally provide reusable building blocks for:
 
-- rooms and join codes,
-- players and host lifecycle,
-- connect, disconnect and reconnect,
-- host transfer,
-- game-session lifecycle,
-- commands and events,
-- public and private player state,
-- TV/shared-screen clients,
-- phone/controller clients,
-- LAN networking,
-- backend-assisted networking,
-- WebRTC/direct peer transport where useful,
-- automatic transport selection and fallback.
+- rooms/sessions and join descriptors,
+- stable player identity distinct from network connection identity,
+- join, leave, disconnect and reconnect,
+- logical host/authority handling,
+- public/shared-screen and private player state delivery,
+- replaceable transports,
+- backend-free LAN networking,
+- later backend-assisted networking,
+- later WebRTC/direct peer transport where useful,
+- eventual automatic transport selection only after the individual transports are reliable.
+
+Automatic host migration is not a v0.1 guarantee. The current Państwa Miasta implementation proves host-loss detection and reconnect, while host migration remains experimental.
 
 ## Non-goals
 
-The core library should **not** contain game-specific concepts such as countries, cities, answers, dungeon rooms, monsters, loot or combat rules.
+The generic library must **not** contain game-specific concepts such as categories, answers, letters, dungeon rooms, monsters, loot, tiles, attacks or scoring/combat rules.
 
-PartyGameKit is also not intended to become a full general-purpose MMO/network engine. The initial focus is couch/party games with one shared screen and multiple personal controllers.
+PartyGameKit is also not a general-purpose MMO/network engine. The initial focus is couch/party games with one shared screen and multiple personal controllers.
 
-## Design principle
+## Design principles
 
-Game code should work with concepts such as `GameSession`, `Player`, `Command`, `Event` and `GameState`.
-
-It should not need to know whether a message is delivered through LAN WebSocket, SignalR, WebRTC or a future transport.
+Game code owns its rules, commands and state schema. PartyGameKit owns reusable session, protocol, replication and transport semantics.
 
 ```text
-Game logic
-   │
-   ├── Session / Room
-   │
-   └── Transport abstraction
-          ├── LAN
-          ├── SignalR / cloud
-          └── WebRTC
+game-owned rules/state
+        │
+        ▼
+session / authority
+        │
+        ├── versioned protocol + snapshots
+        │
+        └── transport abstraction
+                ├── LAN
+                ├── SignalR / cloud later
+                └── WebRTC later
 ```
 
-## Planned stack
+A stable `PlayerId` is not a `ConnectionId`. A dropped connection is not automatically a permanent leave. Host/authority is logical session state rather than a property of one WebSocket.
 
-### Core and server
+## Cross-language contract
 
-- C#
-- .NET 10
-- ASP.NET Core
-- SignalR where a backend transport is appropriate
-- NuGet packages once the API has been validated by at least two games
+PartyGameKit is centered on .NET, but Państwa Miasta is Flutter/Dart and PartyBeam will use browser/TypeScript clients.
 
-### Browser clients
+The v0.1 compatibility boundary is therefore a **versioned language-neutral JSON protocol plus canonical JSON fixtures**. C#, Dart and TypeScript implement thin local protocol models and test against the same fixtures.
 
-- TypeScript
-- React
-- PWA
-- WebRTC DataChannel where direct low-latency communication is useful
-- Phaser or another dedicated renderer for games that need a real-time 2D scene
+A NuGet package is not treated as the cross-language contract, and game engines are not duplicated across languages.
 
-## Planned repository shape
+See [Extraction from Państwa Miasta](docs/extraction-from-panstwa-miasta.md) for the full decision and evidence.
+
+## Initial repository shape
+
+The first implementation slice deliberately stays small:
 
 ```text
 PartyGameKit/
 ├── src/
 │   ├── PartyGameKit.Core/
-│   ├── PartyGameKit.Transport.Abstractions/
-│   ├── PartyGameKit.Transport.Lan/
-│   ├── PartyGameKit.Transport.SignalR/
-│   ├── PartyGameKit.Transport.WebRtc/
-│   └── PartyGameKit.AspNetCore/
-├── web/
-│   ├── @partygamekit/client/
-│   └── @partygamekit/react/
+│   ├── PartyGameKit.Protocol/
+│   └── PartyGameKit.Transport.Abstractions/
+├── tests/
+│   ├── PartyGameKit.Core.Tests/
+│   ├── PartyGameKit.Protocol.Tests/
+│   └── PartyGameKit.Transport.Tests/
+├── protocol/
+│   └── fixtures/
 ├── samples/
-│   ├── SimpleLobby/
-│   └── SimpleDungeon/
 └── docs/
 ```
 
-This structure is a direction, not a commitment to create every package immediately. The project should grow from proven requirements rather than speculative abstractions.
+Concrete LAN, Dart and TypeScript packages are added only by the later issues that need them. SignalR and WebRTC are post-v0.1 transports.
+
+## LAN host constraint
+
+The first direct LAN transport will use WebSocket. Its listener must run in a server-capable local runtime such as a .NET/native/desktop/TV process or companion process.
+
+A pure browser/PWA can be the shared-screen or phone client, but it cannot accept arbitrary inbound WebSocket connections. Pure-browser direct hosting is deferred to a later peer/WebRTC transport.
 
 ## Documentation
 
+- [Extraction from Państwa Miasta](docs/extraction-from-panstwa-miasta.md)
 - [Architecture](docs/architecture.md)
 - [Networking](docs/networking.md)
 - [Game session model](docs/game-session-model.md)
@@ -102,4 +103,4 @@ This structure is a direction, not a commitment to create every package immediat
 
 ## Current status
 
-The repository is at the architecture/bootstrap stage. The next major step is to identify the reusable room/player/reconnect/host functionality already proven in Państwa Miasta and extract only that first slice.
+The extraction boundary is defined. Implementation proceeds strictly in the `[NN]` order from the tracker, beginning with the minimal solution/quality-gate bootstrap in `[02]` after `[01]` is merged and green.
