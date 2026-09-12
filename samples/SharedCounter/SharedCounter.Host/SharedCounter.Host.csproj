@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <Description>Local browser host for the PartyGameKit shared counter sample.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SharedCounter.Sample/SharedCounter.Sample.csproj" />
+    <ProjectReference Include="../../../src/PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
+  </ItemGroup>
+</Project>
