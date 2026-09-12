@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using PartyGameKit.Core;
+using PartyGameKit.Discovery.Lan;
 using PartyGameKit.Protocol;
 using PartyGameKit.Transport.Abstractions;
 using PartyGameKit.Transport.Lan;
