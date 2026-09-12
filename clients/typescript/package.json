@@ -1,6 +1,6 @@
 {
   "name": "@partygamekit/client",
-  "version": "0.1.0",
+  "version": "0.1.0-preview.1",
   "description": "Browser client SDK for PartyGameKit controllers and shared screens.",
   "type": "module",
   "sideEffects": false,
@@ -14,12 +14,24 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && tsc -p tsconfig.test.json && node --test .test-dist/test/*.test.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PawelWielga/PartyGameKit.git",
+    "directory": "clients/typescript"
+  },
+  "keywords": [
+    "party-game",
+    "multiplayer",
+    "shared-screen",
+    "websocket"
+  ],
   "devDependencies": {
     "typescript": "^5.8.3"
   },
