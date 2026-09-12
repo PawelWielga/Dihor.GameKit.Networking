@@ -1,5 +1,6 @@
 using System.Net;
 using PartyGameKit.Core;
+using PartyGameKit.Discovery.Lan;
 
 namespace PartyGameKit.Discovery.Tests;
 
