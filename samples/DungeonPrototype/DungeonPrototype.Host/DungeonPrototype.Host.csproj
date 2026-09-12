@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <Description>Local browser host for the PartyGameKit dungeon validation sample.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DungeonPrototype.Sample/DungeonPrototype.Sample.csproj" />
+    <ProjectReference Include="../../../src/PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
+  </ItemGroup>
+</Project>
