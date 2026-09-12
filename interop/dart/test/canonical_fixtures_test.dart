@@ -24,7 +24,8 @@ void main() {
       }
     });
 
-    test('join and rejoin preserve stable player identity across connections', () {
+    test('join and rejoin preserve stable player identity across connections',
+        () {
       final join = PartyGameKitEnvelope.parse(_fixture('join-success.json'));
       final rejoin = PartyGameKitEnvelope.parse(_fixture('rejoin.json'));
 
@@ -39,7 +40,9 @@ void main() {
       expect(rejoin.payload['lastSeenSnapshotSequence'], 41);
     });
 
-    test('snapshot target stays generic and stale or equal sequences are rejected', () {
+    test(
+        'snapshot target stays generic and stale or equal sequences are rejected',
+        () {
       final publicSnapshot =
           PartyGameKitEnvelope.parse(_fixture('snapshot-public.json'));
       final playerSnapshot =
