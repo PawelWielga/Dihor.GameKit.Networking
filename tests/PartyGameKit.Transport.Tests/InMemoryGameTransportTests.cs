@@ -11,11 +11,14 @@ public sealed class InMemoryGameTransportTests
     public async Task IncomingEventsPreserveConnectionAndMessageOrder()
     {
         await using var transport = new InMemoryGameTransport();
-        await using var peer = await transport.OpenConnectionAsync(new ConnectionId("connection-1"));
-        await using var events = transport.ReadEventsAsync().GetAsyncEnumerator();
+        await using var peer = await transport.OpenConnectionAsync(
+            new ConnectionId("connection-1"), TestContext.Current.CancellationToken);
+        await using var events = transport
+            .ReadEventsAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
-        await peer.SendAsync(Bytes("first"));
-        await peer.SendAsync(Bytes("second"));
+        await peer.SendAsync(Bytes("first"), TestContext.Current.CancellationToken);
+        await peer.SendAsync(Bytes("second"), TestContext.Current.CancellationToken);
 
         Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
         Assert.Equal("first", Text(Assert.IsType<TransportMessageReceived>(await NextAsync(events)).Payload));
@@ -26,13 +29,20 @@ public sealed class InMemoryGameTransportTests
     public async Task TargetedSendReachesOnlyRequestedConnection()
     {
         await using var transport = new InMemoryGameTransport();
-        await using var first = await transport.OpenConnectionAsync(new ConnectionId("connection-1"));
-        await using var second = await transport.OpenConnectionAsync(new ConnectionId("connection-2"));
-        await using var firstMessages = first.ReadMessagesAsync().GetAsyncEnumerator();
-        await using var secondMessages = second.ReadMessagesAsync().GetAsyncEnumerator();
+        await using var first = await transport.OpenConnectionAsync(
+            new ConnectionId("connection-1"), TestContext.Current.CancellationToken);
+        await using var second = await transport.OpenConnectionAsync(
+            new ConnectionId("connection-2"), TestContext.Current.CancellationToken);
+        await using var firstMessages = first
+            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
+        await using var secondMessages = second
+            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
-        await transport.SendAsync(first.ConnectionId, Bytes("private"));
-        await transport.BroadcastAsync(Bytes("public"));
+        await transport.SendAsync(
+            first.ConnectionId, Bytes("private"), TestContext.Current.CancellationToken);
+        await transport.BroadcastAsync(Bytes("public"), TestContext.Current.CancellationToken);
 
         Assert.Equal("private", Text(await NextMessageAsync(firstMessages)));
         Assert.Equal("public", Text(await NextMessageAsync(firstMessages)));
@@ -43,13 +53,19 @@ public sealed class InMemoryGameTransportTests
     public async Task BroadcastPreservesSendOrderForEveryConnection()
     {
         await using var transport = new InMemoryGameTransport();
-        await using var first = await transport.OpenConnectionAsync(new ConnectionId("connection-1"));
-        await using var second = await transport.OpenConnectionAsync(new ConnectionId("connection-2"));
-        await using var firstMessages = first.ReadMessagesAsync().GetAsyncEnumerator();
-        await using var secondMessages = second.ReadMessagesAsync().GetAsyncEnumerator();
+        await using var first = await transport.OpenConnectionAsync(
+            new ConnectionId("connection-1"), TestContext.Current.CancellationToken);
+        await using var second = await transport.OpenConnectionAsync(
+            new ConnectionId("connection-2"), TestContext.Current.CancellationToken);
+        await using var firstMessages = first
+            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
+        await using var secondMessages = second
+            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
-        await transport.BroadcastAsync(Bytes("one"));
-        await transport.BroadcastAsync(Bytes("two"));
+        await transport.BroadcastAsync(Bytes("one"), TestContext.Current.CancellationToken);
+        await transport.BroadcastAsync(Bytes("two"), TestContext.Current.CancellationToken);
 
         Assert.Equal("one", Text(await NextMessageAsync(firstMessages)));
         Assert.Equal("two", Text(await NextMessageAsync(firstMessages)));
@@ -62,12 +78,20 @@ public sealed class InMemoryGameTransportTests
     {
         await using var transport = new InMemoryGameTransport();
         var connectionId = new ConnectionId("connection-1");
-        await using var peer = await transport.OpenConnectionAsync(connectionId);
-        await using var events = transport.ReadEventsAsync().GetAsyncEnumerator();
-        await using var messages = peer.ReadMessagesAsync().GetAsyncEnumerator();
+        await using var peer = await transport.OpenConnectionAsync(
+            connectionId, TestContext.Current.CancellationToken);
+        await using var events = transport
+            .ReadEventsAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
+        await using var messages = peer
+            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
         Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
-        await transport.DisconnectAsync(connectionId, TransportCloseReason.Replaced);
+        await transport.DisconnectAsync(
+            connectionId,
+            TransportCloseReason.Replaced,
+            TestContext.Current.CancellationToken);
 
         var closed = Assert.IsType<TransportConnectionClosed>(await NextAsync(events));
         Assert.Equal(connectionId, closed.ConnectionId);
@@ -75,7 +99,8 @@ public sealed class InMemoryGameTransportTests
         Assert.False(await messages.MoveNextAsync());
 
         var error = await Assert.ThrowsAsync<PartyGameTransportException>(
-            async () => await transport.SendAsync(connectionId, Bytes("late")));
+            async () => await transport.SendAsync(
+                connectionId, Bytes("late"), TestContext.Current.CancellationToken));
         Assert.Equal(TransportErrorCode.ConnectionNotFound, error.Error.Code);
     }
 
@@ -83,25 +108,32 @@ public sealed class InMemoryGameTransportTests
     public async Task CancellationIsObservedBeforeAnOperationMutatesTransport()
     {
         await using var transport = new InMemoryGameTransport();
-        await using var peer = await transport.OpenConnectionAsync(new ConnectionId("connection-1"));
+        await using var peer = await transport.OpenConnectionAsync(
+            new ConnectionId("connection-1"), TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            async () => await transport.SendAsync(peer.ConnectionId, Bytes("cancelled"), cancellation.Token));
+            async () => await transport.SendAsync(
+                peer.ConnectionId, Bytes("cancelled"), cancellation.Token));
     }
 
     [Fact]
     public async Task StopIsIdempotentClosesPeersAndRejectsFutureOperations()
     {
         await using var transport = new InMemoryGameTransport();
-        await using var peer = await transport.OpenConnectionAsync(new ConnectionId("connection-1"));
-        await using var events = transport.ReadEventsAsync().GetAsyncEnumerator();
-        await using var messages = peer.ReadMessagesAsync().GetAsyncEnumerator();
+        await using var peer = await transport.OpenConnectionAsync(
+            new ConnectionId("connection-1"), TestContext.Current.CancellationToken);
+        await using var events = transport
+            .ReadEventsAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
+        await using var messages = peer
+            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
         Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
-        await transport.StopAsync();
-        await transport.StopAsync();
+        await transport.StopAsync(TestContext.Current.CancellationToken);
+        await transport.StopAsync(TestContext.Current.CancellationToken);
 
         var closed = Assert.IsType<TransportConnectionClosed>(await NextAsync(events));
         Assert.Equal(TransportCloseReason.TransportStopped, closed.Reason);
@@ -109,7 +141,8 @@ public sealed class InMemoryGameTransportTests
         Assert.False(await messages.MoveNextAsync());
 
         var error = await Assert.ThrowsAsync<PartyGameTransportException>(
-            async () => await transport.BroadcastAsync(Bytes("late")));
+            async () => await transport.BroadcastAsync(
+                Bytes("late"), TestContext.Current.CancellationToken));
         Assert.Equal(TransportErrorCode.TransportClosed, error.Error.Code);
     }
 
@@ -117,8 +150,11 @@ public sealed class InMemoryGameTransportTests
     public async Task PeerDisposeReportsRemoteCloseExactlyOnce()
     {
         await using var transport = new InMemoryGameTransport();
-        var peer = await transport.OpenConnectionAsync(new ConnectionId("connection-1"));
-        await using var events = transport.ReadEventsAsync().GetAsyncEnumerator();
+        var peer = await transport.OpenConnectionAsync(
+            new ConnectionId("connection-1"), TestContext.Current.CancellationToken);
+        await using var events = transport
+            .ReadEventsAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
         Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
 
         await peer.DisposeAsync();
@@ -139,15 +175,21 @@ public sealed class InMemoryGameTransportTests
         await using var transport = new InMemoryGameTransport();
         var connectionId = new ConnectionId("connection-1");
         var playerId = new PlayerId("player-1");
-        await using var peer = await transport.OpenConnectionAsync(connectionId);
-        await using var peerMessages = peer.ReadMessagesAsync().GetAsyncEnumerator();
+        await using var peer = await transport.OpenConnectionAsync(
+            connectionId, TestContext.Current.CancellationToken);
+        await using var peerMessages = peer
+            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
         var join = session.JoinPlayer(playerId, connectionId);
         Assert.True(join.IsAccepted);
 
         var currentConnection = session.FindPlayer(playerId)!.ConnectionId;
         Assert.True(currentConnection.HasValue);
-        await transport.SendAsync(currentConnection.Value, Bytes("session-state"));
+        await transport.SendAsync(
+            currentConnection.Value,
+            Bytes("session-state"),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal("session-state", Text(await NextMessageAsync(peerMessages)));
         Assert.Equal(playerId, session.FindClient(connectionId)!.PlayerId);
