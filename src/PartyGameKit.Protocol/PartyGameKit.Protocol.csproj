@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Language-neutral wire contract implementation for PartyGameKit.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>
