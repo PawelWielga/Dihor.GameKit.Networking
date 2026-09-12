@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:partygamekit_protocol_conformance/partygamekit_protocol.dart';
+import 'package:partygamekit_protocol/partygamekit_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
