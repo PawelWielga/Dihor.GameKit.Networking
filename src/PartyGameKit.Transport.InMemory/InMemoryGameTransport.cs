@@ -303,9 +303,6 @@ public sealed class InMemoryTransportPeer : IAsyncDisposable
 
     private void ThrowIfDisposed()
     {
-        if (Volatile.Read(ref _disposed) != 0)
-        {
-            throw new ObjectDisposedException(nameof(InMemoryTransportPeer));
-        }
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
     }
 }
