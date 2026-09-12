@@ -1,224 +1,196 @@
 # Game session model
 
-## Core entities
+This document describes the smallest session model justified by the current Państwa Miasta multiplayer behavior and the concrete PartyBeam shared-screen requirement. It deliberately avoids freezing game lifecycle concepts that belong to individual games.
 
-The initial model should stay deliberately small.
+See [Extraction from Państwa Miasta](extraction-from-panstwa-miasta.md) for the evidence and cross-language boundary.
 
-### Room
+## Room and session
 
-A room is the joinable multiplayer container.
+A `Room` is the joinable multiplayer container. A session is the logical multiplayer lifetime inside that room.
 
-Expected data may include:
+PartyGameKit may own infrastructure data such as:
 
-- room identifier,
-- short join code,
-- current host,
-- connected players,
-- session status,
-- optional transport/discovery metadata.
+- stable room/session identity;
+- capacity/admission policy;
+- current participants and their presence;
+- logical host/authority identity;
+- whether the session is accepting joins or closed.
 
-A room is infrastructure and should not contain game-specific rules.
+Transport addresses, IPs and ports are not Core room identity. They belong to a transport/join descriptor.
 
-### Player
+PartyGameKit does not define a universal game-phase enum such as `Lobby -> Starting -> Running -> Finished`. Państwa Miasta has its own phases and a dungeon game will have different ones. The game owns that state inside its authoritative payload.
 
-A player needs a stable identity that survives temporary connection loss.
+## Player
 
-Connection identity and player identity should not be treated as the same thing.
-
-This is important for phone sleep, browser refresh and reconnect.
-
-Conceptually:
+A player has a stable identity that survives temporary network loss.
 
 ```text
-PlayerId = stable identity inside the game session
-ConnectionId = current network connection
+PlayerId      stable session identity
+ConnectionId  transient network connection
 ```
 
-A reconnect should attach a new connection to the existing player whenever ownership can be validated.
+This distinction is mandatory, not optional. The reference implementation already replaces an old connection for the same `playerId` without duplicating the player and keeps disconnected players in an active match so their game state can be restored.
 
-### Host
+Display name and cosmetic profile fields are not identity. Two connected players may have the same display name and must remain distinct.
 
-The host is the participant/device responsible for session coordination from the product perspective.
+## Connected client and role
 
-Host role and game authority may initially be the same device, but they should remain separate concepts because future cloud-authoritative games may use:
+Not every connected client is a player.
+
+PartyBeam requires a shared TV/browser that can render public state without consuming player capacity, score, character ownership or other player semantics.
+
+The protocol therefore needs a small role concept, for example:
 
 ```text
-TV = display/host
-Backend = authority
+host/authority endpoint (where applicable)
+player
+shared-screen
 ```
 
-The framework should support host transfer rather than making host identity immutable.
+The final serialized names are defined by `[03]`; the important rule is that `ClientRole` and `PlayerId` are not the same abstraction.
 
-### GameSession
+A shared-screen connection can exist without a `PlayerId` when it does not represent a player.
 
-A game session represents the lifecycle of one playable match.
+## Host and authority
 
-Possible lifecycle direction:
+`Host`, `authority` and current network connection are separate concepts.
 
-```text
-Created
-  ↓
-Lobby
-  ↓
-Starting
-  ↓
-Running
-  ↓
-Finished
-  ↓
-Closed
-```
+The initial LAN implementation will commonly have one server-capable local process coordinate the room and own canonical game state. That does not justify storing authority as a property of a WebSocket object.
 
-Do not freeze this enum/API until the needs of at least two games are compared.
+A connection can be replaced during reconnect while the logical participant/authority identity remains stable.
 
-## Commands and events
+Future cloud-authoritative games may place authority on a backend while the TV remains only a shared-screen client. Core must not need redesign for that topology.
 
-Commands represent player/device intent.
+## Join and admission
 
-Examples:
+Join is an explicit lifecycle operation with an explicit result.
 
-```text
-JoinRoom
-LeaveRoom
-Ready
-SubmitAnswer
-VoteAnswer
-Move
-Attack
-UseItem
-```
+At minimum the lifecycle must support deterministic outcomes such as:
 
-Infrastructure-level commands can be standardized by PartyGameKit. Game-specific commands belong to the game.
+- accepted;
+- room not found/closed;
+- room full;
+- incompatible protocol;
+- invalid/unauthorized resume identity.
 
-Events represent accepted changes/facts.
+The game may add its own admission rules outside Core, but generic capacity and session availability belong to the reusable session model.
 
-Examples:
+A successful join must not infer player identity from a display name or from the connection handle.
 
-```text
-PlayerJoined
-PlayerDisconnected
-HostChanged
-GameStarted
-PlayerMoved
-AnswerSubmitted
-```
+## Disconnect versus leave
 
-The authority validates commands before producing state changes/events.
+This is one of the most important semantics extracted from Państwa Miasta.
 
-## State ownership
+### Disconnect
 
-The authority owns canonical state.
+A temporary transport loss means:
 
-Clients should not be trusted to set authoritative values such as:
+- the active connection is gone or unhealthy;
+- the participant may be marked disconnected;
+- game-owned state remains intact;
+- capacity/session retention follows the current lifecycle policy;
+- the player may reconnect with the same stable `PlayerId`.
 
-- score,
-- HP,
-- item ownership,
-- character position,
-- combat result,
-- generated loot.
+### Leave
 
-Clients send intent and render the resulting state.
+Leave is an explicit permanent lifecycle action/policy. It can remove the participant from the room and free capacity where appropriate.
 
-For simple games this still applies even when the authority is just the local TV/laptop.
-
-## State projections
-
-A single canonical state may produce different client projections.
-
-```text
-Canonical state
-     │
-     ├──► SharedScreenProjection
-     │
-     ├──► PlayerProjection(A)
-     ├──► PlayerProjection(B)
-     └──► PlayerProjection(C)
-```
-
-This is preferable to broadcasting one huge state object and relying on UI code to hide secrets.
-
-### Shared-screen projection
-
-Contains only data appropriate for the common display.
-
-Examples:
-
-- map,
-- round number,
-- timers,
-- public scores,
-- public actions,
-- visible monsters,
-- public vote results.
-
-### Player projection
-
-Contains data intended for one player.
-
-Examples:
-
-- inventory,
-- cards,
-- secret role,
-- secret objective,
-- private answer draft,
-- available actions,
-- cooldowns visible only to that player.
+The reference game already behaves differently in its lobby and active round: leaving a lobby frees a slot, while a network loss during an active game preserves the known player's state. PartyGameKit should expose the generic distinction without copying the game's phase enum.
 
 ## Reconnect
 
-Reconnect is a first-class use case, not an error edge case.
-
-A reconnect flow should conceptually perform:
+Reconnect is a first-class flow:
 
 ```text
-new connection
-    ↓
-identify previous player
-    ↓
-attach connection
-    ↓
-restore current projection/state
-    ↓
-resume session
+new transport connection
+        ↓
+resume request with stable identity + proof
+        ↓
+validate existing session/player
+        ↓
+bind new ConnectionId
+        ↓
+mark participant connected
+        ↓
+deliver current authoritative projection/snapshot
 ```
 
-The transport implementation handles reconnect mechanics; Core defines the session/player semantics.
+A reconnect must not create a second player for the same `PlayerId`.
 
-## Host disconnect
+The reconnect credential is separate from the public player identity and is never part of a shared player profile. Persistence of that credential is a client SDK/platform concern.
 
-The framework should support policies rather than one hard-coded behavior.
+## Presence and timeout
 
-Potential policies:
+Heartbeat/presence timestamps are infrastructure state, not game state.
 
-- pause and wait for host reconnect,
-- transfer host automatically,
-- transfer host by vote/selection,
-- close the room,
-- continue if authority is elsewhere.
+The reference implementation proves the need for configurable:
 
-The first implementation can support only the policy proven by Państwa Miasta, while leaving room for additional policies later.
+- heartbeat interval;
+- host/client timeout;
+- reconnect window;
+- disconnected-player retention/grace policy.
+
+Missing one heartbeat cannot be treated as permanent leave. Timeout policy is configurable and deterministic so tests can use controllable time.
+
+## Game-owned commands and state
+
+PartyGameKit standardizes infrastructure messages such as join/rejoin/leave/heartbeat and snapshot delivery.
+
+Concrete game actions remain game-owned. PartyGameKit does not define a typed hierarchy containing commands such as answer submission, movement, attack or voting.
+
+The authority receives a game-owned payload, applies game rules and publishes an authoritative state/projection payload through PartyGameKit.
+
+## State projections
+
+A game may produce separate projections from one canonical state:
+
+```text
+canonical game state
+     │
+     ├── public/shared-screen payload
+     ├── private payload for Player A
+     └── private payload for Player B
+```
+
+PartyGameKit owns generic targeting and snapshot metadata. It does not know the content of these payloads.
+
+This keeps hidden information out of public broadcasts without putting concepts such as inventory, cards or draft answers into Core.
+
+## Snapshot ordering
+
+The authority publishes monotonically increasing snapshot sequence numbers.
+
+A client applies a snapshot only when its sequence is newer than the latest one already applied. Equal or older snapshots are ignored.
+
+A late join or reconnect receives the newest authoritative projection directly; replaying the entire history is not required for v0.1.
+
+## Host loss
+
+The production reference currently supports host-loss detection, preserving the client's latest snapshot and attempting reconnect to the known host. It does **not** support automatic host migration as a production path.
+
+Therefore v0.1 requires deterministic host-loss representation and reconnect behavior, but does not promise automatic promotion/transfer.
+
+Host migration can be revisited after it is proven by a concrete cross-game requirement. Experimental code in Państwa Miasta is not sufficient justification for a public framework API.
 
 ## Shared-screen device as non-player
 
-The TV should be able to join a session as a display/device without consuming a player slot.
+A TV/browser shared screen must be able to join without pretending to be a scored player.
 
-This distinction is important because the shared screen may:
+It may:
 
-- display public state,
-- own local authority,
-- show QR/join code,
-- have no score or character,
-- remain connected while players come and go.
+- display public state;
+- show connection/join information;
+- remain connected while players come and go;
+- receive no private player projection;
+- run separately from the server-capable LAN host process.
 
-Therefore `Player` and `ConnectedClient`/`SessionParticipant` may eventually need to be separate concepts. This should be validated before introducing extra types into Core.
+For the first direct LAN WebSocket transport, a pure browser is a client, not the inbound network listener. The listener/authority may be a local companion process on the same machine.
 
-## Validation target
+## Validation targets
 
-The model is considered genuinely reusable only when it supports at least:
+The model is considered reusable only when it supports both:
 
-1. **Państwa Miasta**: lobby, typed answers, rounds, voting/scoring, reconnect, host handling.
-2. **A dungeon-style game**: shared map, turn/action state, characters, private inventory, movement/combat commands.
+1. **Państwa Miasta behavior**: stable identity, join/leave, disconnect/rejoin, host-authoritative snapshots and stale-state rejection without moving Countries & Cities rules into PartyGameKit.
+2. **Dungeon-style sample**: shared public state, private per-player state, authoritative actions and reconnect without adding dungeon concepts to generic packages.
 
-If both games fit without adding game-specific hacks to PartyGameKit.Core, the abstraction is probably moving in the right direction.
+If a later sample requires a new generic abstraction, it must be justified by a need that is actually cross-game rather than by renaming one game's domain model.
