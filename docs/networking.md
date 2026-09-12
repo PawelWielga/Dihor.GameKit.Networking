@@ -22,18 +22,21 @@ Typical topology:
 
 ```text
 Phone A ─────┐
-Phone B ─────┼──── local Wi-Fi ──── TV / laptop host
-Phone C ─────┘
+Phone B ─────┼──── local Wi-Fi ──── local authority host
+Phone C ─────┘                            │
+                                          └──── shared screen
 ```
 
-The host owns the game session and game authority.
+For the first direct-LAN implementation, the authority host must run in a runtime that can listen for inbound connections, for example a .NET/native desktop, TV or companion process. A pure browser/PWA cannot expose the required HTTP/WebSocket listener because browser WebSocket APIs are client-only.
+
+The shared screen may run in the same server-capable process or may be a separate browser client connected to it. PartyGameKit must not make display role, host role and authority identity synonymous.
 
 Potential first implementation:
 
-- host exposes a local endpoint,
+- a server-capable local host exposes a local endpoint,
 - host creates a room code,
-- QR code contains the host address and room information,
-- phones connect directly,
+- QR/manual join data contains the host address and room information,
+- phones and browser/shared-screen clients connect directly,
 - WebSocket is sufficient for the initial implementation.
 
 Example join target:
@@ -55,9 +58,12 @@ Challenges:
 - changing local IP addresses,
 - client isolation on some Wi-Fi networks,
 - browser HTTPS/security restrictions,
-- reconnect after a phone sleeps or changes network.
+- reconnect after a phone sleeps or changes network,
+- providing a server-capable local host when the visible shared screen is a pure browser.
 
-For the first version, a QR code containing the host address is an acceptable solution instead of automatic LAN discovery.
+For the first version, direct connection data in a QR/manual join descriptor is an acceptable fallback even when automatic LAN discovery is unavailable.
+
+A backend-free topology where a pure browser itself accepts direct peer connections is not part of the initial WebSocket LAN transport. That requires a browser-capable peer transport such as WebRTC and belongs to the later low-latency/direct-transport phase.
 
 ## Mode 2: Cloud/backend
 
@@ -165,11 +171,13 @@ For high-frequency real-time input, it must be possible to prefer freshness over
 
 ## Browser versus native constraints
 
-Pure browser clients are the preferred starting point because joining by QR without installation is a core product advantage.
+Pure browser clients are preferred for phones and shared-screen rendering where possible because joining by QR without installation is a core product advantage.
 
-Browser limitations mean automatic LAN discovery is less straightforward than in a native application. Native discovery mechanisms such as mDNS/UDP can be considered later for dedicated TV or desktop hosts.
+Browsers can initiate WebSocket connections but cannot act as raw HTTP/WebSocket listeners. Therefore the initial backend-free LAN WebSocket mode requires a server-capable local host. A browser shared screen can connect to that host, including a companion process on the same machine, without moving game rules into networking code.
 
-The protocol and core model should not depend on whether the host is ultimately a browser, desktop app, Android TV app or another runtime.
+Browser limitations also mean automatic LAN discovery is less straightforward than in a native application. Native discovery mechanisms such as mDNS/UDP can be used by a dedicated TV, desktop or companion host, while browser clients can use a portable join descriptor/QR or backend-assisted discovery later.
+
+The protocol and core model must not depend on whether a client UI is a browser, desktop app, Android TV app or another runtime, and must not assume that the shared-screen client is necessarily the network listener or authority.
 
 ## Backend philosophy
 
@@ -186,4 +194,4 @@ Where a backend exists, its responsibilities may include:
 - optional persistence,
 - optional server-authoritative games.
 
-It should not be required to simulate every local game session if the TV/host can safely own that responsibility.
+It should not be required to simulate every local game session if a local authority process can safely own that responsibility.
