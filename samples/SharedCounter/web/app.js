@@ -20,6 +20,10 @@ const config = await fetch("/config.json", { cache: "no-store" }).then((response
   return response.json();
 });
 const descriptor = parseJoinDescriptor(config.joinDescriptor);
+if (descriptor.transport === "signalr") {
+  await loadScript("/signalr-runtime/signalr.min.js");
+}
+
 elements.descriptor.textContent = config.joinDescriptor;
 elements.role.textContent = role === "shared-screen" ? "Shared TV/browser screen" : "Player controller";
 elements.increment.hidden = role !== "player";
@@ -86,4 +90,14 @@ function renderPublic(state) {
 function shortId(value) {
   const text = String(value ?? "player");
   return text.length <= 14 ? text : `${text.slice(0, 8)}…${text.slice(-5)}`;
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.append(script);
+  });
 }
