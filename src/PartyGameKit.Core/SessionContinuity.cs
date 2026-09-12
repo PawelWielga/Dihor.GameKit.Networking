@@ -251,7 +251,7 @@ public sealed class SessionContinuityCoordinator<TPublicState, TPrivateState>
     {
         lock (_gate)
         {
-            return _reconnectUntil.GetValueOrDefault(playerId);
+            return _reconnectUntil.TryGetValue(playerId, out var deadline) ? deadline : null;
         }
     }
 
