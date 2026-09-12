@@ -11,7 +11,6 @@ public sealed class ReconnectIntegrationTests
     [Fact]
     public async Task ReplacementLanConnectionResumesSameLogicalPeerWithoutDuplicate()
     {
-        var cancellationToken = TestContext.Current.CancellationToken;
         var now = new DateTimeOffset(2026, 9, 12, 20, 0, 0, TimeSpan.Zero);
         var tokens = new Queue<string>(["token-1", "token-2"]);
         var continuity = new ConnectionContinuityCoordinator(
@@ -24,8 +23,10 @@ public sealed class ReconnectIntegrationTests
 
         await using var transport = await LanWebSocketTransport.StartAsync(
             new LanWebSocketHostOptions(IPAddress.Loopback, port: 0),
-            cancellationToken: cancellationToken);
-        await using var events = transport.ReadEventsAsync(cancellationToken).GetAsyncEnumerator();
+            cancellationToken: TestContext.Current.CancellationToken);
+        await using var events = transport
+            .ReadEventsAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator();
 
         var connectHandshake = ProtocolJson.Serialize(PartyGameKitMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
@@ -34,7 +35,7 @@ public sealed class ReconnectIntegrationTests
         var firstClient = await LanWebSocketClient.ConnectAsync(
             transport.CreateClientUri("127.0.0.1"),
             connectHandshake,
-            cancellationToken: cancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken);
         var firstOpened = Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
         Assert.IsType<TransportMessageReceived>(await NextAsync(events));
         var registered = continuity.Register(peerId, firstOpened.ConnectionId);
@@ -53,7 +54,7 @@ public sealed class ReconnectIntegrationTests
         await using var replacementClient = await LanWebSocketClient.ConnectAsync(
             transport.CreateClientUri("127.0.0.1"),
             resumeHandshake,
-            cancellationToken: cancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken);
         var replacementOpened = Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
         Assert.IsType<TransportMessageReceived>(await NextAsync(events));
         var resumed = continuity.Resume(peerId, registered.ResumeToken!, replacementOpened.ConnectionId);

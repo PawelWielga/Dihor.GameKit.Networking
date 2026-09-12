@@ -13,27 +13,31 @@ public sealed class LanWebSocketTransportTests
     [Fact]
     public async Task DirectLanConnectionExchangesOpaqueMessages()
     {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        await using var transport = await StartTransportAsync(cancellationToken);
-        await using var events = transport.ReadEventsAsync(cancellationToken).GetAsyncEnumerator();
+        await using var transport = await StartTransportAsync(TestContext.Current.CancellationToken);
+        await using var events = transport
+            .ReadEventsAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator();
         var handshake = ConnectHandshake("peer-a");
 
         await using var client = await LanWebSocketClient.ConnectAsync(
             transport.CreateClientUri("127.0.0.1"),
             handshake,
-            cancellationToken: cancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var opened = Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
         var receivedHandshake = Assert.IsType<TransportMessageReceived>(await NextAsync(events));
         Assert.Equal(opened.ConnectionId, receivedHandshake.ConnectionId);
         Assert.Equal(handshake, Text(receivedHandshake.Payload));
 
-        await transport.SendAsync(opened.ConnectionId, Bytes("server-to-client"), cancellationToken);
-        var outbound = await client.ReceiveAsync(cancellationToken);
+        await transport.SendAsync(
+            opened.ConnectionId,
+            Bytes("server-to-client"),
+            TestContext.Current.CancellationToken);
+        var outbound = await client.ReceiveAsync(TestContext.Current.CancellationToken);
         Assert.Equal(WebSocketMessageType.Binary, outbound.MessageType);
         Assert.Equal("server-to-client", Text(outbound.Payload));
 
-        await client.SendAsync(Bytes("client-to-server"), cancellationToken);
+        await client.SendAsync(Bytes("client-to-server"), TestContext.Current.CancellationToken);
         var inbound = Assert.IsType<TransportMessageReceived>(await NextAsync(events));
         Assert.Equal(opened.ConnectionId, inbound.ConnectionId);
         Assert.Equal("client-to-server", Text(inbound.Payload));
@@ -42,17 +46,16 @@ public sealed class LanWebSocketTransportTests
     [Fact]
     public async Task ProtocolMismatchIsRejectedBeforeConnectionIsOpened()
     {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        await using var transport = await StartTransportAsync(cancellationToken);
+        await using var transport = await StartTransportAsync(TestContext.Current.CancellationToken);
         const string incompatibleHandshake =
             "{\"type\":\"connection.connect.request\",\"protocolVersion\":1,\"messageId\":\"old\",\"payload\":{}}";
 
         await using var client = await LanWebSocketClient.ConnectAsync(
             transport.CreateClientUri("127.0.0.1"),
             incompatibleHandshake,
-            cancellationToken: cancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var close = await client.ReceiveAsync(cancellationToken);
+        var close = await client.ReceiveAsync(TestContext.Current.CancellationToken);
 
         Assert.True(close.IsClose);
         Assert.Equal(WebSocketCloseStatus.PolicyViolation, close.CloseStatus);

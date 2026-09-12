@@ -10,12 +10,11 @@ public sealed class UdpDiscoveryIntegrationTests
     [Fact]
     public async Task LoopbackDiscoveryFindsTechnicalConnectionDescriptor()
     {
-        var cancellationToken = TestContext.Current.CancellationToken;
         await using var listener = new UdpLanDiscoveryListener(
             IPAddress.Loopback,
             discoveryPort: 0,
             cleanupInterval: TimeSpan.FromMilliseconds(100));
-        await listener.StartAsync(cancellationToken);
+        await listener.StartAsync(TestContext.Current.CancellationToken);
 
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",
@@ -27,9 +26,11 @@ public sealed class UdpDiscoveryIntegrationTests
             listener.BoundPort,
             interval: TimeSpan.FromMilliseconds(50),
             targetAddresses: [IPAddress.Loopback]);
-        await advertiser.StartAsync(cancellationToken);
+        await advertiser.StartAsync(TestContext.Current.CancellationToken);
 
-        await using var changes = listener.ReadChangesAsync(cancellationToken).GetAsyncEnumerator();
+        await using var changes = listener
+            .ReadChangesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator();
         DiscoveredEndpoint? found = null;
         while (await changes.MoveNextAsync())
         {
