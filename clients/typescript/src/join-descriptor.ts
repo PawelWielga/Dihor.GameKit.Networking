@@ -58,7 +58,7 @@ export function serializeJoinDescriptorJson(descriptor: JoinDescriptor): string 
 }
 
 export function parseJoinDescriptorUri(input: string): JoinDescriptor {
-  const value = requiredString(input, "join URI");
+  const value = requiredString(input, "join descriptor");
   const match = /^partygamekit:\/\/join\?(.+)$/i.exec(value);
   if (match === null) {
     throw new Error("Invalid PartyGameKit join URI");
@@ -116,13 +116,23 @@ export function assertCompatibleJoinDescriptor(descriptor: JoinDescriptor): void
   if (descriptor.protocolVersion !== protocolVersion) {
     throw new Error(`Unsupported protocol version ${descriptor.protocolVersion}`);
   }
-  if (descriptor.transport !== "lan-websocket") {
-    throw new Error(`Unsupported browser transport '${descriptor.transport}'`);
-  }
+
   const endpoint = new URL(descriptor.endpoint);
-  if (endpoint.protocol !== "ws:" && endpoint.protocol !== "wss:") {
-    throw new Error("Browser LAN transport requires ws:// or wss:// endpoint");
+  if (descriptor.transport === "lan-websocket") {
+    if (endpoint.protocol !== "ws:" && endpoint.protocol !== "wss:") {
+      throw new Error("Browser LAN transport requires ws:// or wss:// endpoint");
+    }
+    return;
   }
+
+  if (descriptor.transport === "signalr") {
+    if (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") {
+      throw new Error("Browser SignalR transport requires http:// or https:// endpoint");
+    }
+    return;
+  }
+
+  throw new Error(`Unsupported browser transport '${descriptor.transport}'`);
 }
 
 function canonicalEndpoint(value: string): string {
