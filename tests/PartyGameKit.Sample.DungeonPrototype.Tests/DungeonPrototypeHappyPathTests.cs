@@ -29,7 +29,7 @@ public sealed class DungeonPrototypeHappyPathTests
         _ = await ReadSnapshotAsync(
             sharedScreen,
             snapshot => snapshot.Target.Audience == SnapshotAudience.Public &&
-                snapshot.State.GetProperty("phase").GetString() == "lobby",
+                StringPropertyEquals(snapshot.State, "phase", "lobby"),
             cancellationToken);
 
         var player1Id = new PlayerId("dungeon-player-1");
@@ -72,8 +72,8 @@ public sealed class DungeonPrototypeHappyPathTests
         var active = await ReadSnapshotAsync(
             sharedScreen,
             snapshot => snapshot.Target.Audience == SnapshotAudience.Public &&
-                snapshot.State.GetProperty("phase").GetString() == "active" &&
-                snapshot.State.GetProperty("activePlayerId").GetString() == player1Id.Value &&
+                StringPropertyEquals(snapshot.State, "phase", "active") &&
+                StringPropertyEquals(snapshot.State, "activePlayerId", player1Id.Value) &&
                 snapshot.State.GetProperty("actionPoints").GetInt32() == 2,
             cancellationToken);
         Assert.Equal(2, active.State.GetProperty("players").GetArrayLength());
@@ -81,7 +81,7 @@ public sealed class DungeonPrototypeHappyPathTests
         _ = await ReadSnapshotAsync(
             player1,
             snapshot => IsPrivateSnapshot(snapshot, player1Id) &&
-                snapshot.State.GetProperty("privateState").GetProperty("character").GetString() == "scout" &&
+                PrivateStringPropertyEquals(snapshot, "character", "scout") &&
                 snapshot.State.GetProperty("privateState").GetProperty("isYourTurn").GetBoolean(),
             cancellationToken);
 
@@ -105,7 +105,7 @@ public sealed class DungeonPrototypeHappyPathTests
         _ = await ReadSnapshotAsync(
             sharedScreen,
             snapshot => snapshot.Target.Audience == SnapshotAudience.Public &&
-                snapshot.State.GetProperty("activePlayerId").GetString() == player2Id.Value,
+                StringPropertyEquals(snapshot.State, "activePlayerId", player2Id.Value),
             cancellationToken);
 
         await SendCommandAsync(
@@ -115,7 +115,7 @@ public sealed class DungeonPrototypeHappyPathTests
         _ = await ReadSnapshotAsync(
             sharedScreen,
             snapshot => snapshot.Target.Audience == SnapshotAudience.Public &&
-                snapshot.State.GetProperty("activePlayerId").GetString() == player1Id.Value &&
+                StringPropertyEquals(snapshot.State, "activePlayerId", player1Id.Value) &&
                 snapshot.State.GetProperty("actionPoints").GetInt32() == 2,
             cancellationToken);
 
@@ -134,9 +134,7 @@ public sealed class DungeonPrototypeHappyPathTests
                 snapshot.State.GetProperty("privateState").GetProperty("isYourTurn").GetBoolean() &&
                 snapshot.State.GetProperty("privateState").GetProperty("actionPoints").GetInt32() == 2,
             cancellationToken);
-        Assert.Equal(
-            "scout",
-            restored.State.GetProperty("privateState").GetProperty("character").GetString());
+        Assert.True(PrivateStringPropertyEquals(restored, "character", "scout"));
 
         await SendCommandAsync(
             rejoinedPlayer1,
@@ -151,7 +149,7 @@ public sealed class DungeonPrototypeHappyPathTests
             sharedScreen,
             snapshot => snapshot.Target.Audience == SnapshotAudience.Public &&
                 snapshot.State.GetProperty("enemy").GetProperty("hitPoints").GetInt32() == 1 &&
-                snapshot.State.GetProperty("activePlayerId").GetString() == player2Id.Value,
+                StringPropertyEquals(snapshot.State, "activePlayerId", player2Id.Value),
             cancellationToken);
         Assert.True(afterCombat.State.GetProperty("enemy").GetProperty("alive").GetBoolean());
         Assert.Equal(2, host.Session.Players.Count);
@@ -244,6 +242,18 @@ public sealed class DungeonPrototypeHappyPathTests
         snapshot.Target.Audience == SnapshotAudience.Player &&
         snapshot.Target.PlayerId == playerId &&
         snapshot.State.TryGetProperty("privateState", out _);
+
+    private static bool PrivateStringPropertyEquals(
+        StateSnapshotPayload<JsonElement> snapshot,
+        string propertyName,
+        string expected) =>
+        snapshot.State.TryGetProperty("privateState", out var privateState) &&
+        StringPropertyEquals(privateState, propertyName, expected);
+
+    private static bool StringPropertyEquals(JsonElement element, string propertyName, string expected) =>
+        element.TryGetProperty(propertyName, out var property) &&
+        property.ValueKind == JsonValueKind.String &&
+        string.Equals(property.GetString(), expected, StringComparison.Ordinal);
 
     private static bool InventoryContains(JsonElement privateState, string item)
     {
