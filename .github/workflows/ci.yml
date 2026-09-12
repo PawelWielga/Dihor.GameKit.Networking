@@ -10,9 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  build-test:
+  build-test-package:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,12 +33,25 @@ jobs:
       - name: Test
         run: dotnet test PartyGameKit.slnx --configuration Release --no-build
 
+      - name: Pack NuGet prerelease artifacts
+        run: bash eng/pack-dotnet.sh artifacts/nuget
+
+      - name: Restore packaged consumer from local NuGet feed
+        run: >-
+          dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj
+          --source "$PWD/artifacts/nuget"
+
+      - name: Build and run packaged consumer
+        run: |
+          dotnet build packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-restore
+          dotnet run --project packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-build
+
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
         with:
           sdk: stable
 
-      - name: Restore Dart conformance dependencies
+      - name: Restore Dart protocol package dependencies
         working-directory: interop/dart
         run: dart pub get
 
@@ -48,13 +61,19 @@ jobs:
           dart format .
           git diff --exit-code -- .
 
-      - name: Analyze Dart conformance adapter
+      - name: Analyze Dart protocol package
         working-directory: interop/dart
         run: dart analyze
 
       - name: Test Dart canonical fixtures
         working-directory: interop/dart
         run: dart test
+
+      - name: Pack Dart protocol source artifact
+        run: |
+          mkdir -p artifacts/dart
+          tar -czf artifacts/dart/partygamekit_protocol-0.1.0-preview.1.tar.gz \
+            -C interop/dart pubspec.yaml README.md CHANGELOG.md lib
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -69,6 +88,15 @@ jobs:
         working-directory: clients/typescript
         run: npm test
 
-      - name: Verify TypeScript package contents
+      - name: Pack TypeScript prerelease artifact
         working-directory: clients/typescript
-        run: npm pack --dry-run
+        run: |
+          mkdir -p ../../artifacts/npm
+          npm pack --pack-destination ../../artifacts/npm
+
+      - name: Upload prerelease package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: partygamekit-0.1.0-preview.1
+          path: artifacts/
+          if-no-files-found: error

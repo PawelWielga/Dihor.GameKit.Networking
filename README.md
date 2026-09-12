@@ -7,33 +7,93 @@ The primary interaction model is:
 - a TV, laptop or browser is the shared game screen,
 - players join from their phones,
 - phones act as controllers and private player screens,
-- the same game can run locally over LAN or use an optional backend/cloud path,
-- game logic must not depend on SignalR, WebRTC, sockets or any other concrete transport.
+- the same game can run locally over LAN or later use an optional backend/cloud path,
+- game logic does not depend on SignalR, WebRTC, sockets or another concrete transport.
 
-The first real-world source of requirements is the existing **Państwa Miasta** game. A second, mechanically different dungeon-style sample will validate that the extracted API is genuinely reusable and not a renamed copy of one game's networking layer.
+The API has been validated against two mechanically different games: the existing **Państwa Miasta** implementation and the repository's turn-based **Dungeon Prototype**. The generic packages intentionally contain no categories, answers, monsters, loot, combat rules or other game-domain concepts.
 
-## Goals
+## v0.1 prerelease
 
-PartyGameKit should incrementally provide reusable building blocks for:
+The current package line is `0.1.0-preview.1`. It is a prerelease: package boundaries and protocol v1 are usable, but source compatibility may still change before a stable release.
 
-- rooms/sessions and join descriptors,
-- stable player identity distinct from network connection identity,
-- join, leave, disconnect and reconnect,
-- logical host/authority handling,
-- public/shared-screen and private player state delivery,
-- replaceable transports,
-- backend-free LAN networking,
-- later backend-assisted networking,
-- later WebRTC/direct peer transport where useful,
-- eventual automatic transport selection only after the individual transports are reliable.
+PartyGameKit uses two independent versions:
 
-Automatic host migration is not a v0.1 guarantee. The current Państwa Miasta implementation proves host-loss detection and reconnect, while host migration remains experimental.
+- package/API version: SemVer, currently `0.1.0-preview.1`,
+- wire protocol version: integer `1` carried by protocol envelopes and join descriptors.
 
-## Non-goals
+See [Versioning](docs/versioning.md), [Compatibility](docs/compatibility.md), [Package boundaries](docs/packages.md) and [Public API review](docs/public-api.md).
 
-The generic library must **not** contain game-specific concepts such as categories, answers, letters, dungeon rooms, monsters, loot, tiles, attacks or scoring/combat rules.
+## Package map
 
-PartyGameKit is also not a general-purpose MMO/network engine. The initial focus is couch/party games with one shared screen and multiple personal controllers.
+The .NET prerelease is split by responsibility:
+
+- `PartyGameKit.Core` — rooms, players, authority, presence, reconnect and snapshot primitives,
+- `PartyGameKit.Protocol` — protocol v1 envelopes, payloads and join descriptors,
+- `PartyGameKit.Transport.Abstractions` — transport-neutral contracts,
+- `PartyGameKit.Transport.InMemory` — deterministic test/reference transport,
+- `PartyGameKit.Transport.Lan` — direct LAN WebSocket transport,
+- `PartyGameKit.Discovery.Lan` — optional UDP LAN discovery.
+
+Browser clients use `@partygamekit/client`. Dart/Flutter consumers currently get the language-neutral protocol package from `interop/dart`; it does not include a Dart transport or duplicate the .NET session engine.
+
+## Getting started
+
+Prerelease artifacts are built by CI and by the `Prerelease` workflow. Until a project license and public-registry credentials are deliberately configured, GitHub Releases are the distribution boundary rather than NuGet.org, npmjs.com or pub.dev.
+
+### .NET consumer
+
+Download the `.nupkg` files from the matching GitHub prerelease into a local folder and add the package that provides the capability you need. NuGet resolves the PartyGameKit package dependencies from the same folder.
+
+```bash
+dotnet add package PartyGameKit.Transport.Lan \
+  --version 0.1.0-preview.1 \
+  --source ./partygamekit-packages
+```
+
+For LAN discovery, add `PartyGameKit.Discovery.Lan` as well. A package-only smoke consumer lives in `packaging/consumer`; CI restores, builds and runs it from generated `.nupkg` files with no PartyGameKit `ProjectReference`.
+
+### TypeScript/browser consumer
+
+Download the npm tarball from the GitHub prerelease and install it directly:
+
+```bash
+npm install ./partygamekit-client-0.1.0-preview.1.tgz
+```
+
+```ts
+import { PartyGameClient, parseJoinDescriptor } from '@partygamekit/client';
+```
+
+The SDK supports player/shared-screen join, reconnect, heartbeat, snapshot ordering and the LAN WebSocket client path. It intentionally contains no React or PartyBeam-specific logic.
+
+### Dart/Flutter protocol consumer
+
+The Dart package is currently distributed from the repository/tag rather than pub.dev:
+
+```yaml
+dependencies:
+  partygamekit_protocol:
+    git:
+      url: https://github.com/PawelWielga/PartyGameKit.git
+      ref: v0.1.0-preview.1
+      path: interop/dart
+```
+
+It implements protocol v1 parsing, join descriptors, discovery announcements and snapshot sequence handling against the same canonical fixtures as C# and TypeScript.
+
+## Reference samples
+
+`SharedCounter` is the smallest full end-to-end sample: one authoritative .NET host, a browser shared screen and multiple browser/phone players over real LAN WebSocket transport.
+
+```bash
+npm install --prefix clients/typescript --no-audit --no-fund
+npm run build --prefix clients/typescript
+dotnet run --project samples/SharedCounter/SharedCounter.Host -- --host 192.168.1.20
+```
+
+Replace `192.168.1.20` with the host's LAN address. The host prints the shared-screen URL, player URL and canonical join payload.
+
+`DungeonPrototype` validates the same foundation with character selection, turns/action points, movement, private inventory, enemy combat and reconnect during an active turn.
 
 ## Design principles
 
@@ -59,59 +119,63 @@ A stable `PlayerId` is not a `ConnectionId`. A dropped connection is not automat
 
 Discovery is optional convenience infrastructure. A valid portable join descriptor can connect directly even when UDP discovery is blocked or disabled.
 
+Automatic host migration is not a v0.1 guarantee. SignalR/cloud and WebRTC are post-v0.1 transports.
+
 ## Cross-language contract
 
-PartyGameKit is centered on .NET, but Państwa Miasta is Flutter/Dart and PartyBeam will use browser/TypeScript clients.
+PartyGameKit is centered on .NET, while Państwa Miasta is Flutter/Dart and PartyBeam uses browser/TypeScript clients. The shared compatibility boundary is therefore the **versioned language-neutral JSON protocol plus canonical fixtures**, not a shared runtime implementation.
 
-The v0.1 compatibility boundary is therefore a **versioned language-neutral JSON protocol plus canonical JSON fixtures**. C#, Dart and TypeScript implement thin local protocol models and test against the same fixtures.
-
-A NuGet package is not treated as the cross-language contract, and game engines are not duplicated across languages.
-
-See [Extraction from Państwa Miasta](docs/extraction-from-panstwa-miasta.md) for the full decision and evidence.
+C#, Dart and TypeScript test their protocol behavior against the fixtures under `protocol/fixtures`.
 
 ## Repository shape
 
 ```text
 PartyGameKit/
-├── src/
-│   ├── PartyGameKit.Core/
-│   ├── PartyGameKit.Protocol/
-│   ├── PartyGameKit.Discovery.Lan/
-│   ├── PartyGameKit.Transport.Abstractions/
-│   ├── PartyGameKit.Transport.InMemory/
-│   └── PartyGameKit.Transport.Lan/
-├── tests/
-│   ├── PartyGameKit.Core.Tests/
-│   ├── PartyGameKit.Protocol.Tests/
-│   ├── PartyGameKit.Discovery.Tests/
-│   └── PartyGameKit.Transport.Tests/
-├── protocol/
-│   └── fixtures/
+├── src/                         # .NET packages
+├── clients/typescript/          # browser SDK
+├── interop/dart/                # Dart protocol package
+├── protocol/fixtures/           # language-neutral compatibility fixtures
+├── packaging/consumer/          # package-only NuGet smoke consumer
 ├── samples/
+│   ├── SharedCounter/
+│   └── DungeonPrototype/
+├── tests/
 └── docs/
 ```
-
-SignalR and WebRTC are post-v0.1 transports.
 
 ## Developer setup
 
 Requirements:
 
-- .NET 10 SDK; `global.json` allows rolling forward within installed .NET 10 feature bands.
+- .NET 10 SDK,
+- Node.js 22 for the TypeScript SDK,
+- Dart stable for Dart protocol conformance tests.
 
-Build the complete solution:
-
-```bash
-dotnet build PartyGameKit.slnx --configuration Release
-```
-
-Run the complete test suite with one command:
+Build and test .NET:
 
 ```bash
-dotnet test PartyGameKit.slnx --configuration Release
+dotnet restore PartyGameKit.slnx
+dotnet build PartyGameKit.slnx --configuration Release --no-restore
+dotnet test PartyGameKit.slnx --configuration Release --no-build
 ```
 
-The repository enables nullable reference types, deterministic builds, .NET analyzers, code-style checks during build and warnings-as-errors. CI runs restore, Release build and the complete test suite for every pull request and for pushes to `main`.
+Build and test TypeScript:
+
+```bash
+npm install --prefix clients/typescript --no-audit --no-fund
+npm test --prefix clients/typescript
+```
+
+Validate Dart:
+
+```bash
+cd interop/dart
+dart pub get
+dart analyze
+dart test
+```
+
+The repository enables nullable reference types, deterministic builds, .NET analyzers, code-style checks during build and warnings-as-errors. CI also creates all prerelease artifacts and verifies that a fresh .NET consumer can restore and run from the generated packages.
 
 ## LAN host constraint
 
@@ -121,6 +185,10 @@ A pure browser/PWA can be the shared-screen or phone client, but it cannot accep
 
 ## Documentation
 
+- [Package boundaries](docs/packages.md)
+- [Versioning](docs/versioning.md)
+- [Compatibility matrix](docs/compatibility.md)
+- [Public API review](docs/public-api.md)
 - [Extraction from Państwa Miasta](docs/extraction-from-panstwa-miasta.md)
 - [Architecture](docs/architecture.md)
 - [Wire protocol](docs/protocol.md)
@@ -131,7 +199,8 @@ A pure browser/PWA can be the shared-screen or phone client, but it cannot accep
 - [Direct LAN WebSocket transport](docs/lan-websocket.md)
 - [LAN discovery and join descriptors](docs/discovery.md)
 - [Roadmap](docs/roadmap.md)
+- [Changelog](CHANGELOG.md)
 
 ## Current status
 
-The extraction boundary, .NET 10 infrastructure, language-neutral protocol, room/session lifecycle, generic snapshots, continuity/reconnect, direct LAN WebSocket transport and LAN discovery/join-descriptor layer are implemented incrementally. Work continues strictly in `[NN]` order from the tracker.
+`[01]` through `[13]` have validated the reusable LAN/session/protocol foundation against Państwa Miasta, Shared Counter and Dungeon Prototype. `[14]` turns that validated surface into reproducible `0.1.0-preview` packages and release artifacts. SignalR, WebRTC and automatic fallback remain explicitly post-v0.1 work.

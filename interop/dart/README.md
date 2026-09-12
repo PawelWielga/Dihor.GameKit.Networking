@@ -1,8 +1,8 @@
-# PartyGameKit Dart protocol conformance
+# partygamekit_protocol
 
-This directory is the minimum Dart implementation required by the v0.1 cross-language decision.
+`partygamekit_protocol` is the small Dart implementation of PartyGameKit's language-neutral protocol v1 boundary. It is intended for Flutter/Dart consumers that need compatible infrastructure messages and portable join descriptors without copying protocol code from another game.
 
-It is intentionally **not** a Dart port of PartyGameKit Core and does not contain any game engine. It only models the stable language-neutral boundary needed to prove that Dart can consume PartyGameKit's canonical v1 JSON fixtures:
+It models:
 
 - protocol envelope/version admission;
 - stable player versus transient connection identity fields;
@@ -11,15 +11,32 @@ It is intentionally **not** a Dart port of PartyGameKit Core and does not contai
 - portable `JoinDescriptor` JSON and URI forms;
 - LAN discovery announcement descriptor parsing.
 
-Tests read `../../protocol/fixtures/*.json` directly. No fixture copy lives in this package, so C# and Dart conformance cannot silently drift to different vectors.
+It deliberately does **not** contain a Dart transport, Flutter UI or game engine.
 
-Run from this directory:
+## Preview consumption
+
+The `0.1.0-preview.1` package remains `publish_to: none`. After the matching Git tag exists it can be consumed directly from this repository:
+
+```yaml
+dependencies:
+  partygamekit_protocol:
+    git:
+      url: https://github.com/PawelWielga/PartyGameKit.git
+      ref: v0.1.0-preview.1
+      path: interop/dart
+```
+
+## Validation
+
+Tests read `../../protocol/fixtures/*.json` directly, so C#, Dart and TypeScript share one set of compatibility vectors.
+
+From this directory:
 
 ```bash
 dart pub get
-dart format --set-exit-if-changed .
+dart format .
 dart analyze
 dart test
 ```
 
-The existing `PawelWielga/panstwa-miasta` application keeps its own historic LAN protocol and game-specific snapshot schema. Its compatibility PR validates the reusable behavior against this contract without moving Countries & Cities rules into PartyGameKit.
+The existing Państwa Miasta application keeps its historic LAN protocol and game-specific snapshot schema. PartyGameKit compatibility is validated at the stable identity/reconnect/snapshot boundary rather than by replacing that application's wire protocol.

@@ -1,6 +1,8 @@
-name: partygamekit_protocol_conformance
-description: Minimal Dart implementation of PartyGameKit's language-neutral v1 protocol contract.
+name: partygamekit_protocol
+version: 0.1.0-preview.1
+description: PartyGameKit language-neutral protocol v1 and portable join descriptor support for Dart.
 publish_to: none
+repository: https://github.com/PawelWielga/PartyGameKit
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
