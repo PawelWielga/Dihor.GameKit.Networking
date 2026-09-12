@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>UDP LAN discovery for PartyGameKit sessions.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
+    <ProjectReference Include="../PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
+  </ItemGroup>
+</Project>

@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/PartyGameKit.Core/PartyGameKit.Core.csproj" />
     <Project Path="src/PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
+    <Project Path="src/PartyGameKit.Discovery.Lan/PartyGameKit.Discovery.Lan.csproj" />
     <Project Path="src/PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj" />
     <Project Path="src/PartyGameKit.Transport.InMemory/PartyGameKit.Transport.InMemory.csproj" />
     <Project Path="src/PartyGameKit.Transport.Lan/PartyGameKit.Transport.Lan.csproj" />
@@ -9,6 +10,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/PartyGameKit.Core.Tests/PartyGameKit.Core.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Protocol.Tests/PartyGameKit.Protocol.Tests.csproj" />
+    <Project Path="tests/PartyGameKit.Discovery.Tests/PartyGameKit.Discovery.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Transport.Tests/PartyGameKit.Transport.Tests.csproj" />
   </Folder>
 </Solution>
