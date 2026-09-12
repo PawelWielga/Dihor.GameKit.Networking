@@ -155,6 +155,136 @@ public sealed class DungeonPrototypeHappyPathTests
         Assert.Equal(2, host.Session.Players.Count);
     }
 
+    [Fact]
+    public async Task LeaveRequestCannotRemoveAnotherPlayer()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var host = await DungeonPrototypeHost.StartAsync(
+            "127.0.0.1",
+            IPAddress.Loopback,
+            port: 0,
+            cancellationToken: cancellationToken);
+
+        var player1Id = new PlayerId("leave-owner-player");
+        await using var player1 = await LanWebSocketClient.ConnectAsync(
+            host.ClientUri,
+            JoinRequest(ClientRole.Player, player1Id, "join-leave-owner"),
+            cancellationToken: cancellationToken);
+        var player1Accepted = await ReadJoinAcceptedAsync(player1, cancellationToken);
+        _ = await ReadSnapshotAsync(
+            player1,
+            snapshot => IsPrivateSnapshot(snapshot, player1Id),
+            cancellationToken);
+
+        var player2Id = new PlayerId("leave-attacker-player");
+        await using var player2 = await LanWebSocketClient.ConnectAsync(
+            host.ClientUri,
+            JoinRequest(ClientRole.Player, player2Id, "join-leave-attacker"),
+            cancellationToken: cancellationToken);
+        _ = await ReadJoinAcceptedAsync(player2, cancellationToken);
+        _ = await ReadSnapshotAsync(
+            player2,
+            snapshot => IsPrivateSnapshot(snapshot, player2Id),
+            cancellationToken);
+
+        var forgedLeave = ProtocolJson.Serialize(PartyGameKitMessages.Create(
+            ProtocolMessageTypes.Leave,
+            "forged-leave",
+            new LeavePayload(
+                new RoomId("dungeon-prototype-room"),
+                player1Accepted.ConnectionId,
+                player1Id)));
+        await SendCommandAsync(player2, forgedLeave, cancellationToken);
+        await SendCommandAsync(
+            player2,
+            "{\"type\":\"sample.dungeon.select-character\",\"character\":\"guardian\"}",
+            cancellationToken);
+
+        _ = await ReadSnapshotAsync(
+            player2,
+            snapshot => IsPrivateSnapshot(snapshot, player2Id) &&
+                PrivateStringPropertyEquals(snapshot, "character", "guardian"),
+            cancellationToken);
+
+        var player1Membership = host.Session.FindPlayer(player1Id);
+        Assert.NotNull(player1Membership);
+        Assert.Equal(PlayerPresence.Connected, player1Membership.Presence);
+        Assert.Equal(player1Accepted.ConnectionId, player1Membership.ConnectionId);
+        Assert.Equal(2, host.Session.Players.Count);
+    }
+
+    [Fact]
+    public async Task ExpiredDisconnectedActivePlayerIsRetiredAndTurnAdvances()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var host = await DungeonPrototypeHost.StartAsync(
+            "127.0.0.1",
+            IPAddress.Loopback,
+            port: 0,
+            reconnectWindow: TimeSpan.FromMilliseconds(150),
+            cancellationToken: cancellationToken);
+
+        await using var sharedScreen = await LanWebSocketClient.ConnectAsync(
+            host.ClientUri,
+            JoinRequest(ClientRole.SharedScreen, playerId: null, "expiry-screen"),
+            cancellationToken: cancellationToken);
+        _ = await ReadJoinAcceptedAsync(sharedScreen, cancellationToken);
+        _ = await ReadSnapshotAsync(
+            sharedScreen,
+            snapshot => snapshot.Target.Audience == SnapshotAudience.Public,
+            cancellationToken);
+
+        var player1Id = new PlayerId("expiry-player-1");
+        await using var player1 = await LanWebSocketClient.ConnectAsync(
+            host.ClientUri,
+            JoinRequest(ClientRole.Player, player1Id, "expiry-player-1-join"),
+            cancellationToken: cancellationToken);
+        _ = await ReadJoinAcceptedAsync(player1, cancellationToken);
+        _ = await ReadSnapshotAsync(
+            player1,
+            snapshot => IsPrivateSnapshot(snapshot, player1Id),
+            cancellationToken);
+
+        var player2Id = new PlayerId("expiry-player-2");
+        await using var player2 = await LanWebSocketClient.ConnectAsync(
+            host.ClientUri,
+            JoinRequest(ClientRole.Player, player2Id, "expiry-player-2-join"),
+            cancellationToken: cancellationToken);
+        _ = await ReadJoinAcceptedAsync(player2, cancellationToken);
+        _ = await ReadSnapshotAsync(
+            player2,
+            snapshot => IsPrivateSnapshot(snapshot, player2Id),
+            cancellationToken);
+
+        await SendCommandAsync(
+            player1,
+            "{\"type\":\"sample.dungeon.select-character\",\"character\":\"scout\"}",
+            cancellationToken);
+        await SendCommandAsync(
+            player2,
+            "{\"type\":\"sample.dungeon.select-character\",\"character\":\"guardian\"}",
+            cancellationToken);
+        _ = await ReadSnapshotAsync(
+            sharedScreen,
+            snapshot => snapshot.Target.Audience == SnapshotAudience.Public &&
+                StringPropertyEquals(snapshot.State, "activePlayerId", player1Id.Value),
+            cancellationToken);
+
+        await player1.DisposeAsync();
+
+        var afterExpiry = await ReadSnapshotAsync(
+            sharedScreen,
+            snapshot => snapshot.Target.Audience == SnapshotAudience.Public &&
+                StringPropertyEquals(snapshot.State, "activePlayerId", player2Id.Value) &&
+                snapshot.State.GetProperty("players").GetArrayLength() == 1,
+            cancellationToken);
+
+        Assert.Equal(2, afterExpiry.State.GetProperty("actionPoints").GetInt32());
+        Assert.Null(host.Session.FindPlayer(player1Id));
+        Assert.NotNull(host.Session.FindPlayer(player2Id));
+        Assert.Single(host.Session.Players);
+    }
+
     private static string JoinRequest(ClientRole role, PlayerId? playerId, string messageId) =>
         ProtocolJson.Serialize(PartyGameKitMessages.Create(
             ProtocolMessageTypes.JoinRequest,
