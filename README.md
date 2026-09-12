@@ -87,6 +87,26 @@ PartyGameKit/
 
 Concrete LAN, Dart and TypeScript packages are added only by the later issues that need them. SignalR and WebRTC are post-v0.1 transports.
 
+## Developer setup
+
+Requirements:
+
+- .NET 10 SDK; `global.json` allows rolling forward within installed .NET 10 feature bands.
+
+Build the complete solution:
+
+```bash
+dotnet build PartyGameKit.slnx --configuration Release
+```
+
+Run the complete test suite with one command:
+
+```bash
+dotnet test PartyGameKit.slnx --configuration Release
+```
+
+The repository enables nullable reference types, deterministic builds, .NET analyzers, code-style checks during build and warnings-as-errors. CI runs restore, Release build and the complete test suite for every pull request and for pushes to `main`.
+
 ## LAN host constraint
 
 The first direct LAN transport will use WebSocket. Its listener must run in a server-capable local runtime such as a .NET/native/desktop/TV process or companion process.
@@ -103,4 +123,4 @@ A pure browser/PWA can be the shared-screen or phone client, but it cannot accep
 
 ## Current status
 
-The extraction boundary is defined. Implementation proceeds strictly in the `[NN]` order from the tracker, beginning with the minimal solution/quality-gate bootstrap in `[02]` after `[01]` is merged and green.
+The extraction boundary and minimal .NET 10 repository/test infrastructure are in place. Implementation continues strictly in `[NN]` order from the tracker; protocol and identity primitives start in `[03]`.
