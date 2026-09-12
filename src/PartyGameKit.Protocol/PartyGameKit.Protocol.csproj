@@ -3,4 +3,7 @@
     <Description>Language-neutral wire contract implementation for PartyGameKit.</Description>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
+  </ItemGroup>
 </Project>
