@@ -1,73 +1,73 @@
-# Presence, heartbeat and reconnect
+# Reconnect and connection health
 
-PartyGameKit treats player identity, current connection and network presence as separate concerns.
+## Boundary
 
-## Presence
+Reconnect remains a PartyGameKit responsibility only as **communication continuity**. Product/player/game recovery policy belongs to consumers.
 
-`SessionContinuityCoordinator` records a last-seen timestamp for every current connection. Timing is policy, not transport behavior:
+See [Communication boundary](communication-boundary.md).
 
-- host timeout is configurable;
-- client timeout is configurable;
-- reconnect window is configurable;
-- time comes from an injected clock in tests/applications.
-
-A heartbeat refreshes only presence. Missing one heartbeat does not remove a player. A connection is considered lost only after the configured timeout is reached.
-
-## Disconnect versus leave
-
-A timeout or transport loss calls the existing session disconnect behavior:
+## Target model
 
 ```text
-PlayerId stays in session
-ConnectionId is detached
-Presence = Disconnected
-game-owned state stays intact
+ConnectionId = transient network connection
+PeerId       = optional stable logical communication identity
 ```
 
-The reconnect window limits automatic resume. Expiring that window does **not** silently turn disconnect into leave and does not delete the player. Permanent removal remains an explicit `LeavePlayer` operation or a future game/application policy.
+A reconnect credential/token proves that a replacement connection may resume the same `PeerId`.
 
-## Resume credential
+PartyGameKit may:
 
-A successful player join receives an opaque reconnect token. The coordinator stores only a SHA-256 fingerprint of that token and compares reconnect attempts with `CryptographicOperations.FixedTimeEquals`.
+- record last-seen/heartbeat timestamps;
+- report connection/peer timeout;
+- maintain a configurable reconnect window;
+- validate a resume credential;
+- replace the old connection binding with a new `ConnectionId`;
+- avoid duplicate logical peers on successful resume;
+- expose deterministic resume failure reasons.
 
-The token is independent of the transport connection. A successful resume can therefore bind a new `ConnectionId` to the same stable `PlayerId`.
+PartyGameKit must not:
 
-`JoinAcceptedPayload.reconnectToken` is optional at the protocol type level because non-player clients do not need one. Player joins handled by the continuity coordinator issue one.
+- decide that the peer is a player;
+- decide that disconnect means player leave;
+- decide whether a player slot remains occupied;
+- decide whether a game pauses/ends;
+- detect a special `HostLost` product condition;
+- restore a required game snapshot;
+- assign or migrate game authority.
 
-## Resume result
+## Heartbeat timeout
 
-Resume failures are explicit and transport-neutral:
+A heartbeat timeout is a connectivity fact, not a product lifecycle transition.
 
-- room closed;
-- invalid resume identity/credential;
-- reconnect window expired;
-- new connection already in use.
+Conceptually:
 
-Successful resume returns the newest public and player-targeted snapshot currently retained by the authoritative publisher. Historical snapshots are not replayed.
+```text
+connected -> heartbeat overdue -> connectivity timeout
+```
 
-## Host loss
+The consumer receives that information and decides what it means for its party/game/session.
 
-A timed-out client with role `host` produces a `HostLost` timeout result. PartyGameKit does not change `AuthorityId` or elect a new host in v0.1.
+## Resume flow
 
-This keeps host-loss detection separate from automatic host migration, which remains experimental in the Państwa Miasta reference implementation.
+A neutral resume flow is:
 
-## Wire messages
+1. client reconnects over a replacement transport connection;
+2. client presents stable `PeerId` plus resume credential;
+3. PartyGameKit validates the credential and reconnect window;
+4. old connection binding is replaced by the new `ConnectionId`;
+5. PartyGameKit reports resumed communication;
+6. consumer decides whether/how to restore application state.
 
-Protocol v1 gains additive messages/fields:
+Application state restoration may be implemented by the consumer sending its latest snapshot/state as an ordinary opaque message after resume.
 
-- `session.heartbeat` with `roomId` and `lastSeenSnapshotSequence`;
-- optional `reconnectToken` on `session.join.accepted`;
-- `session.rejoin.rejected` with stable string rejection codes.
+## Historical v0.1 implementation
 
-`session.rejoin.request` remains the handshake request defined in `[03]`: stable `PlayerId`, opaque reconnect token and the last snapshot sequence seen by the client.
+The current `SessionContinuityCoordinator<TPublicState,TPrivateState>` couples valid reconnect mechanics to:
 
-The accepted response remains `session.rejoin.accepted`; application code then sends the newest applicable `state.snapshot` from `[06]`.
+- `PlayerId`;
+- `ClientRole`;
+- host-specific timeout semantics;
+- `RoomSession`;
+- public/private snapshot restoration.
 
-## Out of scope
-
-- Android foreground/background service behavior;
-- LAN address discovery;
-- WebSocket framing;
-- automatic host migration;
-- deleting disconnected players automatically;
-- cloud account identity.
+Issue `[16]` will split/generalize this implementation. The historical behavior remains useful test evidence, but the product semantics are not part of the target API.

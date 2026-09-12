@@ -1,93 +1,66 @@
-# State snapshots and client projections
+# State snapshots and ordering
 
-PartyGameKit owns snapshot metadata and ordering. Games own the state contained inside each projection.
+## Boundary decision
 
-## What is generic
+PartyGameKit base packages do **not** own a generic game snapshot model.
 
-A snapshot carries only reusable replication metadata:
+The historical v0.1 implementation combined useful ordering mechanics with product/game semantics such as authority, room identity, public/shared-screen state and private per-player projections. Issue `[15]` moves those semantics to consumers.
+
+See [Communication boundary](communication-boundary.md).
+
+## Consumer-owned responsibilities
+
+PartyBeam, Państwa Miasta or another application owns:
+
+- authoritative application/game state;
+- snapshot schema;
+- public/private/player projection rules;
+- snapshot target meaning;
+- authority identity;
+- latest-state restore policy after reconnect;
+- whether snapshots exist at all.
+
+Those snapshots may travel through PartyGameKit as opaque application messages.
+
+## Optional PartyGameKit utility
+
+A small monotonic ordering/deduplication helper may remain because it is communication-neutral.
+
+For example:
+
+```text
+sequence 41 -> accept
+sequence 42 -> accept
+sequence 42 -> reject duplicate
+sequence 40 -> reject stale
+```
+
+The helper must not require:
 
 - `RoomId`;
-- logical `AuthorityId`;
-- a positive, monotonically increasing sequence;
-- a projection target;
-- a game-owned projection payload.
+- `PlayerId`;
+- `AuthorityId`;
+- public/private audience;
+- game state types.
 
-The library does not know categories, answers, letters, scores, tiles, enemies, inventory or game phases.
+`SnapshotSequence` / `SnapshotSequenceGate` may therefore become a general `MessageSequence` / `SequenceGate`-style optional utility in `[16]`.
 
-This is deliberately narrower than the current Państwa Miasta `GameStateSnapshot`, which combines generic replication metadata with Countries/Cities state.
+## Reconnect
 
-## Authority publication
+PartyGameKit resume restores communication identity/binding only.
 
-`AuthoritativeSnapshotPublisher<TPublicState, TPrivateState>` creates one state revision at a time. Each publication increments one sequence and produces:
+After resume, a consumer may choose to send its newest application snapshot or reconstruct state another way. PartyGameKit does not impose state restoration semantics.
 
-1. one public snapshot for shared-screen/public clients;
-2. one player-targeted snapshot per supplied `PlayerId`.
+## Historical v0.1 API
 
-A player projection contains the public state for that revision plus only that player's private state. The public projection type has no private-state member.
+The following current preview types are scheduled to move out of the base API:
 
-The publisher retains only the newest published snapshot set. A late join or rejoin therefore restores the current authoritative state directly instead of replaying historical snapshots.
+- `SnapshotAudience`;
+- `SnapshotTarget`;
+- `PublicStateProjection<T>`;
+- `PlayerStateProjection<TPublic,TPrivate>`;
+- `StateSnapshot<T>`;
+- `PublishedSnapshotSet<...>`;
+- `AuthoritativeSnapshotPublisher<...>`.
 
-No network transport is involved in publication. Application code decides how a snapshot is encoded and delivered.
-
-## Ordering
-
-`SnapshotSequenceGate` accepts a snapshot only when its sequence is strictly greater than the last applied sequence.
-
-```text
-accepted: 41 -> 42 -> 45
-ignored:  45 -> 44
-ignored:  45 -> 45
-```
-
-This mirrors the proven stale-snapshot behavior in Państwa Miasta while remaining independent of its game state.
-
-A client restoring from reconnect can initialize the gate with its last applied sequence. The newest authoritative snapshot can then be applied if it is newer.
-
-## Targets
-
-There are two v0.1 targets:
-
-```text
-public
-player:<PlayerId>
-```
-
-`public` is appropriate for a shared screen and other clients that only need common state.
-
-A `player` target is explicit and contains the stable `PlayerId`. It is not derived from a socket or `ConnectionId`.
-
-Transport/application code must resolve the target to the player's current connection through the session model. This keeps snapshot semantics independent of WebSocket, SignalR and WebRTC.
-
-## Wire format
-
-The protocol message type is `state.snapshot`. The generic state value is opaque JSON from PartyGameKit's perspective.
-
-Public target:
-
-```json
-{"kind":"public"}
-```
-
-Player target:
-
-```json
-{"kind":"player","playerId":"player-001"}
-```
-
-Canonical examples are stored in:
-
-- `protocol/fixtures/snapshot-public.json`;
-- `protocol/fixtures/snapshot-player.json`.
-
-The protocol version remains `1`: this issue adds a new message type without changing the meaning of existing v1 messages.
-
-## Not part of this issue
-
-- heartbeat/presence/reconnect-token policy (`[07]`);
-- transport delivery strategy and LAN WebSocket (`[08]`);
-- snapshot chunking/compression;
-- delta snapshots or event replay;
-- automatic authority migration;
-- game-specific state schemas.
-
-These are intentionally omitted until concrete requirements justify them.
+Only a neutral ordering/deduplication primitive may survive after `[16]`.
