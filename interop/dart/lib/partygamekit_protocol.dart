@@ -38,26 +38,20 @@ final class PartyGameKitEnvelope {
 
 final class PartyGameKitJoinDescriptor {
   PartyGameKitJoinDescriptor({
-    required this.protocolVersion,
-    required this.roomId,
-    required this.joinCode,
-    required this.transport,
-    required this.endpoint,
-  }) {
+    required int protocolVersion,
+    required String roomId,
+    required String joinCode,
+    required String transport,
+    required String endpoint,
+  })  : protocolVersion = protocolVersion,
+        roomId = _normalizeRequired(roomId, 'roomId'),
+        joinCode = _normalizeRequired(joinCode, 'joinCode').toUpperCase(),
+        transport = _normalizeRequired(transport, 'transport').toLowerCase(),
+        endpoint = _normalizeEndpoint(endpoint) {
     if (protocolVersion != partyGameKitProtocolVersion) {
       throw FormatException(
         'Unsupported PartyGameKit protocol version: $protocolVersion.',
       );
-    }
-    if (roomId.trim().isEmpty ||
-        joinCode.trim().isEmpty ||
-        transport.trim().isEmpty ||
-        endpoint.trim().isEmpty) {
-      throw const FormatException('Join descriptor fields cannot be empty.');
-    }
-    final endpointUri = Uri.tryParse(endpoint);
-    if (endpointUri == null || !endpointUri.hasScheme) {
-      throw const FormatException('Join descriptor endpoint must be absolute.');
     }
   }
 
@@ -85,14 +79,14 @@ final class PartyGameKitJoinDescriptor {
       throw const FormatException('Invalid PartyGameKit join URI.');
     }
 
+    final query = _parseQuery(uri.query);
+
     String requiredSingle(String key) {
-      final values = uri.queryParametersAll[key];
-      if (values == null ||
-          values.length != 1 ||
-          values.single.trim().isEmpty) {
+      final value = query[key];
+      if (value == null || value.trim().isEmpty) {
         throw FormatException('Join URI must contain exactly one $key.');
       }
-      return values.single;
+      return value;
     }
 
     final version = int.tryParse(requiredSingle('protocolVersion'));
@@ -127,7 +121,7 @@ final class PartyGameKitJoinDescriptor {
   String toJsonString() => jsonEncode(toJsonObject());
 
   String toUriString() {
-    String encode(String value) => Uri.encodeQueryComponent(value);
+    String encode(String value) => Uri.encodeComponent(value);
 
     return 'partygamekit://join?protocolVersion=$protocolVersion'
         '&roomId=${encode(roomId)}'
@@ -197,6 +191,42 @@ Map<String, Object?> _jsonObject(Object? value, String name) {
     result[key] = entry.value;
   }
   return result;
+}
+
+Map<String, String> _parseQuery(String query) {
+  final result = <String, String>{};
+  for (final segment in query.split('&')) {
+    if (segment.isEmpty) continue;
+    final separator = segment.indexOf('=');
+    if (separator <= 0) {
+      throw const FormatException('Invalid join URI query.');
+    }
+
+    final key = Uri.decodeComponent(segment.substring(0, separator));
+    final value = Uri.decodeComponent(segment.substring(separator + 1));
+    if (result.containsKey(key)) {
+      throw FormatException("Duplicate join URI field '$key'.");
+    }
+    result[key] = value;
+  }
+  return result;
+}
+
+String _normalizeRequired(String value, String name) {
+  final normalized = value.trim();
+  if (normalized.isEmpty) {
+    throw FormatException('$name must be a non-empty string.');
+  }
+  return normalized;
+}
+
+String _normalizeEndpoint(String value) {
+  final normalized = _normalizeRequired(value, 'endpoint');
+  final uri = Uri.tryParse(normalized);
+  if (uri == null || !uri.hasScheme) {
+    throw const FormatException('Join descriptor endpoint must be absolute.');
+  }
+  return uri.toString();
 }
 
 String _requiredString(Map<String, Object?> json, String key) {
