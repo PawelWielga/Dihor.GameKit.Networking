@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/PartyGameKit.Core/PartyGameKit.Core.csproj" />
+    <ProjectReference Include="../../src/PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
+    <ProjectReference Include="../../src/PartyGameKit.Transport.SignalR/PartyGameKit.Transport.SignalR.csproj" />
+    <ProjectReference Include="../../samples/SharedCounter/SharedCounter.Sample/SharedCounter.Sample.csproj" />
+  </ItemGroup>
+</Project>
