@@ -27,6 +27,22 @@ public sealed record TransportError(
 
 public sealed class PartyGameTransportException : Exception
 {
+    public PartyGameTransportException()
+        : this(new TransportError(TransportErrorCode.DeliveryFailed, "Transport operation failed."))
+    {
+    }
+
+    public PartyGameTransportException(string message)
+        : this(new TransportError(TransportErrorCode.DeliveryFailed, message))
+    {
+    }
+
+    public PartyGameTransportException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+        Error = new TransportError(TransportErrorCode.DeliveryFailed, message);
+    }
+
     public PartyGameTransportException(TransportError error)
         : base(error.Message)
     {

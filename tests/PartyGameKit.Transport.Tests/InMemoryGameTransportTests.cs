@@ -29,12 +29,14 @@ public sealed class InMemoryGameTransportTests
         await using var first = await transport.OpenConnectionAsync(new ConnectionId("connection-1"));
         await using var second = await transport.OpenConnectionAsync(new ConnectionId("connection-2"));
         await using var firstMessages = first.ReadMessagesAsync().GetAsyncEnumerator();
+        await using var secondMessages = second.ReadMessagesAsync().GetAsyncEnumerator();
 
         await transport.SendAsync(first.ConnectionId, Bytes("private"));
+        await transport.BroadcastAsync(Bytes("public"));
 
-        Assert.True(await firstMessages.MoveNextAsync());
-        Assert.Equal("private", Text(firstMessages.Current));
-        Assert.False(second.ReadMessagesAsync().GetAsyncEnumerator().MoveNextAsync().IsCompleted);
+        Assert.Equal("private", Text(await NextMessageAsync(firstMessages)));
+        Assert.Equal("public", Text(await NextMessageAsync(firstMessages)));
+        Assert.Equal("public", Text(await NextMessageAsync(secondMessages)));
     }
 
     [Fact]
@@ -144,7 +146,7 @@ public sealed class InMemoryGameTransportTests
         Assert.True(join.IsAccepted);
 
         var currentConnection = session.FindPlayer(playerId)!.ConnectionId;
-        Assert.NotNull(currentConnection);
+        Assert.True(currentConnection.HasValue);
         await transport.SendAsync(currentConnection.Value, Bytes("session-state"));
 
         Assert.Equal("session-state", Text(await NextMessageAsync(peerMessages)));
