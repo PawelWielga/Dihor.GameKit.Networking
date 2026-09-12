@@ -32,3 +32,24 @@ jobs:
 
       - name: Test
         run: dotnet test PartyGameKit.slnx --configuration Release --no-build
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Restore Dart conformance dependencies
+        working-directory: interop/dart
+        run: dart pub get
+
+      - name: Check Dart formatting
+        working-directory: interop/dart
+        run: dart format --set-exit-if-changed .
+
+      - name: Analyze Dart conformance adapter
+        working-directory: interop/dart
+        run: dart analyze
+
+      - name: Test Dart canonical fixtures
+        working-directory: interop/dart
+        run: dart test
