@@ -26,6 +26,7 @@ public sealed class LanWebSocketTransport : IGameTransport
     private readonly LanWebSocketHostOptions _options;
     private readonly Func<string> _connectionIdFactory;
     private readonly ConcurrentDictionary<ConnectionId, LanConnection> _connections = new();
+    private readonly ConcurrentQueue<LanConnection> _connectionOrder = new();
     private readonly Channel<TransportEvent> _events = Channel.CreateUnbounded<TransportEvent>(
         new UnboundedChannelOptions
         {
@@ -34,7 +35,9 @@ public sealed class LanWebSocketTransport : IGameTransport
             SingleWriter = false,
         });
     private readonly CancellationTokenSource _stopSource = new();
+    private readonly object _stopGate = new();
     private WebApplication? _application;
+    private Task? _stopTask;
     private int _stopped;
     private int _disposed;
 
@@ -152,35 +155,15 @@ public sealed class LanWebSocketTransport : IGameTransport
 
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
-        if (Interlocked.Exchange(ref _stopped, 1) != 0)
+        cancellationToken.ThrowIfCancellationRequested();
+
+        Task stopTask;
+        lock (_stopGate)
         {
-            return;
+            stopTask = _stopTask ??= StopCoreAsync();
         }
 
-        foreach (var connection in _connections.Values.ToArray())
-        {
-            if (!RemoveConnection(connection, TransportCloseReason.TransportStopped))
-            {
-                continue;
-            }
-
-            await CloseSocketAsync(
-                connection.Socket,
-                WebSocketCloseStatus.NormalClosure,
-                "transport-stopped",
-                cancellationToken).ConfigureAwait(false);
-        }
-
-        _stopSource.Cancel();
-        var application = _application;
-        if (application is not null)
-        {
-            await application.StopAsync(cancellationToken).ConfigureAwait(false);
-            await application.DisposeAsync().ConfigureAwait(false);
-            _application = null;
-        }
-
-        _events.Writer.TryComplete();
+        await stopTask.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
@@ -197,6 +180,46 @@ public sealed class LanWebSocketTransport : IGameTransport
         finally
         {
             _stopSource.Dispose();
+        }
+    }
+
+    private async Task StopCoreAsync()
+    {
+        Interlocked.Exchange(ref _stopped, 1);
+        try
+        {
+            foreach (var connection in _connectionOrder.ToArray())
+            {
+                if (!RemoveConnection(connection, TransportCloseReason.TransportStopped))
+                {
+                    continue;
+                }
+
+                await CloseSocketAsync(
+                    connection.Socket,
+                    WebSocketCloseStatus.NormalClosure,
+                    "transport-stopped",
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _stopSource.Cancel();
+            var application = _application;
+            if (application is not null)
+            {
+                try
+                {
+                    await application.StopAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await application.DisposeAsync().ConfigureAwait(false);
+                    _application = null;
+                }
+            }
+
+            _events.Writer.TryComplete();
         }
     }
 
@@ -423,6 +446,7 @@ public sealed class LanWebSocketTransport : IGameTransport
             var connection = new LanConnection(new ConnectionId(rawId), socket);
             if (_connections.TryAdd(connection.ConnectionId, connection))
             {
+                _connectionOrder.Enqueue(connection);
                 return connection;
             }
         }
