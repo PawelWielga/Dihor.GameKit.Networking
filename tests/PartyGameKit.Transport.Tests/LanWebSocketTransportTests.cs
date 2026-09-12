@@ -100,7 +100,7 @@ public sealed class LanWebSocketTransportTests
             reconnectTokenFactory: () => "stable-resume-token");
         var playerId = new PlayerId("player-1");
 
-        var firstClient = await LanWebSocketClient.ConnectAsync(
+        await using var firstClient = await LanWebSocketClient.ConnectAsync(
             transport.CreateClientUri("127.0.0.1"),
             JoinRequest(playerId.Value, "join-first"),
             cancellationToken: cancellationToken);
@@ -183,7 +183,7 @@ public sealed class LanWebSocketTransportTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var options = new LanWebSocketHostOptions(
             IPAddress.Loopback,
-            maxMessageBytes: 128,
+            maxMessageBytes: 512,
             handshakeTimeout: TimeSpan.FromSeconds(2),
             keepAliveInterval: TimeSpan.FromSeconds(2));
         await using var transport = await LanWebSocketTransport.StartAsync(options, cancellationToken: cancellationToken);
@@ -195,7 +195,7 @@ public sealed class LanWebSocketTransportTests
             cancellationToken: cancellationToken);
         var connectionId = await ReadHandshakeAsync(events, "join-small", cancellationToken);
 
-        await client.SendAsync(new byte[129], cancellationToken);
+        await client.SendAsync(new byte[513], cancellationToken);
         Assert.True(await events.MoveNextAsync());
         Assert.IsType<TransportFaulted>(events.Current);
         Assert.True(await events.MoveNextAsync());
