@@ -3,4 +3,7 @@
     <Description>Transport-neutral communication abstractions for PartyGameKit.</Description>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
+  </ItemGroup>
 </Project>
