@@ -105,6 +105,26 @@ public sealed class SessionContinuityTests
     }
 
     [Fact]
+    public void ExplicitLeaveRevokesReconnectCredentialAndDeadline()
+    {
+        var harness = new ContinuityHarness();
+        var playerId = new PlayerId("player-1");
+        var join = harness.Coordinator.JoinPlayer(playerId, new ConnectionId("connection-1"));
+        harness.Coordinator.MarkDisconnected(new ConnectionId("connection-1"));
+        Assert.NotNull(harness.Coordinator.GetReconnectDeadline(playerId));
+
+        Assert.Equal(LeavePlayerStatus.Left, harness.Coordinator.LeavePlayer(playerId));
+        var resumed = harness.Coordinator.RejoinPlayer(
+            playerId,
+            new ConnectionId("connection-2"),
+            join.ReconnectToken!);
+
+        Assert.Null(harness.Coordinator.GetReconnectDeadline(playerId));
+        Assert.Equal(ResumePlayerStatus.InvalidResumeIdentity, resumed.Status);
+        Assert.Empty(harness.Session.Players);
+    }
+
+    [Fact]
     public void HostTimeoutIsReportedWithoutMigratingAuthority()
     {
         var harness = new ContinuityHarness();
