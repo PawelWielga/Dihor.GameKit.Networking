@@ -21,6 +21,7 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
     private readonly SessionContinuityCoordinator<DungeonPublicState, DungeonPrivateState> _continuity;
     private readonly DungeonGame _game = new();
     private readonly CancellationTokenSource _stopSource = new();
+    private readonly SemaphoreSlim _stateGate = new(1, 1);
     private Task _eventLoop = Task.CompletedTask;
     private int _disposed;
 
@@ -48,6 +49,7 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
         string advertisedHost,
         IPAddress? bindAddress = null,
         int port = 0,
+        TimeSpan? reconnectWindow = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(advertisedHost);
@@ -72,7 +74,7 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
                 new SessionContinuityOptions(
                     hostTimeout: TimeSpan.FromSeconds(30),
                     clientTimeout: TimeSpan.FromSeconds(30),
-                    reconnectWindow: TimeSpan.FromMinutes(2)));
+                    reconnectWindow: reconnectWindow ?? TimeSpan.FromMinutes(2)));
             var descriptor = new JoinDescriptor(
                 roomId,
                 joinCode,
@@ -116,6 +118,7 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
         finally
         {
             await _transport.DisposeAsync().ConfigureAwait(false);
+            _stateGate.Dispose();
             _stopSource.Dispose();
         }
     }
@@ -124,21 +127,34 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
     {
         await foreach (var transportEvent in _transport.ReadEventsAsync(cancellationToken).ConfigureAwait(false))
         {
-            switch (transportEvent)
+            await _stateGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                case TransportMessageReceived received:
-                    await HandleMessageAsync(received.ConnectionId, received.Payload, cancellationToken).ConfigureAwait(false);
-                    break;
-                case TransportConnectionClosed closed:
-                    var disconnected = _continuity.MarkDisconnected(closed.ConnectionId);
-                    if (disconnected.Status == DisconnectClientStatus.Disconnected)
-                    {
-                        await PublishCurrentStateAsync(cancellationToken).ConfigureAwait(false);
-                    }
-                    break;
-                case TransportFaulted faulted:
-                    Console.Error.WriteLine($"LAN transport fault: {faulted.Error.Code}: {faulted.Error.Message}");
-                    break;
+                switch (transportEvent)
+                {
+                    case TransportMessageReceived received:
+                        await HandleMessageAsync(received.ConnectionId, received.Payload, cancellationToken).ConfigureAwait(false);
+                        break;
+                    case TransportConnectionClosed closed:
+                        var disconnected = _continuity.MarkDisconnected(closed.ConnectionId);
+                        if (disconnected.Status == DisconnectClientStatus.Disconnected)
+                        {
+                            if (disconnected.PlayerId is { } playerId && disconnected.ReconnectUntil is { } reconnectUntil)
+                            {
+                                ScheduleReconnectExpiry(playerId, reconnectUntil);
+                            }
+
+                            await PublishCurrentStateAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                        break;
+                    case TransportFaulted faulted:
+                        Console.Error.WriteLine($"LAN transport fault: {faulted.Error.Code}: {faulted.Error.Message}");
+                        break;
+                }
+            }
+            finally
+            {
+                _stateGate.Release();
             }
         }
     }
@@ -363,8 +379,19 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
         }
 
         var leave = read.Message.Payload;
-        if (leave.PlayerId is { } playerId)
+        var membership = _session.FindClient(connectionId);
+        if (membership is null || leave.ConnectionId != connectionId)
         {
+            return;
+        }
+
+        if (membership.Role == ClientRole.Player)
+        {
+            if (membership.PlayerId is not { } playerId || leave.PlayerId != playerId)
+            {
+                return;
+            }
+
             if (_continuity.LeavePlayer(playerId) == LeavePlayerStatus.Left)
             {
                 _game.RemovePlayer(playerId);
@@ -372,6 +399,11 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
         }
         else
         {
+            if (leave.PlayerId is not null)
+            {
+                return;
+            }
+
             _continuity.MarkDisconnected(connectionId);
         }
 
@@ -436,6 +468,56 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
     {
         var client = _session.FindClient(connectionId);
         return client?.Role == ClientRole.Player ? client.PlayerId : null;
+    }
+
+    private void ScheduleReconnectExpiry(PlayerId playerId, DateTimeOffset reconnectUntil)
+    {
+        _ = RetirePlayerAfterReconnectExpiryAsync(playerId, reconnectUntil, _stopSource.Token);
+    }
+
+    private async Task RetirePlayerAfterReconnectExpiryAsync(
+        PlayerId playerId,
+        DateTimeOffset reconnectUntil,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var delay = reconnectUntil - DateTimeOffset.UtcNow;
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+
+            await _stateGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var player = _session.FindPlayer(playerId);
+                var currentDeadline = _continuity.GetReconnectDeadline(playerId);
+                if (player?.Presence != PlayerPresence.Disconnected ||
+                    currentDeadline is null ||
+                    DateTimeOffset.UtcNow < currentDeadline.Value)
+                {
+                    return;
+                }
+
+                if (_continuity.LeavePlayer(playerId) == LeavePlayerStatus.Left)
+                {
+                    _game.RemovePlayer(playerId);
+                    await PublishCurrentStateAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _stateGate.Release();
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"Reconnect-expiry cleanup failed for '{playerId}': {exception}");
+        }
     }
 
     private async Task PublishCurrentStateAsync(CancellationToken cancellationToken)
