@@ -39,8 +39,15 @@ public readonly record struct SnapshotTarget
 
     public static SnapshotTarget Public { get; } = new(SnapshotAudience.Public, null);
 
-    public static SnapshotTarget ForPlayer(PlayerId playerId) =>
-        new(SnapshotAudience.Player, playerId);
+    public static SnapshotTarget ForPlayer(PlayerId playerId)
+    {
+        if (string.IsNullOrWhiteSpace(playerId.Value))
+        {
+            throw new ArgumentException("Player snapshot target requires a valid player id.", nameof(playerId));
+        }
+
+        return new SnapshotTarget(SnapshotAudience.Player, playerId);
+    }
 }
 
 public sealed record PublicStateProjection<TPublicState>(TPublicState State);
@@ -58,6 +65,11 @@ public sealed record StateSnapshot<TProjection>
         SnapshotTarget target,
         TProjection projection)
     {
+        if (sequence.Value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sequence), sequence.Value, "Snapshot sequence must be positive.");
+        }
+
         RoomId = roomId;
         AuthorityId = authorityId;
         Sequence = sequence;
@@ -204,6 +216,11 @@ public sealed class SnapshotSequenceGate
 
     public bool TryAccept(SnapshotSequence sequence)
     {
+        if (sequence.Value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sequence), sequence.Value, "Snapshot sequence must be positive.");
+        }
+
         lock (_gate)
         {
             if (sequence.Value <= _lastAppliedSequence)

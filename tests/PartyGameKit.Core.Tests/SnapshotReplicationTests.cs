@@ -90,6 +90,27 @@ public sealed class SnapshotReplicationTests
     public void SnapshotSequenceMustBePositive()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new SnapshotSequence(0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SnapshotSequence(-1));
+    }
+
+    [Fact]
+    public void DefaultSnapshotSequenceCannotEnterReplication()
+    {
+        var gate = new SnapshotSequenceGate();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => gate.TryAccept(default));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new StateSnapshot<PublicStateProjection<PublicView>>(
+            new RoomId("room-1"),
+            new AuthorityId("authority-1"),
+            default,
+            SnapshotTarget.Public,
+            new PublicStateProjection<PublicView>(new PublicView("public"))));
+    }
+
+    [Fact]
+    public void PlayerTargetRequiresNonDefaultPlayerId()
+    {
+        Assert.Throws<ArgumentException>(() => SnapshotTarget.ForPlayer(default));
     }
 
     private sealed record PublicView(string Value);
