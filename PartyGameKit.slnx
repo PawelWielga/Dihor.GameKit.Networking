@@ -6,6 +6,7 @@
     <Project Path="src/PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj" />
     <Project Path="src/PartyGameKit.Transport.InMemory/PartyGameKit.Transport.InMemory.csproj" />
     <Project Path="src/PartyGameKit.Transport.Lan/PartyGameKit.Transport.Lan.csproj" />
+    <Project Path="src/PartyGameKit.Transport.SignalR/PartyGameKit.Transport.SignalR.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/SharedCounter/SharedCounter.Sample/SharedCounter.Sample.csproj" />
@@ -18,6 +19,7 @@
     <Project Path="tests/PartyGameKit.Protocol.Tests/PartyGameKit.Protocol.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Discovery.Tests/PartyGameKit.Discovery.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Transport.Tests/PartyGameKit.Transport.Tests.csproj" />
+    <Project Path="tests/PartyGameKit.Transport.SignalR.Tests/PartyGameKit.Transport.SignalR.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Sample.SharedCounter.Tests/PartyGameKit.Sample.SharedCounter.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Sample.DungeonPrototype.Tests/PartyGameKit.Sample.DungeonPrototype.Tests.csproj" />
   </Folder>
