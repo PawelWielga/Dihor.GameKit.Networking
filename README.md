@@ -1,155 +1,121 @@
 # PartyGameKit
 
-PartyGameKit is a reusable multiplayer foundation for **shared-screen party games**.
+PartyGameKit is a reusable **multiplayer communication/networking library** extracted from networking behavior proven in [Państwa Miasta](https://github.com/PawelWielga/panstwa-miasta).
 
-The primary interaction model is:
-
-- a TV, laptop or browser is the shared game screen,
-- players join from their phones,
-- phones act as controllers and private player screens,
-- the same game can run locally over LAN or later use an optional backend/cloud path,
-- game logic does not depend on SignalR, WebRTC, sockets or another concrete transport.
-
-The API has been validated against two mechanically different games: the existing **Państwa Miasta** implementation and the repository's turn-based **Dungeon Prototype**. The generic packages intentionally contain no categories, answers, monsters, loot, combat rules or other game-domain concepts.
-
-## v0.1 prerelease
-
-The current package line is `0.1.0-preview.1`. It is a prerelease: package boundaries and protocol v1 are usable, but source compatibility may still change before a stable release.
-
-PartyGameKit uses two independent versions:
-
-- package/API version: SemVer, currently `0.1.0-preview.1`,
-- wire protocol version: integer `1` carried by protocol envelopes and join descriptors.
-
-See [Versioning](docs/versioning.md), [Compatibility](docs/compatibility.md), [Package boundaries](docs/packages.md) and [Public API review](docs/public-api.md).
-
-## Package map
-
-The .NET prerelease is split by responsibility:
-
-- `PartyGameKit.Core` — rooms, players, authority, presence, reconnect and snapshot primitives,
-- `PartyGameKit.Protocol` — protocol v1 envelopes, payloads and join descriptors,
-- `PartyGameKit.Transport.Abstractions` — transport-neutral contracts,
-- `PartyGameKit.Transport.InMemory` — deterministic test/reference transport,
-- `PartyGameKit.Transport.Lan` — direct LAN WebSocket transport,
-- `PartyGameKit.Discovery.Lan` — optional UDP LAN discovery.
-
-Browser clients use `@partygamekit/client`. Dart/Flutter consumers currently get the language-neutral protocol package from `interop/dart`; it does not include a Dart transport or duplicate the .NET session engine.
-
-## Getting started
-
-Prerelease artifacts are built by CI and by the `Prerelease` workflow. Until a project license and public-registry credentials are deliberately configured, GitHub Releases are the distribution boundary rather than NuGet.org, npmjs.com or pub.dev.
-
-### .NET consumer
-
-Download the `.nupkg` files from the matching GitHub prerelease into a local folder and add the package that provides the capability you need. NuGet resolves the PartyGameKit package dependencies from the same folder.
-
-```bash
-dotnet add package PartyGameKit.Transport.Lan \
-  --version 0.1.0-preview.1 \
-  --source ./partygamekit-packages
-```
-
-For LAN discovery, add `PartyGameKit.Discovery.Lan` as well. A package-only smoke consumer lives in `packaging/consumer`; CI restores, builds and runs it from generated `.nupkg` files with no PartyGameKit `ProjectReference`.
-
-### TypeScript/browser consumer
-
-Download the npm tarball from the GitHub prerelease and install it directly:
-
-```bash
-npm install ./partygamekit-client-0.1.0-preview.1.tgz
-```
-
-```ts
-import { PartyGameClient, parseJoinDescriptor } from '@partygamekit/client';
-```
-
-The SDK supports player/shared-screen join, reconnect, heartbeat, snapshot ordering and the LAN WebSocket client path. It intentionally contains no React or PartyBeam-specific logic.
-
-### Dart/Flutter protocol consumer
-
-The Dart package is currently distributed from the repository/tag rather than pub.dev:
-
-```yaml
-dependencies:
-  partygamekit_protocol:
-    git:
-      url: https://github.com/PawelWielga/PartyGameKit.git
-      ref: v0.1.0-preview.1
-      path: interop/dart
-```
-
-It implements protocol v1 parsing, join descriptors, discovery announcements and snapshot sequence handling against the same canonical fixtures as C# and TypeScript.
-
-## Reference samples
-
-`SharedCounter` is the smallest full end-to-end sample: one authoritative .NET host, a browser shared screen and multiple browser/phone players over real LAN WebSocket transport.
-
-```bash
-npm install --prefix clients/typescript --no-audit --no-fund
-npm run build --prefix clients/typescript
-dotnet run --project samples/SharedCounter/SharedCounter.Host -- --host 192.168.1.20
-```
-
-Replace `192.168.1.20` with the host's LAN address. The host prints the shared-screen URL, player URL and canonical join payload.
-
-`DungeonPrototype` validates the same foundation with character selection, turns/action points, movement, private inventory, enemy combat and reconnect during an active turn.
-
-## Design principles
-
-Game code owns its rules, commands and state schema. PartyGameKit owns reusable session, protocol, replication and transport semantics.
+It is intended to be used by [PartyBeam](https://github.com/PawelWielga/PartyBeam), Państwa Miasta and future multiplayer products without forcing them into one player/host/shared-screen model.
 
 ```text
-game-owned rules/state
-        │
-        ▼
-session / authority
-        │
-        ├── versioned protocol + snapshots
-        │
-        ├── discovery + portable join descriptor
-        │
-        └── transport abstraction
-                ├── LAN WebSocket
-                ├── SignalR / cloud later
-                └── WebRTC later
+PartyBeam / Państwa Miasta / future multiplayer products
+                │
+                │ players, roles, parties, game sessions,
+                │ authority policy, state and game rules
+                ▼
+          PartyGameKit
+      communication/networking
+                │
+        transports + discovery
+                │
+     LAN / SignalR / WebRTC
 ```
 
-A stable `PlayerId` is not a `ConnectionId`. A dropped connection is not automatically a permanent leave. Host/authority is logical session state rather than a property of one WebSocket.
+## Boundary correction
 
-Discovery is optional convenience infrastructure. A valid portable join descriptor can connect directly even when UDP discovery is blocked or disabled.
+`0.1.0-preview.1` proved useful LAN transport, discovery, interoperability and reconnect behavior, but its public API also took ownership of product concepts such as `PlayerId`, `ClientRole`, `RoomSession`, authority and public/private game-state projections.
 
-Automatic host migration is not a v0.1 guarantee. SignalR/cloud and WebRTC are post-v0.1 transports.
+That boundary is being corrected in ordered issues `[15]`–`[17]`. Breaking prerelease changes are intentional.
+
+The architecture decision is documented in [Communication boundary](docs/communication-boundary.md).
+
+### PartyGameKit owns
+
+- transport-neutral connection APIs;
+- connection open/close/error lifecycle;
+- send/receive and targeted/broadcast delivery primitives;
+- transient `ConnectionId`;
+- an optional neutral stable peer identity used for reconnect/resume;
+- heartbeat/connectivity detection and resume mechanics;
+- a versioned language-neutral communication envelope;
+- opaque application payload transport;
+- generic ordering/deduplication helpers where useful;
+- technical connection descriptors;
+- direct LAN WebSocket transport;
+- LAN discovery;
+- C#, TypeScript and Dart compatibility for the communication contract.
+
+### Consumers own
+
+PartyGameKit does **not** decide:
+
+- who is a player;
+- player capacity/admission;
+- host/shared-screen/controller/spectator roles;
+- lobby/party/game-session lifecycle;
+- authority or coordinator policy;
+- game start/pause/end behavior;
+- score or game state;
+- public/private/shared-screen state projections;
+- PartyBeam TV/pilot/controller UX;
+- game commands, phases or rules.
+
+A consumer with no concept of players must be able to use the base library.
+
+## Current prerelease status
+
+The released `0.1.0-preview.1` API represents the historical v0.1 implementation and is **not** the final target boundary. Do not build new product architecture around its room/player/session APIs.
+
+The ordered backlog is tracked in GitHub issue `#2`:
+
+- `[15]` define and document the corrected communication-only boundary;
+- `[16]` refactor Core/protocol/transports to that boundary;
+- `[17]` align TypeScript, Dart, samples, packaging and interoperability;
+- only then add SignalR, WebRTC and automatic fallback.
+
+## Target package direction
+
+The exact package names are finalized in `[16]`, but responsibilities are moving toward:
+
+- communication identities/protocol primitives;
+- transport abstractions;
+- in-memory reference transport;
+- LAN WebSocket transport;
+- LAN discovery;
+- browser and Dart communication SDKs.
+
+`PartyGameKit.Core` is not protected as a package boundary. It may be split, renamed, collapsed or removed if that produces a cleaner communication-only dependency graph.
 
 ## Cross-language contract
 
-PartyGameKit is centered on .NET, while Państwa Miasta is Flutter/Dart and PartyBeam uses browser/TypeScript clients. The shared compatibility boundary is therefore the **versioned language-neutral JSON protocol plus canonical fixtures**, not a shared runtime implementation.
-
-C#, Dart and TypeScript test their protocol behavior against the fixtures under `protocol/fixtures`.
-
-## Repository shape
+PartyGameKit uses a versioned language-neutral wire contract and canonical fixtures rather than pretending Flutter/Dart can consume NuGet directly.
 
 ```text
-PartyGameKit/
-├── src/                         # .NET packages
-├── clients/typescript/          # browser SDK
-├── interop/dart/                # Dart protocol package
-├── protocol/fixtures/           # language-neutral compatibility fixtures
-├── packaging/consumer/          # package-only NuGet smoke consumer
-├── samples/
-│   ├── SharedCounter/
-│   └── DungeonPrototype/
-├── tests/
-└── docs/
+canonical protocol fixtures
+          │
+    ┌─────┼─────┐
+    ▼     ▼     ▼
+   C#    Dart   TypeScript
 ```
+
+The target protocol distinguishes PartyGameKit control messages from opaque consumer/application messages. PartyGameKit transports payloads without understanding player roles or game meaning.
+
+## LAN and discovery
+
+Direct LAN WebSocket transport remains a core capability and works without Internet/cloud. The listener must run in a server-capable runtime.
+
+LAN discovery remains optional convenience infrastructure. A valid technical connection descriptor must still allow direct connection when UDP discovery is blocked or disabled.
+
+## Reference consumers
+
+The existing Shared Counter and Dungeon Prototype samples remain useful as **consumers** that demonstrate composition. Their player, authority, shared-screen and game-state concepts are application-owned and must not define the generic PartyGameKit API.
+
+Issue `[17]` will add or convert a sample into a deliberately neutral communication demonstration with generic peers, opaque message exchange, targeted/broadcast delivery, reconnect and LAN discovery/direct connection.
 
 ## Developer setup
 
 Requirements:
 
-- .NET 10 SDK,
-- Node.js 22 for the TypeScript SDK,
-- Dart stable for Dart protocol conformance tests.
+- .NET 10 SDK;
+- Node.js 22 for the TypeScript SDK;
+- Dart stable for Dart conformance tests.
 
 Build and test .NET:
 
@@ -175,32 +141,20 @@ dart analyze
 dart test
 ```
 
-The repository enables nullable reference types, deterministic builds, .NET analyzers, code-style checks during build and warnings-as-errors. CI also creates all prerelease artifacts and verifies that a fresh .NET consumer can restore and run from the generated packages.
-
-## LAN host constraint
-
-The direct LAN transport uses WebSocket. Its listener must run in a server-capable local runtime such as a .NET/native/desktop/TV process or companion process.
-
-A pure browser/PWA can be the shared-screen or phone client, but it cannot accept arbitrary inbound WebSocket connections. Pure-browser direct hosting is deferred to a later peer/WebRTC transport.
-
 ## Documentation
 
-- [Package boundaries](docs/packages.md)
-- [Versioning](docs/versioning.md)
-- [Compatibility matrix](docs/compatibility.md)
-- [Public API review](docs/public-api.md)
-- [Extraction from Państwa Miasta](docs/extraction-from-panstwa-miasta.md)
+- [Communication boundary](docs/communication-boundary.md)
 - [Architecture](docs/architecture.md)
-- [Wire protocol](docs/protocol.md)
-- [Networking](docs/networking.md)
-- [Game session model](docs/game-session-model.md)
-- [Snapshots](docs/snapshots.md)
-- [Reconnect and presence](docs/reconnect.md)
-- [Direct LAN WebSocket transport](docs/lan-websocket.md)
-- [LAN discovery and join descriptors](docs/discovery.md)
+- [Package boundaries](docs/packages.md)
+- [Public API classification](docs/public-api.md)
+- [Extraction from Państwa Miasta](docs/extraction-from-panstwa-miasta.md)
 - [Roadmap](docs/roadmap.md)
+- [Compatibility matrix](docs/compatibility.md)
+- [Versioning](docs/versioning.md)
+- [LAN WebSocket](docs/lan-websocket.md)
+- [LAN discovery](docs/discovery.md)
 - [Changelog](CHANGELOG.md)
 
-## Current status
+## Design invariant
 
-`[01]` through `[13]` have validated the reusable LAN/session/protocol foundation against Państwa Miasta, Shared Counter and Dungeon Prototype. `[14]` turns that validated surface into reproducible `0.1.0-preview` packages and release artifacts. SignalR, WebRTC and automatic fallback remain explicitly post-v0.1 work.
+Future transports may change **how** messages move. They must not change **what a player, host, TV, party or game means**, because those concepts belong to the consumer, not PartyGameKit.
