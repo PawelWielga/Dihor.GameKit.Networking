@@ -139,7 +139,7 @@ public static class JoinDescriptorCodec
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var segment in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
-            var separator = segment.IndexOf('=', StringComparison.Ordinal);
+            var separator = segment.IndexOf('=');
             if (separator <= 0)
             {
                 throw new FormatException("Invalid join URI query.");
