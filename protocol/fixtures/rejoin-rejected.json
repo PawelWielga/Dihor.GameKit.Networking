@@ -1,0 +1,1 @@
+{"type":"session.rejoin.rejected","protocolVersion":1,"messageId":"rejoin-rejected-1","correlationId":"msg-rejoin-1","payload":{"roomId":"room-001","code":"reconnect-window-expired","reason":"Reconnect window expired."}}

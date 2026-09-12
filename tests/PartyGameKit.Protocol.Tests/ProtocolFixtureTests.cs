@@ -16,7 +16,8 @@ public sealed class ProtocolFixtureTests
                 new ConnectionId("connection-002"),
                 ClientRole.Player,
                 new PlayerId("player-001"),
-                new AuthorityId("authority-001")),
+                new AuthorityId("authority-001"),
+                "resume-token-001"),
             "msg-join-request-1");
 
         AssertFixture("join-success.json", ProtocolJson.Serialize(message));
@@ -56,6 +57,7 @@ public sealed class ProtocolFixtureTests
         Assert.Equal(new PlayerId("player-001"), result.Message!.Payload.PlayerId);
         Assert.Equal(new ConnectionId("connection-002"), result.Message.Payload.ConnectionId);
         Assert.Equal(ClientRole.Player, result.Message.Payload.Role);
+        Assert.Equal("resume-token-001", result.Message.Payload.ReconnectToken);
     }
 
     [Fact]

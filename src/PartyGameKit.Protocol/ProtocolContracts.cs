@@ -15,8 +15,10 @@ public static class ProtocolMessageTypes
     public const string JoinRejected = "session.join.rejected";
     public const string Leave = "session.leave";
     public const string Disconnected = "session.disconnected";
+    public const string Heartbeat = "session.heartbeat";
     public const string RejoinRequest = "session.rejoin.request";
     public const string RejoinAccepted = "session.rejoin.accepted";
+    public const string RejoinRejected = "session.rejoin.rejected";
     public const string StateSnapshot = "state.snapshot";
 }
 
@@ -38,7 +40,8 @@ public sealed record JoinAcceptedPayload(
     [property: JsonPropertyName("connectionId"), JsonPropertyOrder(1)] ConnectionId ConnectionId,
     [property: JsonPropertyName("role"), JsonPropertyOrder(2)] ClientRole Role,
     [property: JsonPropertyName("playerId"), JsonPropertyOrder(3), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PlayerId? PlayerId,
-    [property: JsonPropertyName("authorityId"), JsonPropertyOrder(4)] AuthorityId AuthorityId);
+    [property: JsonPropertyName("authorityId"), JsonPropertyOrder(4)] AuthorityId AuthorityId,
+    [property: JsonPropertyName("reconnectToken"), JsonPropertyOrder(5), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ReconnectToken = null);
 
 public enum JoinRejectionCode
 {
@@ -65,6 +68,10 @@ public sealed record DisconnectedPayload(
     [property: JsonPropertyName("playerId"), JsonPropertyOrder(2), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PlayerId? PlayerId,
     [property: JsonPropertyName("reason"), JsonPropertyOrder(3), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Reason);
 
+public sealed record HeartbeatPayload(
+    [property: JsonPropertyName("roomId"), JsonPropertyOrder(0)] RoomId RoomId,
+    [property: JsonPropertyName("lastSeenSnapshotSequence"), JsonPropertyOrder(1)] long LastSeenSnapshotSequence);
+
 public sealed record RejoinRequestPayload(
     [property: JsonPropertyName("roomId"), JsonPropertyOrder(0)] RoomId RoomId,
     [property: JsonPropertyName("playerId"), JsonPropertyOrder(1)] PlayerId PlayerId,
@@ -76,6 +83,19 @@ public sealed record RejoinAcceptedPayload(
     [property: JsonPropertyName("playerId"), JsonPropertyOrder(1)] PlayerId PlayerId,
     [property: JsonPropertyName("connectionId"), JsonPropertyOrder(2)] ConnectionId ConnectionId,
     [property: JsonPropertyName("authorityId"), JsonPropertyOrder(3)] AuthorityId AuthorityId);
+
+public static class RejoinRejectionCodes
+{
+    public const string RoomClosed = "room-closed";
+    public const string InvalidResumeIdentity = "invalid-resume-identity";
+    public const string ReconnectWindowExpired = "reconnect-window-expired";
+    public const string ConnectionAlreadyInUse = "connection-already-in-use";
+}
+
+public sealed record RejoinRejectedPayload(
+    [property: JsonPropertyName("roomId"), JsonPropertyOrder(0)] RoomId RoomId,
+    [property: JsonPropertyName("code"), JsonPropertyOrder(1)] string Code,
+    [property: JsonPropertyName("reason"), JsonPropertyOrder(2), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Reason = null);
 
 public sealed record StateSnapshotPayload<TState>(
     [property: JsonPropertyName("roomId"), JsonPropertyOrder(0)] RoomId RoomId,

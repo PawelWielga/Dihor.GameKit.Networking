@@ -38,6 +38,13 @@ Join rejection codes are serialized as:
 - `protocol-mismatch`
 - `resume-rejected`
 
+Resume rejection codes are stable strings:
+
+- `room-closed`
+- `invalid-resume-identity`
+- `reconnect-window-expired`
+- `connection-already-in-use`
+
 `RoomId`, `PlayerId`, `ConnectionId`, `AuthorityId` and `JoinCode` are JSON strings. Their language-specific wrapper/class names are not part of the wire format.
 
 `PlayerId` is stable session/player identity. `ConnectionId` is transient network-connection identity. They must never be treated as interchangeable even when their string contents happen to be equal.
@@ -53,14 +60,21 @@ Version 1 reserves these generic message types:
 - `session.join.rejected`
 - `session.leave`
 - `session.disconnected`
+- `session.heartbeat`
 - `session.rejoin.request`
 - `session.rejoin.accepted`
+- `session.rejoin.rejected`
+- `state.snapshot`
 
-These messages establish and maintain session membership. They do not contain game-specific commands.
+These messages establish and maintain session membership and authoritative state replication. They do not contain game-specific commands.
 
-A player join request can carry a stable `playerId`. A non-player shared-screen can omit it. A successful join returns the transient `connectionId` and the logical `authorityId` independently.
+A player join request can carry a stable `playerId`. A non-player shared-screen can omit it. A successful join returns the transient `connectionId` and the logical `authorityId` independently. Player joins managed by the continuity layer also receive an opaque `reconnectToken`; non-player clients omit that field.
 
-A rejoin request carries the stable `playerId`, an opaque reconnect token and the last snapshot sequence already observed by the client. Reconnect-token lifecycle/validation is implemented by the later reconnect issue; the token is intentionally an opaque string on the wire.
+A heartbeat carries the room identifier and the last authoritative snapshot sequence observed by the sender. Sequence `0` means that no snapshot has been applied yet.
+
+A rejoin request carries the stable `playerId`, the opaque reconnect token and the last snapshot sequence already observed by the client. The token authenticates ownership of the existing player slot; it is not a connection identifier.
+
+The authority stores only a one-way fingerprint of the reconnect credential. After a successful rejoin it responds with `session.rejoin.accepted` and then sends the newest applicable `state.snapshot`. Historical snapshot replay is not required. Terminal resume failures use `session.rejoin.rejected` with one of the stable codes above.
 
 ## Version mismatch
 
@@ -72,10 +86,10 @@ The canonical C# implementation exposes the received version in the read result 
 
 ## Sequence metadata
 
-There is deliberately no generic envelope sequence number in version 1. Państwa Miasta proves sequence ordering for **authoritative snapshots**, not for every network message. Snapshot sequence metadata is introduced by `[06]` on the snapshot contract instead of inventing a global ordering guarantee now.
+There is deliberately no generic envelope sequence number in version 1. Państwa Miasta proves sequence ordering for **authoritative snapshots**, not for every network message. `state.snapshot` owns the monotonic authoritative sequence.
 
-The rejoin request already carries `lastSeenSnapshotSequence` because the reference implementation uses that information to restore current authoritative state.
+A client ignores a snapshot whose sequence is less than or equal to the last applied sequence. `lastSeenSnapshotSequence` in heartbeat/rejoin messages reports the client's progress but does not transfer authority to the client.
 
 ## Game messages
 
-PartyGameKit does not reserve game actions such as answer submission, voting, movement or attacks. A consuming game owns its own application payload/message schema and later sends it through the transport/session boundary without adding those concepts to PartyGameKit Core.
+PartyGameKit does not reserve game actions such as answer submission, voting, movement or attacks. A consuming game owns its own application payload/message schema and sends it through the transport/session boundary without adding those concepts to PartyGameKit Core.
