@@ -13,4 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="../../protocol/fixtures/*.json" Link="protocol/fixtures/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

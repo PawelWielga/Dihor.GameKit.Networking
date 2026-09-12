@@ -1,0 +1,1 @@
+{"type":"session.join.accepted","protocolVersion":1,"messageId":"msg-join-accepted-1","correlationId":"msg-join-request-1","payload":{"roomId":"room-001","connectionId":"connection-002","role":"player","playerId":"player-001","authorityId":"authority-001"}}

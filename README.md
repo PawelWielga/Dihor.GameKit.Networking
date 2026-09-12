@@ -117,10 +117,11 @@ A pure browser/PWA can be the shared-screen or phone client, but it cannot accep
 
 - [Extraction from Państwa Miasta](docs/extraction-from-panstwa-miasta.md)
 - [Architecture](docs/architecture.md)
+- [Wire protocol](docs/protocol.md)
 - [Networking](docs/networking.md)
 - [Game session model](docs/game-session-model.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Current status
 
-The extraction boundary and minimal .NET 10 repository/test infrastructure are in place. Implementation continues strictly in `[NN]` order from the tracker; protocol and identity primitives start in `[03]`.
+The extraction boundary, .NET 10 infrastructure and versioned language-neutral protocol contracts are in place. Implementation continues strictly in `[NN]` order from the tracker; transport-independent room/player/session lifecycle follows in `[04]`.

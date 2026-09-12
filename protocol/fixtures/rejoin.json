@@ -1,0 +1,1 @@
+{"type":"session.rejoin.request","protocolVersion":1,"messageId":"msg-rejoin-1","payload":{"roomId":"room-001","playerId":"player-001","reconnectToken":"opaque-reconnect-token","lastSeenSnapshotSequence":41}}
