@@ -147,7 +147,7 @@ internal static class LanWebSocketMessageReader
 
         while (true)
         {
-            var result = await socket.ReceiveAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
+            var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken).ConfigureAwait(false);
             if (result.MessageType == WebSocketMessageType.Close)
             {
                 return new LanWebSocketFrame(
