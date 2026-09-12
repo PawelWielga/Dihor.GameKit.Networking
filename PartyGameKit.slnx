@@ -3,6 +3,7 @@
     <Project Path="src/PartyGameKit.Core/PartyGameKit.Core.csproj" />
     <Project Path="src/PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
     <Project Path="src/PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj" />
+    <Project Path="src/PartyGameKit.Transport.InMemory/PartyGameKit.Transport.InMemory.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PartyGameKit.Core.Tests/PartyGameKit.Core.Tests.csproj" />

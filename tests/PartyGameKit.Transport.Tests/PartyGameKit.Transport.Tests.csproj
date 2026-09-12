@@ -11,6 +11,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../src/PartyGameKit.Core/PartyGameKit.Core.csproj" />
     <ProjectReference Include="../../src/PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj" />
+    <ProjectReference Include="../../src/PartyGameKit.Transport.InMemory/PartyGameKit.Transport.InMemory.csproj" />
   </ItemGroup>
 </Project>
