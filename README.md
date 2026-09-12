@@ -47,6 +47,8 @@ session / authority
         │
         ├── versioned protocol + snapshots
         │
+        ├── discovery + portable join descriptor
+        │
         └── transport abstraction
                 ├── LAN WebSocket
                 ├── SignalR / cloud later
@@ -54,6 +56,8 @@ session / authority
 ```
 
 A stable `PlayerId` is not a `ConnectionId`. A dropped connection is not automatically a permanent leave. Host/authority is logical session state rather than a property of one WebSocket.
+
+Discovery is optional convenience infrastructure. A valid portable join descriptor can connect directly even when UDP discovery is blocked or disabled.
 
 ## Cross-language contract
 
@@ -72,12 +76,14 @@ PartyGameKit/
 ├── src/
 │   ├── PartyGameKit.Core/
 │   ├── PartyGameKit.Protocol/
+│   ├── PartyGameKit.Discovery.Lan/
 │   ├── PartyGameKit.Transport.Abstractions/
 │   ├── PartyGameKit.Transport.InMemory/
 │   └── PartyGameKit.Transport.Lan/
 ├── tests/
 │   ├── PartyGameKit.Core.Tests/
 │   ├── PartyGameKit.Protocol.Tests/
+│   ├── PartyGameKit.Discovery.Tests/
 │   └── PartyGameKit.Transport.Tests/
 ├── protocol/
 │   └── fixtures/
@@ -123,8 +129,9 @@ A pure browser/PWA can be the shared-screen or phone client, but it cannot accep
 - [Snapshots](docs/snapshots.md)
 - [Reconnect and presence](docs/reconnect.md)
 - [Direct LAN WebSocket transport](docs/lan-websocket.md)
+- [LAN discovery and join descriptors](docs/discovery.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Current status
 
-The extraction boundary, .NET 10 infrastructure, language-neutral protocol, room/session lifecycle, generic snapshots, continuity/reconnect and the first direct LAN WebSocket transport are implemented incrementally. Work continues strictly in `[NN]` order from the tracker.
+The extraction boundary, .NET 10 infrastructure, language-neutral protocol, room/session lifecycle, generic snapshots, continuity/reconnect, direct LAN WebSocket transport and LAN discovery/join-descriptor layer are implemented incrementally. Work continues strictly in `[NN]` order from the tracker.
