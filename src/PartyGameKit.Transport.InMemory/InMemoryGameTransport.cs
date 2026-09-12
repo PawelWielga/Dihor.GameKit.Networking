@@ -8,7 +8,7 @@ namespace PartyGameKit.Transport.InMemory;
 public sealed class InMemoryGameTransport : IGameTransport
 {
     private readonly object _gate = new();
-    private readonly Dictionary<ConnectionId, ConnectionState> _connections = new();
+    private readonly Dictionary<ConnectionId, InMemoryConnectionState> _connections = new();
     private readonly List<ConnectionId> _connectionOrder = new();
     private readonly Channel<TransportEvent> _events = Channel.CreateUnbounded<TransportEvent>(
         new UnboundedChannelOptions
@@ -43,10 +43,11 @@ public sealed class InMemoryGameTransport : IGameTransport
                     SingleReader = false,
                     SingleWriter = false,
                 });
-            _connections.Add(connectionId, new ConnectionState(outbound));
+            var state = new InMemoryConnectionState(outbound);
+            _connections.Add(connectionId, state);
             _connectionOrder.Add(connectionId);
             _events.Writer.TryWrite(new TransportConnectionOpened(connectionId));
-            return ValueTask.FromResult(new InMemoryTransportPeer(this, connectionId, outbound.Reader));
+            return ValueTask.FromResult(new InMemoryTransportPeer(this, connectionId, state));
         }
     }
 
@@ -165,6 +166,7 @@ public sealed class InMemoryGameTransport : IGameTransport
 
     internal ValueTask ReceiveFromPeerAsync(
         ConnectionId connectionId,
+        InMemoryConnectionState state,
         ReadOnlyMemory<byte> payload,
         CancellationToken cancellationToken)
     {
@@ -174,11 +176,12 @@ public sealed class InMemoryGameTransport : IGameTransport
         lock (_gate)
         {
             ThrowIfStopped();
-            if (!_connections.ContainsKey(connectionId))
+            if (!_connections.TryGetValue(connectionId, out var current) ||
+                !ReferenceEquals(current, state))
             {
                 throw CreateException(
                     TransportErrorCode.ConnectionNotFound,
-                    $"Connection '{connectionId}' is not open.",
+                    $"Connection '{connectionId}' is no longer the active connection instance.",
                     connectionId);
             }
 
@@ -194,16 +197,23 @@ public sealed class InMemoryGameTransport : IGameTransport
         return ValueTask.CompletedTask;
     }
 
-    internal ValueTask CloseFromPeerAsync(ConnectionId connectionId)
+    internal ValueTask CloseFromPeerAsync(
+        ConnectionId connectionId,
+        InMemoryConnectionState state)
     {
-        CloseConnection(connectionId, TransportCloseReason.RemoteClosed, requireExisting: false);
+        CloseConnection(
+            connectionId,
+            TransportCloseReason.RemoteClosed,
+            requireExisting: false,
+            expectedState: state);
         return ValueTask.CompletedTask;
     }
 
     private void CloseConnection(
         ConnectionId connectionId,
         TransportCloseReason reason,
-        bool requireExisting)
+        bool requireExisting,
+        InMemoryConnectionState? expectedState = null)
     {
         lock (_gate)
         {
@@ -217,7 +227,7 @@ public sealed class InMemoryGameTransport : IGameTransport
                 return;
             }
 
-            if (!_connections.Remove(connectionId, out var connection))
+            if (!_connections.TryGetValue(connectionId, out var connection))
             {
                 if (requireExisting)
                 {
@@ -230,6 +240,12 @@ public sealed class InMemoryGameTransport : IGameTransport
                 return;
             }
 
+            if (expectedState is not null && !ReferenceEquals(connection, expectedState))
+            {
+                return;
+            }
+
+            _connections.Remove(connectionId);
             _connectionOrder.Remove(connectionId);
             connection.Outbound.Writer.TryComplete();
             _events.Writer.TryWrite(new TransportConnectionClosed(connectionId, reason));
@@ -252,24 +268,28 @@ public sealed class InMemoryGameTransport : IGameTransport
         string message,
         ConnectionId? connectionId = null) =>
         new(new TransportError(code, message, connectionId));
+}
 
-    private sealed record ConnectionState(Channel<ReadOnlyMemory<byte>> Outbound);
+internal sealed class InMemoryConnectionState(
+    Channel<ReadOnlyMemory<byte>> outbound)
+{
+    public Channel<ReadOnlyMemory<byte>> Outbound { get; } = outbound;
 }
 
 public sealed class InMemoryTransportPeer : IAsyncDisposable
 {
     private readonly InMemoryGameTransport _transport;
-    private readonly ChannelReader<ReadOnlyMemory<byte>> _inbound;
+    private readonly InMemoryConnectionState _state;
     private int _disposed;
 
     internal InMemoryTransportPeer(
         InMemoryGameTransport transport,
         ConnectionId connectionId,
-        ChannelReader<ReadOnlyMemory<byte>> inbound)
+        InMemoryConnectionState state)
     {
         _transport = transport;
+        _state = state;
         ConnectionId = connectionId;
-        _inbound = inbound;
     }
 
     public ConnectionId ConnectionId { get; }
@@ -279,13 +299,13 @@ public sealed class InMemoryTransportPeer : IAsyncDisposable
         CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        return _transport.ReceiveFromPeerAsync(ConnectionId, payload, cancellationToken);
+        return _transport.ReceiveFromPeerAsync(ConnectionId, _state, payload, cancellationToken);
     }
 
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadMessagesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var payload in _inbound.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        await foreach (var payload in _state.Outbound.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return payload;
         }
@@ -298,7 +318,7 @@ public sealed class InMemoryTransportPeer : IAsyncDisposable
             return;
         }
 
-        await _transport.CloseFromPeerAsync(ConnectionId).ConfigureAwait(false);
+        await _transport.CloseFromPeerAsync(ConnectionId, _state).ConfigureAwait(false);
     }
 
     private void ThrowIfDisposed()
