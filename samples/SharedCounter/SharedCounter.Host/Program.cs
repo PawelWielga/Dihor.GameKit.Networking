@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.FileProviders;
+using PartyGameKit.Core;
 using PartyGameKit.Protocol;
 using PartyGameKit.Sample.SharedCounter;
 using PartyGameKit.Transport.SignalR;
