@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -22,6 +23,7 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
     private readonly DungeonGame _game = new();
     private readonly CancellationTokenSource _stopSource = new();
     private readonly SemaphoreSlim _stateGate = new(1, 1);
+    private readonly ConcurrentBag<Task> _expiryTasks = [];
     private Task _eventLoop = Task.CompletedTask;
     private int _disposed;
 
@@ -111,6 +113,7 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
         try
         {
             await _eventLoop.ConfigureAwait(false);
+            await Task.WhenAll(_expiryTasks.ToArray()).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -472,7 +475,7 @@ public sealed class DungeonPrototypeHost : IAsyncDisposable
 
     private void ScheduleReconnectExpiry(PlayerId playerId, DateTimeOffset reconnectUntil)
     {
-        _ = RetirePlayerAfterReconnectExpiryAsync(playerId, reconnectUntil, _stopSource.Token);
+        _expiryTasks.Add(RetirePlayerAfterReconnectExpiryAsync(playerId, reconnectUntil, _stopSource.Token));
     }
 
     private async Task RetirePlayerAfterReconnectExpiryAsync(
