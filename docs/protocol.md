@@ -6,7 +6,7 @@ The canonical compatibility examples live in `protocol/fixtures/`. Consumers mus
 
 ## Envelope
 
-Every infrastructure message uses this shape:
+Every gameplay/session infrastructure message uses this shape:
 
 ```json
 {
@@ -53,7 +53,7 @@ Resume rejection codes are stable strings:
 
 ## Infrastructure message types
 
-Version 1 reserves these generic message types:
+Version 1 reserves these generic gameplay/session message types:
 
 - `session.join.request`
 - `session.join.accepted`
@@ -75,6 +75,52 @@ A heartbeat carries the room identifier and the last authoritative snapshot sequ
 A rejoin request carries the stable `playerId`, the opaque reconnect token and the last snapshot sequence already observed by the client. The token authenticates ownership of the existing player slot; it is not a connection identifier.
 
 The authority stores only a one-way fingerprint of the reconnect credential. After a successful rejoin it responds with `session.rejoin.accepted` and then sends the newest applicable `state.snapshot`. Historical snapshot replay is not required. Terminal resume failures use `session.rejoin.rejected` with one of the stable codes above.
+
+## Portable join descriptor
+
+Connection/bootstrap data is represented by a language-neutral `JoinDescriptor` with exactly these fields:
+
+```json
+{
+  "protocolVersion": 1,
+  "roomId": "room-001",
+  "joinCode": "ROOM42",
+  "transport": "lan-websocket",
+  "endpoint": "ws://192.168.1.20:5042/partygamekit"
+}
+```
+
+The descriptor is intentionally not a CLR-specific object contract. It can be serialized as canonical compact JSON or as the deterministic QR/deep-link URI:
+
+```text
+partygamekit://join?protocolVersion=1&roomId=room-001&joinCode=ROOM42&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.20%3A5042%2Fpartygamekit
+```
+
+Required fields are `protocolVersion`, `roomId`, `joinCode`, `transport` and an absolute `endpoint`. The descriptor contains no reconnect token, player-private state or game-specific data.
+
+For direct LAN WebSocket, `transport` is `lan-websocket` and `endpoint` uses `ws` or `wss`. Later transports may define their own transport name and endpoint form while preserving the generic descriptor boundary.
+
+## Discovery announcement
+
+LAN discovery is separate from the gameplay/session envelope. Its compact UDP payload is:
+
+```json
+{
+  "type": "session.discovery.announce",
+  "protocolVersion": 1,
+  "descriptor": {
+    "protocolVersion": 1,
+    "roomId": "room-001",
+    "joinCode": "ROOM42",
+    "transport": "lan-websocket",
+    "endpoint": "ws://192.168.1.20:5042/partygamekit"
+  }
+}
+```
+
+`session.discovery.announce` is an unauthenticated LAN hint, not a game-state message and not a membership action. Receivers reject incompatible protocol versions. Duplicate announcements refresh the registry entry identified by stable `RoomId`; they do not create additional logical rooms.
+
+Canonical fixtures are `join-descriptor.json` and `discovery-announcement.json`.
 
 ## Version mismatch
 
