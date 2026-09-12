@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Direct LAN WebSocket transport for PartyGameKit.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
+    <ProjectReference Include="../PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
+    <ProjectReference Include="../PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj" />
+  </ItemGroup>
+</Project>

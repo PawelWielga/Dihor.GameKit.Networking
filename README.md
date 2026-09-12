@@ -48,7 +48,7 @@ session / authority
         ├── versioned protocol + snapshots
         │
         └── transport abstraction
-                ├── LAN
+                ├── LAN WebSocket
                 ├── SignalR / cloud later
                 └── WebRTC later
 ```
@@ -65,16 +65,16 @@ A NuGet package is not treated as the cross-language contract, and game engines 
 
 See [Extraction from Państwa Miasta](docs/extraction-from-panstwa-miasta.md) for the full decision and evidence.
 
-## Initial repository shape
-
-The first implementation slice deliberately stays small:
+## Repository shape
 
 ```text
 PartyGameKit/
 ├── src/
 │   ├── PartyGameKit.Core/
 │   ├── PartyGameKit.Protocol/
-│   └── PartyGameKit.Transport.Abstractions/
+│   ├── PartyGameKit.Transport.Abstractions/
+│   ├── PartyGameKit.Transport.InMemory/
+│   └── PartyGameKit.Transport.Lan/
 ├── tests/
 │   ├── PartyGameKit.Core.Tests/
 │   ├── PartyGameKit.Protocol.Tests/
@@ -85,7 +85,7 @@ PartyGameKit/
 └── docs/
 ```
 
-Concrete LAN, Dart and TypeScript packages are added only by the later issues that need them. SignalR and WebRTC are post-v0.1 transports.
+SignalR and WebRTC are post-v0.1 transports.
 
 ## Developer setup
 
@@ -109,7 +109,7 @@ The repository enables nullable reference types, deterministic builds, .NET anal
 
 ## LAN host constraint
 
-The first direct LAN transport will use WebSocket. Its listener must run in a server-capable local runtime such as a .NET/native/desktop/TV process or companion process.
+The direct LAN transport uses WebSocket. Its listener must run in a server-capable local runtime such as a .NET/native/desktop/TV process or companion process.
 
 A pure browser/PWA can be the shared-screen or phone client, but it cannot accept arbitrary inbound WebSocket connections. Pure-browser direct hosting is deferred to a later peer/WebRTC transport.
 
@@ -120,8 +120,11 @@ A pure browser/PWA can be the shared-screen or phone client, but it cannot accep
 - [Wire protocol](docs/protocol.md)
 - [Networking](docs/networking.md)
 - [Game session model](docs/game-session-model.md)
+- [Snapshots](docs/snapshots.md)
+- [Reconnect and presence](docs/reconnect.md)
+- [Direct LAN WebSocket transport](docs/lan-websocket.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Current status
 
-The extraction boundary, .NET 10 infrastructure and versioned language-neutral protocol contracts are in place. Implementation continues strictly in `[NN]` order from the tracker; transport-independent room/player/session lifecycle follows in `[04]`.
+The extraction boundary, .NET 10 infrastructure, language-neutral protocol, room/session lifecycle, generic snapshots, continuity/reconnect and the first direct LAN WebSocket transport are implemented incrementally. Work continues strictly in `[NN]` order from the tracker.
