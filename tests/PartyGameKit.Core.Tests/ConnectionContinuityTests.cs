@@ -7,7 +7,7 @@ public sealed class ConnectionContinuityTests
     private static readonly DateTimeOffset Start = new(2026, 9, 12, 20, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Register_CreatesNeutralPeerAndResumeCredential()
+    public void RegisterCreatesNeutralPeerAndResumeCredential()
     {
         var now = Start;
         var coordinator = CreateCoordinator(() => now, Tokens("token-1"));
@@ -22,7 +22,7 @@ public sealed class ConnectionContinuityTests
     }
 
     [Fact]
-    public void Resume_RebindsReplacementConnectionWithoutDuplicatingPeer()
+    public void ResumeRebindsReplacementConnectionWithoutDuplicatingPeer()
     {
         var now = Start;
         var coordinator = CreateCoordinator(() => now, Tokens("token-1", "token-2"));
@@ -46,7 +46,7 @@ public sealed class ConnectionContinuityTests
     }
 
     [Fact]
-    public void Resume_WithWrongCredential_IsRejectedWithoutChangingBinding()
+    public void ResumeWithWrongCredentialIsRejectedWithoutChangingBinding()
     {
         var now = Start;
         var coordinator = CreateCoordinator(() => now, Tokens("token-1"));
@@ -64,7 +64,7 @@ public sealed class ConnectionContinuityTests
     }
 
     [Fact]
-    public void HeartbeatTimeout_MarksConnectivityLossButKeepsLogicalPeer()
+    public void HeartbeatTimeoutMarksConnectivityLossButKeepsLogicalPeer()
     {
         var now = Start;
         var coordinator = CreateCoordinator(() => now, Tokens("token-1"));
@@ -84,7 +84,7 @@ public sealed class ConnectionContinuityTests
     }
 
     [Fact]
-    public void RecordHeartbeat_ExtendsConnectivityWithoutProductLifecycleSemantics()
+    public void RecordHeartbeatExtendsConnectivityWithoutProductLifecycleSemantics()
     {
         var now = Start;
         var coordinator = CreateCoordinator(() => now, Tokens("token-1"));
@@ -99,7 +99,7 @@ public sealed class ConnectionContinuityTests
     }
 
     [Fact]
-    public void ExpireReconnectWindows_RemovesOnlyExpiredCommunicationIdentity()
+    public void ExpireReconnectWindowsRemovesOnlyExpiredCommunicationIdentity()
     {
         var now = Start;
         var coordinator = CreateCoordinator(() => now, Tokens("token-1"));

@@ -6,7 +6,7 @@ namespace PartyGameKit.Protocol.Tests;
 public sealed class ConnectionDescriptorProtocolTests
 {
     [Fact]
-    public void Descriptor_RoundTripsThroughJsonAndUri()
+    public void DescriptorRoundTripsThroughJsonAndUri()
     {
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",
@@ -25,7 +25,7 @@ public sealed class ConnectionDescriptorProtocolTests
     }
 
     [Fact]
-    public void Descriptor_CanOmitRoutingScope()
+    public void DescriptorCanOmitRoutingScope()
     {
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",
@@ -40,7 +40,7 @@ public sealed class ConnectionDescriptorProtocolTests
     }
 
     [Fact]
-    public void DiscoveryAnnouncement_RoundTripsTechnicalEndpoint()
+    public void DiscoveryAnnouncementRoundTripsTechnicalEndpoint()
     {
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",

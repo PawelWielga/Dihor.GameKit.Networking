@@ -8,29 +8,29 @@ namespace PartyGameKit.Transport.Tests;
 public sealed class InMemoryTransportTests
 {
     [Fact]
-    public async Task GenericPeers_CanExchangeTargetedAndBroadcastPayloads()
+    public async Task GenericPeersCanExchangeTargetedAndBroadcastPayloads()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var transport = new InMemoryTransport();
-        await using var peerA = await transport.OpenConnectionAsync(new ConnectionId("connection-a"));
-        await using var peerB = await transport.OpenConnectionAsync(new ConnectionId("connection-b"));
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await using var events = transport.ReadEventsAsync(timeout.Token).GetAsyncEnumerator();
+        await using var peerA = await transport.OpenConnectionAsync(new ConnectionId("connection-a"), cancellationToken);
+        await using var peerB = await transport.OpenConnectionAsync(new ConnectionId("connection-b"), cancellationToken);
+        await using var events = transport.ReadEventsAsync(cancellationToken).GetAsyncEnumerator();
 
         Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
         Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
 
-        await peerA.SendAsync(Bytes("from-a"), timeout.Token);
+        await peerA.SendAsync(Bytes("from-a"), cancellationToken);
         var incoming = Assert.IsType<TransportMessageReceived>(await NextAsync(events));
         Assert.Equal(new ConnectionId("connection-a"), incoming.ConnectionId);
         Assert.Equal("from-a", Text(incoming.Payload));
 
-        await transport.SendAsync(new ConnectionId("connection-b"), Bytes("only-b"), timeout.Token);
-        await using var peerBMessages = peerB.ReadMessagesAsync(timeout.Token).GetAsyncEnumerator();
+        await transport.SendAsync(new ConnectionId("connection-b"), Bytes("only-b"), cancellationToken);
+        await using var peerBMessages = peerB.ReadMessagesAsync(cancellationToken).GetAsyncEnumerator();
         Assert.True(await peerBMessages.MoveNextAsync());
         Assert.Equal("only-b", Text(peerBMessages.Current));
 
-        await transport.BroadcastAsync(Bytes("everyone"), timeout.Token);
-        await using var peerAMessages = peerA.ReadMessagesAsync(timeout.Token).GetAsyncEnumerator();
+        await transport.BroadcastAsync(Bytes("everyone"), cancellationToken);
+        await using var peerAMessages = peerA.ReadMessagesAsync(cancellationToken).GetAsyncEnumerator();
         Assert.True(await peerAMessages.MoveNextAsync());
         Assert.Equal("everyone", Text(peerAMessages.Current));
         Assert.True(await peerBMessages.MoveNextAsync());
@@ -38,18 +38,18 @@ public sealed class InMemoryTransportTests
     }
 
     [Fact]
-    public async Task Disconnect_IsConnectionLifecycleOnly()
+    public async Task DisconnectIsConnectionLifecycleOnly()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var transport = new InMemoryTransport();
-        await using var peer = await transport.OpenConnectionAsync(new ConnectionId("connection-a"));
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await using var events = transport.ReadEventsAsync(timeout.Token).GetAsyncEnumerator();
+        await using var peer = await transport.OpenConnectionAsync(new ConnectionId("connection-a"), cancellationToken);
+        await using var events = transport.ReadEventsAsync(cancellationToken).GetAsyncEnumerator();
         await NextAsync(events);
 
         await transport.DisconnectAsync(
             new ConnectionId("connection-a"),
             TransportCloseReason.Timeout,
-            timeout.Token);
+            cancellationToken);
 
         var closed = Assert.IsType<TransportConnectionClosed>(await NextAsync(events));
         Assert.Equal(new ConnectionId("connection-a"), closed.ConnectionId);

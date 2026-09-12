@@ -5,7 +5,7 @@ namespace PartyGameKit.Core.Tests;
 public sealed class IdentityPrimitivesTests
 {
     [Fact]
-    public void CommunicationIdentifiers_TrimValues()
+    public void CommunicationIdentifiersTrimValues()
     {
         Assert.Equal("connection-1", new ConnectionId("  connection-1  ").Value);
         Assert.Equal("peer-1", new PeerId("  peer-1  ").Value);
@@ -15,7 +15,7 @@ public sealed class IdentityPrimitivesTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void CommunicationIdentifiers_RejectBlankValues(string value)
+    public void CommunicationIdentifiersRejectBlankValues(string value)
     {
         Assert.Throws<ArgumentException>(() => new ConnectionId(value));
         Assert.Throws<ArgumentException>(() => new PeerId(value));

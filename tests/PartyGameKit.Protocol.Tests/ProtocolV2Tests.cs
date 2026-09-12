@@ -7,7 +7,7 @@ namespace PartyGameKit.Protocol.Tests;
 public sealed class ProtocolV2Tests
 {
     [Fact]
-    public void ConnectRequest_SerializesNeutralPeerIdentity()
+    public void ConnectRequestSerializesNeutralPeerIdentity()
     {
         var envelope = PartyGameKitMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
@@ -22,7 +22,7 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
-    public void ApplicationMessage_RoundTripsOpaqueConsumerPayload()
+    public void ApplicationMessageRoundTripsOpaqueConsumerPayload()
     {
         using var data = JsonDocument.Parse("{\"value\":42,\"label\":\"consumer-owned\"}");
         var envelope = PartyGameKitMessages.Create(
@@ -42,7 +42,7 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
-    public void ResumeRequest_RoundTripsPeerAndCredentialOnly()
+    public void ResumeRequestRoundTripsPeerAndCredentialOnly()
     {
         var envelope = PartyGameKitMessages.Create(
             ProtocolMessageTypes.ResumeRequest,
@@ -58,7 +58,7 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
-    public void OlderProtocolVersion_IsRejectedDeterministically()
+    public void OlderProtocolVersionIsRejectedDeterministically()
     {
         const string json = "{\"type\":\"connection.connect.request\",\"protocolVersion\":1,\"messageId\":\"old-client\",\"payload\":{}}";
 
@@ -70,7 +70,7 @@ public sealed class ProtocolV2Tests
     }
 
     [Fact]
-    public void ConnectionRejectionCode_UsesStableWireValue()
+    public void ConnectionRejectionCodeUsesStableWireValue()
     {
         var envelope = PartyGameKitMessages.Create(
             ProtocolMessageTypes.ConnectRejected,

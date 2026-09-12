@@ -5,7 +5,7 @@ namespace PartyGameKit.Core.Tests;
 public sealed class ConnectionDescriptorTests
 {
     [Fact]
-    public void Constructor_StoresOnlyTechnicalConnectionData()
+    public void ConstructorStoresOnlyTechnicalConnectionData()
     {
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",
@@ -20,14 +20,14 @@ public sealed class ConnectionDescriptorTests
     }
 
     [Fact]
-    public void Constructor_RejectsRelativeEndpoint()
+    public void ConstructorRejectsRelativeEndpoint()
     {
         Assert.Throws<ArgumentException>(() =>
             new ConnectionDescriptor("lan-websocket", "/partygamekit", 2));
     }
 
     [Fact]
-    public void Constructor_RejectsNonPositiveProtocolVersion()
+    public void ConstructorRejectsNonPositiveProtocolVersion()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new ConnectionDescriptor("lan-websocket", "ws://127.0.0.1:45678/", 0));

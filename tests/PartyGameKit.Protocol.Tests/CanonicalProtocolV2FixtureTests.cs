@@ -10,7 +10,7 @@ public sealed class CanonicalProtocolV2FixtureTests
     [InlineData("v2-resume-request.json", ProtocolMessageTypes.ResumeRequest)]
     [InlineData("v2-heartbeat.json", ProtocolMessageTypes.Heartbeat)]
     [InlineData("v2-application-message.json", ProtocolMessageTypes.ApplicationMessage)]
-    public void ControlAndApplicationFixtures_UseProtocolV2(string fileName, string expectedType)
+    public void ControlAndApplicationFixturesUseProtocolV2(string fileName, string expectedType)
     {
         var json = File.ReadAllText(FixturePath(fileName));
         using var document = JsonDocument.Parse(json);
@@ -21,7 +21,7 @@ public sealed class CanonicalProtocolV2FixtureTests
     }
 
     [Fact]
-    public void ConnectionDescriptorFixture_ParsesWithNeutralCodec()
+    public void ConnectionDescriptorFixtureParsesWithNeutralCodec()
     {
         var json = File.ReadAllText(FixturePath("v2-connection-descriptor.json"));
 
@@ -33,7 +33,7 @@ public sealed class CanonicalProtocolV2FixtureTests
     }
 
     [Fact]
-    public void DiscoveryFixture_ParsesWithNeutralCodec()
+    public void DiscoveryFixtureParsesWithNeutralCodec()
     {
         var json = File.ReadAllText(FixturePath("v2-discovery-announcement.json"));
 

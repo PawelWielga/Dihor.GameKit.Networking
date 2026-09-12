@@ -26,7 +26,7 @@ public sealed class PublicApiBoundaryTests
     ];
 
     [Fact]
-    public void ProductionAssemblies_DoNotExposeLegacyProductSessionApi()
+    public void ProductionAssembliesDoNotExposeLegacyProductSessionApi()
     {
         var assemblies = new[]
         {

@@ -8,13 +8,14 @@ namespace PartyGameKit.Discovery.Tests;
 public sealed class UdpDiscoveryIntegrationTests
 {
     [Fact]
-    public async Task LoopbackDiscovery_FindsTechnicalConnectionDescriptor()
+    public async Task LoopbackDiscoveryFindsTechnicalConnectionDescriptor()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var listener = new UdpLanDiscoveryListener(
             IPAddress.Loopback,
             discoveryPort: 0,
             cleanupInterval: TimeSpan.FromMilliseconds(100));
-        await listener.StartAsync();
+        await listener.StartAsync(cancellationToken);
 
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",
@@ -26,10 +27,9 @@ public sealed class UdpDiscoveryIntegrationTests
             listener.BoundPort,
             interval: TimeSpan.FromMilliseconds(50),
             targetAddresses: [IPAddress.Loopback]);
-        await advertiser.StartAsync();
+        await advertiser.StartAsync(cancellationToken);
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await using var changes = listener.ReadChangesAsync(timeout.Token).GetAsyncEnumerator();
+        await using var changes = listener.ReadChangesAsync(cancellationToken).GetAsyncEnumerator();
         DiscoveredEndpoint? found = null;
         while (await changes.MoveNextAsync())
         {
@@ -45,7 +45,7 @@ public sealed class UdpDiscoveryIntegrationTests
     }
 
     [Fact]
-    public void DirectDescriptor_DoesNotRequireDiscovery()
+    public void DirectDescriptorDoesNotRequireDiscovery()
     {
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",

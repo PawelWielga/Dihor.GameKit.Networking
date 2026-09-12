@@ -5,7 +5,7 @@ namespace PartyGameKit.Core.Tests;
 public sealed class MessageOrderingTests
 {
     [Fact]
-    public void SequenceGate_RejectsDuplicateAndStaleMessages()
+    public void SequenceGateRejectsDuplicateAndStaleMessages()
     {
         var gate = new SequenceGate();
 
@@ -17,7 +17,7 @@ public sealed class MessageOrderingTests
     }
 
     [Fact]
-    public void SequenceGate_Reset_AllowsNewSequenceStream()
+    public void SequenceGateResetAllowsNewSequenceStream()
     {
         var gate = new SequenceGate();
         gate.TryAccept(new MessageSequence(10));
@@ -29,7 +29,7 @@ public sealed class MessageOrderingTests
     }
 
     [Fact]
-    public void MessageSequence_RejectsNonPositiveValues()
+    public void MessageSequenceRejectsNonPositiveValues()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new MessageSequence(0));
         Assert.Throws<ArgumentOutOfRangeException>(() => new MessageSequence(-1));

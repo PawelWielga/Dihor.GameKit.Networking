@@ -9,8 +9,9 @@ namespace PartyGameKit.Transport.Tests;
 public sealed class ReconnectIntegrationTests
 {
     [Fact]
-    public async Task ReplacementLanConnection_ResumesSameLogicalPeerWithoutDuplicate()
+    public async Task ReplacementLanConnectionResumesSameLogicalPeerWithoutDuplicate()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var now = new DateTimeOffset(2026, 9, 12, 20, 0, 0, TimeSpan.Zero);
         var tokens = new Queue<string>(["token-1", "token-2"]);
         var continuity = new ConnectionContinuityCoordinator(
@@ -22,9 +23,9 @@ public sealed class ReconnectIntegrationTests
         var peerId = new PeerId("peer-a");
 
         await using var transport = await LanWebSocketTransport.StartAsync(
-            new LanWebSocketHostOptions(IPAddress.Loopback, port: 0));
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
-        await using var events = transport.ReadEventsAsync(timeout.Token).GetAsyncEnumerator();
+            new LanWebSocketHostOptions(IPAddress.Loopback, port: 0),
+            cancellationToken: cancellationToken);
+        await using var events = transport.ReadEventsAsync(cancellationToken).GetAsyncEnumerator();
 
         var connectHandshake = ProtocolJson.Serialize(PartyGameKitMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
@@ -33,7 +34,7 @@ public sealed class ReconnectIntegrationTests
         var firstClient = await LanWebSocketClient.ConnectAsync(
             transport.CreateClientUri("127.0.0.1"),
             connectHandshake,
-            cancellationToken: timeout.Token);
+            cancellationToken: cancellationToken);
         var firstOpened = Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
         Assert.IsType<TransportMessageReceived>(await NextAsync(events));
         var registered = continuity.Register(peerId, firstOpened.ConnectionId);
@@ -52,7 +53,7 @@ public sealed class ReconnectIntegrationTests
         await using var replacementClient = await LanWebSocketClient.ConnectAsync(
             transport.CreateClientUri("127.0.0.1"),
             resumeHandshake,
-            cancellationToken: timeout.Token);
+            cancellationToken: cancellationToken);
         var replacementOpened = Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
         Assert.IsType<TransportMessageReceived>(await NextAsync(events));
         var resumed = continuity.Resume(peerId, registered.ResumeToken!, replacementOpened.ConnectionId);

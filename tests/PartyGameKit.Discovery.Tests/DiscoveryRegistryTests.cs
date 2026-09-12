@@ -8,7 +8,7 @@ namespace PartyGameKit.Discovery.Tests;
 public sealed class DiscoveryRegistryTests
 {
     [Fact]
-    public void Upsert_WithChannel_RefreshesSameTechnicalEndpointIdentity()
+    public void UpsertWithChannelRefreshesSameTechnicalEndpointIdentity()
     {
         var now = new DateTimeOffset(2026, 9, 12, 20, 0, 0, TimeSpan.Zero);
         var registry = new DiscoveredEndpointRegistry(
@@ -27,7 +27,7 @@ public sealed class DiscoveryRegistryTests
     }
 
     [Fact]
-    public void Registry_WithoutChannel_KeepsIndependentEndpoints()
+    public void RegistryWithoutChannelKeepsIndependentEndpoints()
     {
         var registry = new DiscoveredEndpointRegistry();
 
@@ -38,7 +38,7 @@ public sealed class DiscoveryRegistryTests
     }
 
     [Fact]
-    public void ExpireInactive_RemovesStaleAdvertisement()
+    public void ExpireInactiveRemovesStaleAdvertisement()
     {
         var now = new DateTimeOffset(2026, 9, 12, 20, 0, 0, TimeSpan.Zero);
         var registry = new DiscoveredEndpointRegistry(

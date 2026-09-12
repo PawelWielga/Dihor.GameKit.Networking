@@ -5,7 +5,7 @@ namespace PartyGameKit.Core.Tests;
 public sealed class BootstrapTests
 {
     [Fact]
-    public void CoreAssembly_ExposesNeutralConnectionPrimitive()
+    public void CoreAssemblyExposesNeutralConnectionPrimitive()
     {
         var connectionId = new ConnectionId("connection-1");
 
