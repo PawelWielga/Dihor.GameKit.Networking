@@ -30,8 +30,12 @@
     "party-game",
     "multiplayer",
     "shared-screen",
-    "websocket"
+    "websocket",
+    "signalr"
   ],
+  "dependencies": {
+    "@microsoft/signalr": "^10.0.11"
+  },
   "devDependencies": {
     "typescript": "^5.8.3"
   },
