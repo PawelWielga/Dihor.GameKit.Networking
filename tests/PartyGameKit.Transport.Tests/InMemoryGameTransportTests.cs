@@ -165,6 +165,39 @@ public sealed class InMemoryGameTransportTests
     }
 
     [Fact]
+    public async Task StalePeerCannotSendOrCloseReplacementWithReusedConnectionId()
+    {
+        await using var transport = new InMemoryGameTransport();
+        var connectionId = new ConnectionId("connection-1");
+        var stalePeer = await transport.OpenConnectionAsync(
+            connectionId, TestContext.Current.CancellationToken);
+
+        await transport.DisconnectAsync(
+            connectionId,
+            TransportCloseReason.Replaced,
+            TestContext.Current.CancellationToken);
+
+        await using var replacement = await transport.OpenConnectionAsync(
+            connectionId, TestContext.Current.CancellationToken);
+        await using var replacementMessages = replacement
+            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
+
+        var staleSend = await Assert.ThrowsAsync<PartyGameTransportException>(
+            async () => await stalePeer.SendAsync(
+                Bytes("stale"), TestContext.Current.CancellationToken));
+        Assert.Equal(TransportErrorCode.ConnectionNotFound, staleSend.Error.Code);
+
+        await stalePeer.DisposeAsync();
+        await transport.SendAsync(
+            connectionId,
+            Bytes("replacement-alive"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("replacement-alive", Text(await NextMessageAsync(replacementMessages)));
+    }
+
+    [Fact]
     public async Task CoreSessionCanRouteToTheCurrentConnectionWithoutTransportKnowingPlayerIdentity()
     {
         var session = new RoomSession(
