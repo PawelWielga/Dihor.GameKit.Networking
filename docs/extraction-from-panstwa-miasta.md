@@ -305,6 +305,21 @@ Validation happens incrementally:
 
 This gives real cross-language compatibility without attempting to consume NuGet from Flutter or copy the Countries & Cities engine into PartyGameKit.
 
+### `[10]` validation result
+
+The plan above was implemented without changing the extraction boundary:
+
+- `interop/dart` is a minimal pure-Dart conformance package. Its tests open the canonical files in `protocol/fixtures` directly, so there is no second copied fixture set that could silently drift.
+- Dart validates PartyGameKit protocol v1 envelope/version admission, stable `playerId` versus transient `connectionId`, reconnect metadata, snapshot targets and strictly-newer sequence ordering, plus the deterministic `JoinDescriptor` JSON/URI and discovery announcement.
+- the existing `panstwa-miasta` application keeps its historic LAN protocol v3. Its version number is not rewritten to `1`; protocol versions belong to separate wire contracts.
+- `panstwa-miasta` compatibility PR `PawelWielga/panstwa-miasta#561` exercises the production `InMemoryLocalLanClientIdentityStore`, reconnect credential store/messages and `LocalLanSnapshotPublisher` to prove the same reusable identity/reconnect/stale-snapshot semantics.
+- the existing game's reconnect credential remains local/private profile data and is not serialized by `PlayerProfile.toJson()`; PartyGameKit likewise keeps reconnect credentials out of public/shared projections.
+- `CountriesCitiesGameEngine`, `GameStateSnapshot` game payload details, categories, answers, rounds, voting, scoring, Flutter state management, Android services and product UI remain entirely in `panstwa-miasta`.
+
+What was **reused as behavior**: stable identity, reconnect ownership/progress, host-authoritative latest-state restoration, monotonically increasing snapshots, stale/equal rejection, discovery/direct-join separation.
+
+What was **not copied as framework API**: the Dart transport class hierarchy, Flutter controllers/stores, the legacy LAN v3 message shapes, Countries & Cities snapshot payloads and all game rules. The Dart conformance package exists only to implement and test the new language-neutral PartyGameKit v1 boundary.
+
 ## v0.1 non-goals
 
 The following are explicitly outside the v0.1 foundation unless a later `[01]`-`[14]` issue says otherwise:
