@@ -2,111 +2,95 @@
 
 ## Purpose
 
-PartyGameKit provides reusable multiplayer infrastructure for games where one device may act as a shared screen while phones act as controllers or private player screens.
+PartyGameKit is a reusable communication/networking layer for multiplayer applications. It is intentionally below PartyBeam, Państwa Miasta and future products.
 
-The central architectural rule is that **game logic is transport-agnostic**.
-
-A game must not know whether communication uses local WebSocket, SignalR, WebRTC, an in-memory test transport or another future adapter.
-
-The extraction boundary and cross-language decision are documented in [Extraction from Państwa Miasta](extraction-from-panstwa-miasta.md).
-
-## High-level model
+The authoritative boundary decision is [Communication boundary](communication-boundary.md).
 
 ```text
-Game-owned rules/state
-        │
-        ▼
-Session / authority orchestration
-        │
-        ├── versioned protocol + snapshots
-        │
-        └── transport abstraction
+PartyBeam / Państwa Miasta / future multiplayer products
                 │
-                ├── in-memory tests
-                ├── LAN WebSocket
-                ├── SignalR later
-                └── WebRTC later
+                │ product roles, players, parties, authority,
+                │ state, game lifecycle and rules
+                ▼
+          PartyGameKit
+      communication/networking
+                │
+        transports + discovery
+                │
+     LAN / SignalR / WebRTC
 ```
 
-Display, host, authority, player identity and network connection are related but distinct concepts.
+The central architectural rule is:
 
-A common local topology may place the authority on the same machine as the shared screen, but the generic model must not require that coincidence.
+> PartyGameKit moves messages and maintains communication continuity. Consumers decide what those messages and connected peers mean.
 
-## Layers
+## Target layers
 
-### PartyGameKit.Core
+### Communication identities and control protocol
 
-Contains reusable multiplayer/session domain behavior only.
+PartyGameKit may define only identities required by communication itself:
 
-Expected v0.1 responsibilities are justified by current Państwa Miasta behavior:
+- transient `ConnectionId`;
+- optional stable neutral peer identity for resume/reconnect;
+- optional neutral routing scope if a transport needs isolation.
 
-- room/session identity and lifecycle;
-- stable `PlayerId`;
-- transient connection binding without treating `ConnectionId` as player identity;
-- player admission, capacity, leave, disconnect and rejoin semantics;
-- logical host/authority identity;
-- participant/client roles where a non-player shared screen must be represented;
-- deterministic lifecycle results/events needed by orchestration.
+These identities must not imply player, host, TV, controller, spectator, party or game-session semantics.
 
-Core must not reference SignalR, WebRTC, HTTP, sockets, IP addresses, ports, UDP, Flutter, Android, React or a concrete game.
+The language-neutral control protocol owns:
 
-Core also must not contain game concepts such as categories, answers, letters, monsters, loot, tiles, attacks or a concrete game's phase enum.
+- protocol version and compatibility;
+- connection handshake/version validation;
+- heartbeat/connectivity messages;
+- neutral resume request/accept/reject;
+- message identifiers/correlation metadata;
+- opaque application payload transport.
 
-Automatic host migration is **not** part of the v0.1 Core contract. Host loss may be represented, but the production reference does not yet prove a portable host-transfer policy.
+Application messages are consumer-owned. PartyGameKit must not require a game/session schema.
 
-### PartyGameKit.Protocol
+### Transport abstractions
 
-Defines the language-neutral wire contract shared by C#, Dart and TypeScript implementations.
+Transport abstractions own technology-neutral communication operations:
 
-Responsibilities include only infrastructure-level contracts such as:
+- connection opened/closed/faulted events;
+- receive message events;
+- targeted send;
+- broadcast/multicast where supported;
+- disconnect, stop, cancellation and disposal;
+- transport-neutral errors and diagnostics.
 
-- protocol version;
-- stable serialized names;
-- identity primitives;
-- client role;
-- join/accept/reject/leave/rejoin messages;
-- heartbeat/presence metadata;
-- snapshot envelope/sequence metadata;
-- portable join-descriptor data when introduced by the LAN roadmap;
-- a generic application/game payload boundary without understanding payload meaning.
+The current `IGameTransport` capability is valid but the name is too product-specific. Issue `[16]` will neutralize this vocabulary and remove any dependency on session/player Core types.
 
-Canonical JSON fixtures under `protocol/fixtures/` are the compatibility source of truth. CLR serialization behavior is not the specification.
+### Concrete transports
 
-Game-specific messages are defined by the consuming game and may be carried through a generic envelope without PartyGameKit interpreting them.
+Concrete adapters remain separate packages:
 
-### PartyGameKit.Transport.Abstractions
+- in-memory reference/test transport;
+- direct LAN WebSocket transport;
+- later optional SignalR/backend relay;
+- later optional WebRTC DataChannel transport;
+- later automatic selection/fallback above individually reliable transports.
 
-Defines the minimum technology-neutral communication contracts required by session orchestration.
+Adding a transport must never add player/session/authority semantics to base APIs.
 
-The API will be introduced only after the lifecycle/protocol behavior that uses it is concrete. It must not leak WebSocket, SignalR, WebRTC or platform socket types.
+### Discovery and connection descriptors
 
-The existing Państwa Miasta transport interface is evidence that this separation works, but PartyGameKit does not copy that Dart API verbatim because the current transport also exposes room/player concepts that belong in the session model.
+Discovery advertises technical connection endpoints/services. It is separate from message transport.
 
-### Transport implementations
+A neutral connection descriptor may contain only data required to establish communication, for example transport kind, endpoint, protocol version and optional routing scope.
 
-Concrete adapters are added incrementally after their abstractions are proven:
-
-- `PartyGameKit.Transport.Lan` for direct LAN WebSocket;
-- SignalR only in the post-v0.1 backend issue;
-- WebRTC only after SignalR/signaling support exists and a latency-sensitive sample requires it.
-
-Transport packages implement the shared abstractions and never define game rules.
+Product invitation concepts such as party join code, game id, display name or QR presentation belong to the consumer. PartyBeam may wrap a PartyGameKit connection descriptor inside its own invite payload.
 
 ### Client SDKs
 
-Dart and TypeScript clients implement the same wire protocol rather than consuming CLR types.
+TypeScript and Dart SDKs implement the same communication contract as C#.
 
-Planned roles:
+The base SDKs may expose connect/disconnect/send/receive/resume, connection state, protocol compatibility and descriptor parsing. They must not require PartyBeam roles or player/game-state projections.
 
-- Dart compatibility adapter for the existing Państwa Miasta application;
-- TypeScript browser SDK for PartyBeam phones and shared screens;
-- framework-specific UI adapters only if concrete product use proves they are useful.
-
-React, Flutter state management and platform persistence are not Core concerns.
+Framework UI/state-management concerns remain outside PartyGameKit.
 
 ## Cross-language boundary
 
-The v0.1 interoperability model is deliberately small:
+The compatibility model remains:
 
 ```text
 canonical JSON fixtures + documented version rules
@@ -116,146 +100,86 @@ canonical JSON fixtures + documented version rules
        C#           Dart      TypeScript
 ```
 
-Each language has thin local models/parsers and tests the exact same fixture files.
+The fixtures specify the PartyGameKit communication contract. Consumer/game protocols may be independently versioned by their owners.
 
-This avoids two bad alternatives:
+## Identity and reconnect
 
-1. pretending Flutter can directly consume a NuGet package;
-2. duplicating the entire game/session engine in multiple languages.
-
-Generated schemas/code can be reconsidered later if maintaining the small explicit contract becomes a real problem.
-
-## Authority
-
-Authority is a logical session concern, not a property of a socket.
-
-The current Państwa Miasta behavior is host-authoritative: clients send intent and the host owns canonical game state. PartyGameKit preserves that semantic while keeping authority identity independent from the active transport connection.
-
-A reconnect may attach a new `ConnectionId` to the same stable player/session identity without changing who the logical participant is.
-
-Future deployments may use:
+Reconnect is a communication concern only when expressed neutrally:
 
 ```text
-local companion/TV process = authority
-browser TV                  = shared-screen client
+ConnectionId = current transport connection
+PeerId       = optional stable logical communication identity
 ```
 
-or later:
+A reconnect credential may prove that a new connection can resume the same `PeerId`.
+
+PartyGameKit may then rebind the replacement connection and report connectivity state. It must not decide whether that peer is a player, whether it occupies a slot, whether a game pauses or whether the participant should be removed.
+
+## Routing scope
+
+If a routing identifier is needed, it is a technical `ChannelId`/`ScopeId`-like concept, not a game session.
+
+It may isolate delivery but does not own:
+
+- lifecycle;
+- player membership;
+- capacity;
+- roles;
+- authority;
+- score;
+- game phase.
+
+Current `RoomId` is retained only if `[16]` can justify it as this neutral routing concept; otherwise it moves to consumers.
+
+## Ordering and snapshots
+
+Monotonic ordering/deduplication can be a generic optional utility.
+
+Game snapshot semantics are not base PartyGameKit responsibilities. Current public/private player projections, authority-bound snapshot publication and game-state restoration move to consumers.
+
+Państwa Miasta may continue to publish its own authoritative game snapshots as opaque application messages and use a neutral sequence helper to reject stale payloads.
+
+## Consumer examples
+
+PartyBeam may choose:
 
 ```text
-backend = authority
-TV      = shared-screen client
+TV/companion = product coordinator
+a phone      = controller/player
+pilot        = privileged product control surface
 ```
 
-The game code should not change because the authority is reached over a different transport.
-
-## Game-owned commands and state
-
-PartyGameKit standardizes only infrastructure messages needed to establish and maintain a session.
-
-A concrete game owns its action vocabulary and state schema. For example, one game may define typed-answer actions while another defines movement/combat actions. These concepts must not become PartyGameKit Core APIs.
-
-Conceptually:
+Another product may choose:
 
 ```text
-controller intent (game-owned payload)
-             │
-             ▼
-        game authority
-             │
-             ▼
-        game-owned rules
-             │
-             ▼
-authoritative game state/projection
-             │
-             ▼
-PartyGameKit snapshot envelope + transport
+dedicated server = authority
+browser clients  = collaborators
+no players at all
 ```
 
-PartyGameKit may route, correlate, target and sequence opaque application payloads. It does not validate their game meaning.
-
-## Public and private projections
-
-Shared-screen games need different views of one authoritative game state.
-
-PartyGameKit owns targeting/delivery semantics, not the content:
-
-```text
-game-owned canonical state
-          │
-          ├── game builds public/shared-screen payload
-          ├── game builds private payload for Player A
-          └── game builds private payload for Player B
-                         │
-                         ▼
-              generic snapshot metadata
-```
-
-This prevents the framework from knowing cards, inventory, answers or other hidden mechanics while still making it possible to avoid broadcasting private data to every client.
-
-## Player and connection identity
-
-A stable player identity must survive temporary connection loss.
-
-```text
-PlayerId      = stable identity inside the session
-ConnectionId  = current transient network connection
-```
-
-A dropped connection marks presence/disconnect state. It does not automatically perform a permanent leave or erase game-owned state.
-
-Reconnect rebinds a new connection to the existing player after ownership is validated. A reconnect credential is separate from both public player identity and the network connection.
+Both must use the same PartyGameKit base APIs without changing the library.
 
 ## LAN host constraint
 
-The first backend-free LAN implementation uses a WebSocket listener. Therefore its authority host must run in a server-capable runtime such as a .NET/native/desktop/TV process or local companion process.
+The direct LAN WebSocket listener requires a server-capable runtime. A browser can initiate WebSocket connections but cannot be the raw inbound WebSocket listener.
 
-A pure browser/PWA can initiate WebSocket connections but cannot act as that listener. A browser can still be the PartyBeam shared-screen client.
+This is a transport capability constraint, not a reason to model `Host` or `SharedScreen` in PartyGameKit.
 
-Pure-browser direct hosting belongs to a later peer-transport/WebRTC design, not the v0.1 LAN WebSocket contract.
+## Historical v0.1 implementation
 
-## Reuse boundary
+`0.1.0-preview.1` included `RoomSession`, `PlayerId`, `ClientRole`, `AuthorityId`, player capacity/admission, session continuity tied to players, and public/private snapshots.
 
-The reusable behavior proven in Państwa Miasta includes:
+Those APIs were useful validation scaffolding but crossed the correct ownership boundary. Issues `[15]`–`[17]` deliberately break that preview model.
 
-- room/session lifecycle;
-- stable player identity;
-- explicit join/leave;
-- disconnect distinct from leave;
-- reconnect without duplicate players;
-- host-authoritative state;
-- heartbeat and timeout policy;
-- monotonic snapshot sequencing and stale rejection;
-- LAN discovery separated from gameplay transport;
-- backend-free local transport.
+See [Public API classification](public-api.md) for the per-abstraction decision and [Package boundaries](packages.md) for the intended package direction.
 
-It does **not** justify copying:
+## Architecture invariant
 
-- `LocalLanGameController` as a giant framework facade;
-- `CountriesCitiesGameEngine` or its models;
-- Flutter `ChangeNotifier`/SharedPreferences abstractions;
-- Android foreground services;
-- the current mixed Countries & Cities snapshot schema;
-- experimental automatic host migration.
+A minimal PartyGameKit consumer must be able to:
 
-## Initial package strategy
-
-Issue `[02]` should bootstrap only:
-
-```text
-src/
-├── PartyGameKit.Core/
-├── PartyGameKit.Protocol/
-└── PartyGameKit.Transport.Abstractions/
-
-tests/
-├── PartyGameKit.Core.Tests/
-├── PartyGameKit.Protocol.Tests/
-└── PartyGameKit.Transport.Tests/
-
-protocol/
-└── fixtures/
-```
-
-Concrete LAN, Dart and TypeScript packages arrive in the later issues that actually need them. NuGet/npm/Dart prerelease packaging is stabilized only after both the shared-screen sample and dungeon validation pass.
+1. connect two generic clients;
+2. exchange opaque messages;
+3. target or broadcast messages;
+4. detect disconnect/timeout;
+5. resume the same neutral logical peer on a replacement connection when configured;
+6. do all of the above without defining `Player`, `Host`, `SharedScreen`, lobby, score or game state.
