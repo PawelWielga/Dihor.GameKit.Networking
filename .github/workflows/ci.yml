@@ -34,15 +34,12 @@ jobs:
         run: dotnet test PartyGameKit.slnx --configuration Release --no-build
 
       - name: Pack NuGet prerelease artifacts
-        run: |
-          mkdir -p artifacts/nuget
-          dotnet pack PartyGameKit.slnx --configuration Release --no-build --output artifacts/nuget
+        run: bash eng/pack-dotnet.sh artifacts/nuget
 
       - name: Restore packaged consumer from local NuGet feed
         run: >-
           dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj
           --source "$PWD/artifacts/nuget"
-          --source https://api.nuget.org/v3/index.json
 
       - name: Build and run packaged consumer
         run: |
