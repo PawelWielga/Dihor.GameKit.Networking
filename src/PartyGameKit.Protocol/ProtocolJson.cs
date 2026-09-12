@@ -125,6 +125,11 @@ public static class ProtocolJson
     {
         public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
+            if (reader.TokenType != JsonTokenType.String)
+            {
+                throw new JsonException($"{typeof(T).Name} must be a string.");
+            }
+
             var value = reader.GetString();
             if (value is null)
             {
@@ -157,6 +162,11 @@ public static class ProtocolJson
     {
         public override ClientRole Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
+            if (reader.TokenType != JsonTokenType.String)
+            {
+                throw new JsonException("Client role must be a string.");
+            }
+
             return reader.GetString() switch
             {
                 "host" => ClientRole.Host,
@@ -182,6 +192,11 @@ public static class ProtocolJson
     {
         public override JoinRejectionCode Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
+            if (reader.TokenType != JsonTokenType.String)
+            {
+                throw new JsonException("Join rejection code must be a string.");
+            }
+
             return reader.GetString() switch
             {
                 "room-not-found" => JoinRejectionCode.RoomNotFound,
