@@ -10,6 +10,7 @@ projects=(
   "src/PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj"
   "src/PartyGameKit.Transport.InMemory/PartyGameKit.Transport.InMemory.csproj"
   "src/PartyGameKit.Transport.Lan/PartyGameKit.Transport.Lan.csproj"
+  "src/PartyGameKit.Transport.SignalR/PartyGameKit.Transport.SignalR.csproj"
   "src/PartyGameKit.Discovery.Lan/PartyGameKit.Discovery.Lan.csproj"
 )
 
