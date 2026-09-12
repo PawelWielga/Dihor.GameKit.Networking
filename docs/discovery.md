@@ -1,48 +1,71 @@
-# LAN discovery and join descriptors
+# LAN discovery and connection descriptors
 
-Discovery is a convenience layer, not a gameplay transport. PartyGameKit can connect directly from a valid join descriptor even when UDP discovery is blocked or disabled.
+LAN discovery remains PartyGameKit infrastructure, but it discovers **technical connection endpoints/services**, not product game sessions.
 
-## JoinDescriptor
+See [Communication boundary](communication-boundary.md).
 
-`JoinDescriptor` is the portable connection contract. Core owns only generic data:
+## Separation of concerns
 
-- stable `RoomId`;
-- `JoinCode`;
-- transport name;
-- absolute endpoint URI as data;
-- protocol version.
+```text
+LAN discovery
+    │ finds technical endpoint/descriptor
+    ▼
+connection descriptor
+    │
+    ▼
+transport connect
+    │
+    ▼
+opaque consumer messages
+```
 
-Core does not import WebSocket, IP address, port or UDP types. `PartyGameKit.Transport.Lan` provides `LanJoinDescriptor.Create(...)` and `GetEndpointUri(...)` for the `lan-websocket` transport.
+Discovery never carries authoritative game state and is not required for direct connection.
 
-The descriptor has three deterministic representations:
+## Target discovery data
 
-- canonical compact JSON for cross-language fixtures;
-- `partygamekit://join?...` URI for QR/deep-link payloads;
-- text form, currently identical to the URI form. The parser also accepts canonical JSON for paste/manual workflows.
+A PartyGameKit discovery announcement may contain only communication metadata such as:
 
-QR image rendering belongs to product/UI code. PartyGameKit provides only the payload.
+- protocol version;
+- transport kind;
+- endpoint/address/port;
+- optional neutral routing scope;
+- expiry/refresh identity required to deduplicate advertisements;
+- transport capability metadata when justified.
 
-## UDP discovery
+Product metadata such as party name, player count, game phase, selected game, join policy or player capacity belongs to the consumer. A consumer may advertise that separately or wrap PartyGameKit discovery data in its own product discovery layer.
 
-`PartyGameKit.Discovery.Lan` implements periodic IPv4 UDP announcements. The wire packet contains only:
+## Connection descriptor
 
-- discovery message type and protocol version;
-- the portable join descriptor.
+The current `JoinDescriptor`/`LanJoinDescriptor` capability remains useful but will be generalized to a technical `ConnectionDescriptor`-style model.
 
-No game state, commands, answers, scores or private player data travel over discovery.
+It should contain only information required to establish communication. Product join codes, invitation UX and QR rendering are consumer responsibilities.
 
-The default discovery port is `45678` and the default announce interval is one second. The advertiser computes actual IPv4 subnet broadcast addresses from interface netmasks where available and keeps `255.255.255.255` as a fallback. Tests can supply explicit unicast targets such as loopback.
+A PartyBeam invite may therefore conceptually contain:
 
-The listener maintains `DiscoveredSessionRegistry`, keyed by stable `RoomId`. Repeated announcements refresh `LastSeenAt` rather than creating duplicates. The default TTL is three seconds; expired sessions are removed independently of the WebSocket transport.
+```text
+PartyBeam invite metadata
+└── PartyGameKit ConnectionDescriptor
+```
 
-## Manual/direct fallback
+## UDP implementation
 
-A manual workflow may construct the same LAN descriptor from known room identity, join code, host/address, port and path. It then connects through `[08]` exactly like a discovered descriptor.
+The current UDP advertiser/listener/broadcast-address resolver are valid LAN infrastructure and remain behind the discovery package.
 
-This is deliberately independent of discovery health. UDP broadcast may be filtered by guest Wi-Fi, AP isolation, OS permissions or local firewall rules while a direct WebSocket endpoint remains reachable.
+`DiscoveredSessionRegistry` is scheduled for neutral naming because discovery does not imply a game/session.
 
-## Security
+## Refresh, dedupe and expiry
 
-Discovery advertisements are unauthenticated hints on a trusted LAN. A malicious local peer can spoof them. The authoritative WebSocket/session handshake remains responsible for validating protocol, room, capacity and reconnect credentials.
+Reusable behavior remains:
 
-Do not place reconnect tokens, private state or secrets in discovery announcements or QR descriptors.
+- repeated advertisement refreshes the same discovered endpoint/service;
+- stable technical identity prevents duplicate entries;
+- stale advertisements expire;
+- discovery can be disabled/blocked without breaking direct connection.
+
+## Failure behavior
+
+Discovery is convenience, not a prerequisite. A valid connection descriptor must still allow direct connection when UDP broadcast is unavailable.
+
+## Historical v0.1 vocabulary
+
+Existing preview payloads use room/session/join-code terminology. Issue `[16]` will replace that vocabulary in production contracts and `[17]` will align TypeScript/Dart fixtures and samples.
