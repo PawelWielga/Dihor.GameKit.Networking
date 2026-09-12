@@ -29,7 +29,11 @@ public sealed class SharedCounterHost : IAsyncDisposable
 {
     public const string IncrementCommandType = "sample.counter.increment";
 
-    private readonly LanWebSocketTransport _transport;
+    private static readonly RoomId CounterRoomId = new("shared-counter-room");
+    private static readonly JoinCode CounterJoinCode = new("COUNT1");
+    private static readonly AuthorityId CounterAuthorityId = new("shared-counter-host");
+
+    private readonly IGameTransport _transport;
     private readonly RoomSession _session;
     private readonly AuthoritativeSnapshotPublisher<SharedCounterPublicState, SharedCounterPlayerState> _publisher;
     private readonly SessionContinuityCoordinator<SharedCounterPublicState, SharedCounterPlayerState> _continuity;
@@ -39,7 +43,7 @@ public sealed class SharedCounterHost : IAsyncDisposable
     private int _disposed;
 
     private SharedCounterHost(
-        LanWebSocketTransport transport,
+        IGameTransport transport,
         RoomSession session,
         AuthoritativeSnapshotPublisher<SharedCounterPublicState, SharedCounterPlayerState> publisher,
         SessionContinuityCoordinator<SharedCounterPublicState, SharedCounterPlayerState> continuity,
@@ -58,6 +62,10 @@ public sealed class SharedCounterHost : IAsyncDisposable
 
     public RoomSession Session => _session;
 
+    public static RoomId RoomId => CounterRoomId;
+
+    public static JoinCode JoinCode => CounterJoinCode;
+
     public static async Task<SharedCounterHost> StartAsync(
         string advertisedHost,
         IPAddress? bindAddress = null,
@@ -65,9 +73,6 @@ public sealed class SharedCounterHost : IAsyncDisposable
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(advertisedHost);
-        var roomId = new RoomId("shared-counter-room");
-        var joinCode = new JoinCode("COUNT1");
-        var authorityId = new AuthorityId("shared-counter-host");
         var transport = await LanWebSocketTransport.StartAsync(
             new LanWebSocketHostOptions(
                 bindAddress ?? IPAddress.Any,
@@ -78,30 +83,54 @@ public sealed class SharedCounterHost : IAsyncDisposable
 
         try
         {
-            var session = new RoomSession(roomId, joinCode, playerCapacity: 8, authorityId);
-            var publisher = new AuthoritativeSnapshotPublisher<SharedCounterPublicState, SharedCounterPlayerState>(roomId);
-            var continuity = new SessionContinuityCoordinator<SharedCounterPublicState, SharedCounterPlayerState>(
-                session,
-                publisher,
-                new SessionContinuityOptions(
-                    hostTimeout: TimeSpan.FromSeconds(30),
-                    clientTimeout: TimeSpan.FromSeconds(30),
-                    reconnectWindow: TimeSpan.FromMinutes(2)));
             var descriptor = new JoinDescriptor(
-                roomId,
-                joinCode,
+                CounterRoomId,
+                CounterJoinCode,
                 "lan-websocket",
                 transport.CreateClientUri(advertisedHost).AbsoluteUri,
                 ProtocolVersions.Current);
-            var host = new SharedCounterHost(transport, session, publisher, continuity, descriptor);
-            host._eventLoop = host.RunEventLoopAsync(host._stopSource.Token);
-            return host;
+            return StartWithTransport(transport, descriptor);
         }
         catch
         {
             await transport.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    public static SharedCounterHost StartWithTransport(
+        IGameTransport transport,
+        JoinDescriptor joinDescriptor,
+        SessionContinuityOptions? continuityOptions = null)
+    {
+        ArgumentNullException.ThrowIfNull(transport);
+        ArgumentNullException.ThrowIfNull(joinDescriptor);
+        if (joinDescriptor.RoomId != CounterRoomId || joinDescriptor.JoinCode != CounterJoinCode)
+        {
+            throw new ArgumentException(
+                $"Shared Counter requires room '{CounterRoomId.Value}' and join code '{CounterJoinCode.Value}'.",
+                nameof(joinDescriptor));
+        }
+
+        if (joinDescriptor.ProtocolVersion != ProtocolVersions.Current)
+        {
+            throw new ArgumentException(
+                $"Shared Counter requires protocol version {ProtocolVersions.Current}.",
+                nameof(joinDescriptor));
+        }
+
+        var session = new RoomSession(CounterRoomId, CounterJoinCode, playerCapacity: 8, CounterAuthorityId);
+        var publisher = new AuthoritativeSnapshotPublisher<SharedCounterPublicState, SharedCounterPlayerState>(CounterRoomId);
+        var continuity = new SessionContinuityCoordinator<SharedCounterPublicState, SharedCounterPlayerState>(
+            session,
+            publisher,
+            continuityOptions ?? new SessionContinuityOptions(
+                hostTimeout: TimeSpan.FromSeconds(30),
+                clientTimeout: TimeSpan.FromSeconds(30),
+                reconnectWindow: TimeSpan.FromMinutes(2)));
+        var host = new SharedCounterHost(transport, session, publisher, continuity, joinDescriptor);
+        host._eventLoop = host.RunEventLoopAsync(host._stopSource.Token);
+        return host;
     }
 
     public async ValueTask DisposeAsync()
@@ -151,7 +180,7 @@ public sealed class SharedCounterHost : IAsyncDisposable
                     }
                     break;
                 case TransportFaulted faulted:
-                    Console.Error.WriteLine($"LAN transport fault: {faulted.Error.Code}: {faulted.Error.Message}");
+                    Console.Error.WriteLine($"Transport fault: {faulted.Error.Code}: {faulted.Error.Message}");
                     break;
             }
         }
@@ -370,15 +399,32 @@ public sealed class SharedCounterHost : IAsyncDisposable
         }
 
         var leave = read.Message.Payload;
-        if (leave.PlayerId is { } playerId)
+        var authenticatedClient = _session.FindClient(connectionId);
+        if (authenticatedClient is null || leave.ConnectionId != connectionId)
         {
-            if (_continuity.LeavePlayer(playerId) == LeavePlayerStatus.Left)
+            return;
+        }
+
+        if (authenticatedClient.Role == ClientRole.Player)
+        {
+            if (authenticatedClient.PlayerId is not { } authenticatedPlayerId ||
+                leave.PlayerId != authenticatedPlayerId)
             {
-                _counts.Remove(playerId);
+                return;
+            }
+
+            if (_continuity.LeavePlayer(authenticatedPlayerId) == LeavePlayerStatus.Left)
+            {
+                _counts.Remove(authenticatedPlayerId);
             }
         }
         else
         {
+            if (leave.PlayerId is not null)
+            {
+                return;
+            }
+
             _continuity.MarkDisconnected(connectionId);
         }
 
