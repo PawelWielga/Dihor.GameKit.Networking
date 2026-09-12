@@ -55,19 +55,14 @@ jobs:
           dotnet test PartyGameKit.slnx --configuration Release --no-build
 
       - name: Pack NuGet artifacts
-        run: |
-          mkdir -p artifacts/nuget
-          dotnet pack PartyGameKit.slnx --configuration Release --no-build \
-            --output artifacts/nuget \
-            -p:Version=${{ steps.version.outputs.version }}
+        run: bash eng/pack-dotnet.sh artifacts/nuget "${{ steps.version.outputs.version }}"
 
       - name: Verify NuGet packages as a fresh consumer
         shell: bash
         run: |
           sed -i "s/0.1.0-preview.1/${{ steps.version.outputs.version }}/g" packaging/consumer/PartyGameKit.PackageConsumer.csproj
           dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj \
-            --source "$PWD/artifacts/nuget" \
-            --source https://api.nuget.org/v3/index.json
+            --source "$PWD/artifacts/nuget"
           dotnet build packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-restore
           dotnet run --project packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-build
 
