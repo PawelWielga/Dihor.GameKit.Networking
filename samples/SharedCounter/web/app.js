@@ -1,4 +1,4 @@
-import { PartyGameClient, parseJoinDescriptor } from "/sdk/index.js";
+import { PartyGameClient, createSignalRSocket, parseJoinDescriptor } from "/sdk/index.js";
 
 const params = new URLSearchParams(location.search);
 const role = params.get("role") === "shared-screen" ? "shared-screen" : "player";
@@ -25,7 +25,10 @@ elements.role.textContent = role === "shared-screen" ? "Shared TV/browser screen
 elements.increment.hidden = role !== "player";
 elements.privatePanel.hidden = role !== "player";
 
-const client = new PartyGameClient({ role });
+const client = new PartyGameClient({
+  role,
+  ...(descriptor.transport === "signalr" ? { webSocketFactory: createSignalRSocket } : {}),
+});
 client.on("state", (state) => {
   elements.status.textContent = state;
   elements.statusDot.classList.toggle("connected", state === "connected");
