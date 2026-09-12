@@ -1,14 +1,13 @@
-using System.Reflection;
+using PartyGameKit.Transport.Abstractions;
 
 namespace PartyGameKit.Transport.Tests;
 
 public sealed class BootstrapTests
 {
     [Fact]
-    public void TransportAbstractionsAssemblyBuildsAndLoads()
+    public void TransportAbstraction_IsMessageOriented()
     {
-        var assembly = Assembly.Load("PartyGameKit.Transport.Abstractions");
-
-        Assert.Equal("PartyGameKit.Transport.Abstractions", assembly.GetName().Name);
+        Assert.True(typeof(IMessageTransport).IsInterface);
+        Assert.DoesNotContain("Game", typeof(IMessageTransport).Name, StringComparison.Ordinal);
     }
 }
