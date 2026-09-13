@@ -73,6 +73,73 @@ test("SignalR signaling fails deterministically when the early-signal bound is e
   assert.ok(caught.message.includes("pending signal limit"));
 });
 
+test("SignalR closure propagates a terminal failure to subscribed negotiating channels", async (t) => {
+  const connection = new FakeHubConnection("local");
+  const client = new SignalRWebRtcSignalingClient({
+    endpoint: "https://example.test/signaling",
+    channelId: "channel-a",
+    hubConnectionFactory: () => connection,
+  });
+  t.after(() => client.dispose());
+
+  await client.connect();
+  const failures: unknown[] = [];
+  client.createChannel("remote").subscribe(
+    () => {},
+    (reason) => failures.push(reason),
+  );
+
+  const expected = new Error("transport disconnected");
+  connection.closeUnexpectedly(expected);
+
+  assert.deepEqual(failures, [expected]);
+});
+
+test("malformed signaling payload fails the affected subscribed peer channel", async (t) => {
+  const connection = new FakeHubConnection("local");
+  const client = new SignalRWebRtcSignalingClient({
+    endpoint: "https://example.test/signaling",
+    channelId: "channel-a",
+    hubConnectionFactory: () => connection,
+  });
+  t.after(() => client.dispose());
+
+  await client.connect();
+  const failures: unknown[] = [];
+  client.createChannel("remote").subscribe(
+    () => {},
+    (reason) => failures.push(reason),
+  );
+
+  connection.emit(signalMethod, "remote", "{not-json");
+
+  assert.equal(failures.length, 1);
+  assert.ok(failures[0] instanceof Error);
+});
+
+test("malformed early signaling payload fails when the peer channel subscribes", async (t) => {
+  const connection = new FakeHubConnection("local");
+  const client = new SignalRWebRtcSignalingClient({
+    endpoint: "https://example.test/signaling",
+    channelId: "channel-a",
+    hubConnectionFactory: () => connection,
+  });
+  t.after(() => client.dispose());
+
+  await client.connect();
+  connection.emit(signalMethod, "remote", JSON.stringify({ kind: "unknown" }));
+
+  let caught: unknown;
+  try {
+    client.createChannel("remote").subscribe(() => {});
+  } catch (error) {
+    caught = error;
+  }
+
+  assert.ok(caught instanceof Error);
+  assert.equal(caught.message, "Unsupported WebRTC signal kind.");
+});
+
 test("SignalR signaling sends only targeted serialized negotiation data", async (t) => {
   const connection = new FakeHubConnection("local");
   const client = new SignalRWebRtcSignalingClient({
@@ -98,6 +165,7 @@ test("SignalR signaling sends only targeted serialized negotiation data", async 
 class FakeHubConnection implements SignalRHubConnectionLike {
   readonly invocations: Array<{ methodName: string; args: unknown[] }> = [];
   private readonly handlers = new Map<string, (...args: unknown[]) => void>();
+  private readonly closeHandlers = new Set<(error?: Error) => void>();
   private started = false;
 
   constructor(public readonly connectionId: string | null) {}
@@ -129,7 +197,18 @@ class FakeHubConnection implements SignalRHubConnectionLike {
     this.handlers.delete(methodName);
   }
 
+  onclose(callback: (error?: Error) => void): void {
+    this.closeHandlers.add(callback);
+  }
+
   emit(methodName: string, ...args: unknown[]): void {
     this.handlers.get(methodName)?.(...args);
+  }
+
+  closeUnexpectedly(error?: Error): void {
+    this.started = false;
+    for (const handler of this.closeHandlers) {
+      handler(error);
+    }
   }
 }
