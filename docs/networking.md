@@ -8,18 +8,16 @@ See [Communication boundary](communication-boundary.md).
 
 ```text
 consumer application
-       │ opaque application message
+       │ opaque application data
        ▼
-PartyGameKit protocol/control
+PartyGameKit communication layer
        │
-       ▼
-transport abstraction
-       │
-       ├── in-memory
-       ├── LAN WebSocket
-       ├── SignalR relay
-       └── WebRTC later
+       ├── protocol v2 over LAN WebSocket
+       ├── protocol v2 over SignalR relay
+       └── direct browser WebRTC DataChannel
 ```
+
+WebRTC signaling is infrastructure only. SDP/ICE may pass through the optional SignalR signaling endpoint, but normal DataChannel application traffic is peer-to-peer after negotiation.
 
 ## Transport abstraction
 
@@ -33,7 +31,9 @@ A transport exposes only communication concerns:
 - cancellation;
 - technology-neutral errors/diagnostics.
 
-`IMessageTransport` is the listener-side abstraction used by both direct LAN and SignalR relay transports. A transport may have a technology-specific single-peer client counterpart, such as `LanWebSocketClient` or `SignalRRelayClient`, without changing the application protocol.
+`IMessageTransport` is the listener-side .NET abstraction used by direct LAN and SignalR relay transports. A transport may have a technology-specific single-peer client counterpart, such as `LanWebSocketClient` or `SignalRRelayClient`, without changing the application protocol.
+
+The initial WebRTC implementation is browser-native in `@partygamekit/client`; it is not presented as a .NET `IMessageTransport` implementation. That keeps the public surface honest about runtime capabilities.
 
 `ConnectionId` identifies a transient network connection. It is not a player id.
 
@@ -49,13 +49,15 @@ PeerId P1
 
 PartyGameKit may validate a resume credential and rebind C2 to P1. The consumer decides whether P1 represents a player, TV, controller, server or something else.
 
-The same continuity coordinator can be used when the physical path is LAN or SignalR. The relay backend itself never owns `PeerId` or resume credentials.
+The same continuity coordinator can be used when the physical protocol-v2 path is LAN or SignalR. The relay backend itself never owns `PeerId` or resume credentials.
+
+WebRTC signaling connection IDs are separate transient routing identifiers and must not be treated as `PeerId` values.
 
 ## Routing scope
 
-Some transports require an opaque routing scope/channel to isolate delivery. `ChannelId` is communication-only and does not imply lobby/game lifecycle, capacity or authority.
+Some communication paths require an opaque routing scope to isolate delivery. `ChannelId` is communication-only and does not imply lobby/game lifecycle, capacity or authority.
 
-For SignalR, the backend registry maps a `ChannelId` to one active listener and its transient client connections. That registry is routing state, not a PartyBeam party/session store.
+For SignalR relay, the backend registry maps a `ChannelId` to one active listener and transient clients. For WebRTC signaling, it scopes which transient signaling connections may exchange SDP/ICE. Neither registry is a PartyBeam party/session store.
 
 ## Application messages
 
@@ -71,7 +73,7 @@ A consumer may transport:
 
 None of those schemas become PartyGameKit base API.
 
-The same `application.message` bytes can be sent over LAN WebSocket or SignalR relay without changing the consumer schema.
+LAN WebSocket and SignalR relay carry protocol-v2 `application.message` payloads. Browser WebRTC DataChannels carry opaque binary consumer data directly. A consumer may serialize the same logical schema for all three paths, but PartyGameKit does not require a game-specific schema.
 
 ## Connection health
 
@@ -79,9 +81,11 @@ Heartbeat/timeout reports connectivity. It does not trigger player leave, game p
 
 Consumers subscribe to communication state and apply their own product policies.
 
+For WebRTC, `sampleDiagnostics()` exposes communication-only values such as candidate-pair RTT, RTT variation, buffered bytes and dropped-message count.
+
 ## LAN first
 
-Direct LAN WebSocket remains the backend-free transport and works without Internet/cloud after local dependencies are available.
+Direct LAN WebSocket remains the backend-free listener transport and works without Internet/cloud after local dependencies are available.
 
 The listening side requires a server-capable runtime. This is a transport constraint, not a generic host role.
 
@@ -102,8 +106,38 @@ The relay:
 
 SignalR deployment is optional. See [SignalR relay](signalr-relay.md) for server configuration and security assumptions.
 
-## Future transports
+## Browser WebRTC DataChannel
 
-WebRTC may be added as another communication path after SignalR. It must carry the same opaque consumer messages without introducing session/player semantics.
+`@partygamekit/client` provides direct browser-to-browser communication through native `RTCPeerConnection` / `RTCDataChannel`.
 
-Automatic transport selection later chooses a communication path only; it does not make product lifecycle decisions.
+The library exposes explicit communication profiles:
+
+- `reliable` — ordered, fully reliable DataChannel;
+- `low-latency` — unordered DataChannel with `maxRetransmits: 0`.
+
+PartyGameKit does not decide which product messages belong on which profile.
+
+Buffering is deliberately bounded. Reliable mode reports backpressure when a configured limit would be exceeded; low-latency mode can drop the newest payload rather than allowing stale data to accumulate in an unbounded PartyGameKit queue.
+
+See [WebRTC DataChannel](webrtc-datachannel.md).
+
+## WebRTC signaling
+
+The optional ASP.NET Core signaling endpoint is separate from the SignalR application-data relay.
+
+It carries only:
+
+- transient signaling connection IDs;
+- technical `ChannelId` scope;
+- SDP offer/answer data;
+- ICE candidates.
+
+It rejects cross-channel targets and applies a signal-size limit. The backend does not inspect or relay normal WebRTC application payloads.
+
+A deployed TURN service may still be required for some Internet/NAT topologies. Implementing or operating TURN is outside `[19]`.
+
+## Automatic transport selection
+
+Automatic selection/fallback belongs to `[20]`. Until then LAN, SignalR relay and WebRTC are explicit communication choices.
+
+Future selection logic may choose a path based on connectivity/capability. It must not decide product lifecycle, player admission, authority or game policy.
