@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-preview.4
+
+- Aligns the Dart protocol package version with the PartyGameKit preview.4 release line.
+- Keeps the protocol-v2 envelope, connection descriptor and canonical fixture contract unchanged.
+- Automatic transport selection is a runtime orchestration capability in the .NET and TypeScript surfaces; this Dart package remains protocol-only.
+- The package does not claim a Dart LAN, SignalR, WebRTC or automatic transport runtime.
+
 ## 0.2.0-preview.3
 
 - Aligns the Dart protocol package version with the PartyGameKit preview.3 release line.
@@ -25,7 +32,7 @@
 ## 0.1.0-preview.1
 
 - Adds PartyGameKit protocol v1 envelope parsing.
-- Adds canonical join-descriptor JSON and URI support.
+- Adds canonical join-descriptor JSON/URI support.
 - Adds snapshot sequence gating and discovery-announcement parsing.
 - Validates Dart behavior against the repository's shared canonical protocol fixtures.
 
