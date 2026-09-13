@@ -103,7 +103,7 @@ Run it from the repository root:
 dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj
 ```
 
-Historical `SharedCounter` and `DungeonPrototype` remain examples of application/game semantics composed above PartyGameKit. Their player, authority and game-state concepts are not generic library APIs.
+The former `SharedCounter` and `DungeonPrototype` samples belonged to the historical v0.1 session-oriented API. They were retired from the active v0.2 tree during the boundary correction and remain available through Git history and the v0.1 tag.
 
 ## TypeScript
 
@@ -161,6 +161,7 @@ CI also packs all .NET packages and runs `packaging/consumer` from those generat
 - [Communication boundary](docs/communication-boundary.md)
 - [Architecture](docs/architecture.md)
 - [Migration 0.1 → 0.2](docs/migration-0.1-to-0.2.md)
+- [Cross-repository validation](docs/cross-repo-validation.md)
 - [Package boundaries](docs/packages.md)
 - [Public API classification](docs/public-api.md)
 - [Protocol](docs/protocol.md)
