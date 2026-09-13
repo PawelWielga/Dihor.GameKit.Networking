@@ -125,6 +125,11 @@ export class WebRtcPeer {
     });
     this.resolveOpen = resolveOpen;
     this.rejectOpen = rejectOpen;
+    void this.openPromise.catch(() => {
+      // Keep the private lifecycle promise observed even when a peer is closed
+      // before connect() is called or setup fails before connect() can return it.
+      // Callers awaiting connect() still observe the original rejection.
+    });
 
     this.connection.addEventListener("icecandidate", (event) => {
       void this.sendSignal({
@@ -139,7 +144,8 @@ export class WebRtcPeer {
       this.handleConnectionState();
     });
     this.connection.addEventListener("datachannel", (event) => {
-      if (this.options.initiator || this.channel !== null) {
+      if (this.options.initiator || this.channel !== null || this.isTerminal()) {
+        event.channel.close();
         return;
       }
       this.attachChannel(event.channel);
@@ -168,17 +174,23 @@ export class WebRtcPeer {
 
     this.started = true;
     this.setState("connecting");
-    this.unsubscribeSignal = this.signaling.subscribe((signal) => this.applySignal(signal));
 
-    if (this.options.initiator) {
-      const channel = this.connection.createDataChannel(
-        this.options.label,
-        createWebRtcDataChannelInit(this.options.profile),
-      );
-      this.attachChannel(channel);
-      const offer = await this.connection.createOffer();
-      await this.connection.setLocalDescription(offer);
-      await this.sendSignal({ kind: "description", description: offer });
+    try {
+      this.unsubscribeSignal = this.signaling.subscribe((signal) => this.applySignal(signal));
+
+      if (this.options.initiator) {
+        const channel = this.connection.createDataChannel(
+          this.options.label,
+          createWebRtcDataChannelInit(this.options.profile),
+        );
+        this.attachChannel(channel);
+        const offer = await this.connection.createOffer();
+        await this.connection.setLocalDescription(offer);
+        await this.sendSignal({ kind: "description", description: offer });
+      }
+    } catch (error) {
+      this.fail(error);
+      throw error;
     }
 
     return this.openPromise;
@@ -267,15 +279,12 @@ export class WebRtcPeer {
     this.disposed = true;
     this.setState("closing");
     this.rejectOpen(new Error("WebRTC peer was closed before the DataChannel opened."));
-    this.unsubscribeSignal?.();
-    this.unsubscribeSignal = null;
-    this.channel?.close();
-    this.connection.close();
+    this.cleanupRtcResources();
     this.setState("closed");
   }
 
   private async applySignal(signal: WebRtcSignal): Promise<void> {
-    if (this.disposed) {
+    if (this.disposed || this.state === "failed") {
       return;
     }
 
@@ -317,7 +326,7 @@ export class WebRtcPeer {
   }
 
   private attachChannel(channel: RTCDataChannel): void {
-    if (this.channel !== null) {
+    if (this.channel !== null || this.isTerminal()) {
       channel.close();
       return;
     }
@@ -329,11 +338,15 @@ export class WebRtcPeer {
       this.options.maxBufferedAmount,
     );
     channel.addEventListener("open", () => {
+      if (this.disposed || this.state === "failed" || this.state === "closing" || this.state === "closed") {
+        channel.close();
+        return;
+      }
       this.setState("open");
       this.resolveOpen();
     });
     channel.addEventListener("close", () => {
-      if (!this.disposed) {
+      if (!this.disposed && this.state !== "failed" && this.state !== "closed") {
         this.setState("closed");
         this.rejectOpen(new Error("WebRTC DataChannel closed before it opened."));
       }
@@ -342,6 +355,9 @@ export class WebRtcPeer {
       this.fail(new Error("WebRTC DataChannel reported an error."));
     });
     channel.addEventListener("message", (event) => {
+      if (this.disposed || this.state === "failed") {
+        return;
+      }
       const payload = toUint8Array(event.data);
       if (payload === null) {
         this.fail(new Error("WebRTC DataChannel received a non-binary payload."));
@@ -354,6 +370,10 @@ export class WebRtcPeer {
   }
 
   private handleConnectionState(): void {
+    if (this.disposed || this.state === "failed") {
+      return;
+    }
+
     switch (this.connection.connectionState) {
       case "connected":
         if (this.channel?.readyState === "open") {
@@ -365,10 +385,8 @@ export class WebRtcPeer {
         this.fail(new Error("WebRTC peer connection failed."));
         break;
       case "closed":
-        if (!this.disposed) {
-          this.setState("closed");
-          this.rejectOpen(new Error("WebRTC peer connection closed before the DataChannel opened."));
-        }
+        this.setState("closed");
+        this.rejectOpen(new Error("WebRTC peer connection closed before the DataChannel opened."));
         break;
       case "disconnected":
         if (this.state === "open") {
@@ -381,7 +399,7 @@ export class WebRtcPeer {
   }
 
   private async sendSignal(signal: WebRtcSignal): Promise<void> {
-    if (this.disposed) {
+    if (this.disposed || this.state === "failed") {
       return;
     }
     try {
@@ -393,11 +411,25 @@ export class WebRtcPeer {
   }
 
   private fail(reason: unknown): void {
-    if (this.state === "failed" || this.state === "closed") {
+    if (this.disposed || this.state === "failed" || this.state === "closed") {
       return;
     }
+
     this.setState("failed");
     this.rejectOpen(reason);
+    this.cleanupRtcResources();
+  }
+
+  private cleanupRtcResources(): void {
+    this.unsubscribeSignal?.();
+    this.unsubscribeSignal = null;
+    this.pendingRemoteCandidates.length = 0;
+    this.channel?.close();
+    this.connection.close();
+  }
+
+  private isTerminal(): boolean {
+    return this.disposed || this.state === "failed" || this.state === "closing" || this.state === "closed";
   }
 
   private setState(state: WebRtcPeerState): void {
