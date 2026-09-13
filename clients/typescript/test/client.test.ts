@@ -69,9 +69,6 @@ test("generic peer connects, exchanges application messages and resumes without 
   });
   t.after(() => client.disconnect("test-cleanup"));
 
-  const received: ApplicationMessagePayload[] = [];
-  client.on("applicationMessage", (message) => received.push(message));
-
   const descriptor = parseConnectionDescriptorJson(fixture("v2-connection-descriptor.json"));
   const connectPromise = client.connect(descriptor);
   sockets[0].open();
@@ -100,13 +97,20 @@ test("generic peer connects, exchanges application messages and resumes without 
   assert.equal(outgoing.payload.applicationType, "sample.echo");
   assert.deepEqual(outgoing.payload.data, { value: 42 });
 
+  const incomingPromise = new Promise<ApplicationMessagePayload>((resolveMessage) => {
+    const unsubscribe = client.on("applicationMessage", (message) => {
+      unsubscribe();
+      resolveMessage(message);
+    });
+  });
   sockets[0].receive(serializeMessage(createMessage(
     messageTypes.applicationMessage,
     "server-app-1",
     { applicationType: "sample.reply", data: { ok: true } },
   )));
-  assert.equal(received.length, 1);
-  assert.equal(received[0].applicationType, "sample.reply");
+  const incoming = await incomingPromise;
+  assert.equal(incoming.applicationType, "sample.reply");
+  assert.deepEqual(incoming.data, { ok: true });
 
   sockets[0].remoteClose(1006, "network-lost");
   const resumePromise = client.reconnect();
