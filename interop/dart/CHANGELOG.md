@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0-preview.2
+
+- Aligns the Dart protocol package version with the PartyGameKit preview.2 release line.
+- Keeps the protocol-v2 envelope, connection descriptor and fixture contract unchanged from preview.1.
+- The package remains protocol-only; the new SignalR relay transport is implemented in the .NET transport packages and is not duplicated in Dart.
+
 ## 0.2.0-preview.1
 
 - Moves Dart interoperability to PartyGameKit protocol v2.
@@ -16,4 +22,4 @@
 - Adds snapshot sequence gating and discovery-announcement parsing.
 - Validates Dart behavior against the repository's shared canonical protocol fixtures.
 
-This package covers the language-neutral protocol surface only. It does not provide a Dart LAN transport or game/session engine.
+This package covers the language-neutral protocol surface only. It does not provide a Dart LAN/SignalR transport or game/session engine.
