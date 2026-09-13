@@ -14,7 +14,10 @@ export type WebRtcSignal =
 
 export interface WebRtcSignalingChannel {
   send(signal: WebRtcSignal): void | Promise<void>;
-  subscribe(handler: (signal: WebRtcSignal) => void | Promise<void>): () => void;
+  subscribe(
+    handler: (signal: WebRtcSignal) => void | Promise<void>,
+    failureHandler?: (reason: unknown) => void,
+  ): () => void;
 }
 
 export interface WebRtcPeerOptions {
@@ -176,7 +179,10 @@ export class WebRtcPeer {
     this.setState("connecting");
 
     try {
-      this.unsubscribeSignal = this.signaling.subscribe((signal) => this.applySignal(signal));
+      this.unsubscribeSignal = this.signaling.subscribe(
+        (signal) => this.applySignal(signal),
+        (reason) => this.handleSignalingFailure(reason),
+      );
 
       if (this.options.initiator) {
         const channel = this.connection.createDataChannel(
@@ -338,7 +344,12 @@ export class WebRtcPeer {
       this.options.maxBufferedAmount,
     );
     channel.addEventListener("open", () => {
-      if (this.disposed || this.state === "failed" || this.state === "closing" || this.state === "closed") {
+      if (
+        this.disposed ||
+        this.state === "failed" ||
+        this.state === "closing" ||
+        this.state === "closed"
+      ) {
         channel.close();
         return;
       }
@@ -398,6 +409,13 @@ export class WebRtcPeer {
     }
   }
 
+  private handleSignalingFailure(reason: unknown): void {
+    if (this.state === "open" || this.isTerminal()) {
+      return;
+    }
+    this.fail(reason);
+  }
+
   private async sendSignal(signal: WebRtcSignal): Promise<void> {
     if (this.disposed || this.state === "failed") {
       return;
@@ -429,7 +447,12 @@ export class WebRtcPeer {
   }
 
   private isTerminal(): boolean {
-    return this.disposed || this.state === "failed" || this.state === "closing" || this.state === "closed";
+    return (
+      this.disposed ||
+      this.state === "failed" ||
+      this.state === "closing" ||
+      this.state === "closed"
+    );
   }
 
   private setState(state: WebRtcPeerState): void {
