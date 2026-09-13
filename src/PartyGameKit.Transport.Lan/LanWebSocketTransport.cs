@@ -26,6 +26,7 @@ public sealed class LanWebSocketTransport : IMessageTransport
     private readonly LanWebSocketHostOptions _options;
     private readonly Func<string> _connectionIdFactory;
     private readonly ConcurrentDictionary<ConnectionId, LanConnection> _connections = new();
+    private readonly ConcurrentQueue<LanConnection> _connectionOrder = new();
     private readonly Channel<TransportEvent> _events = Channel.CreateUnbounded<TransportEvent>(
         new UnboundedChannelOptions
         {
@@ -232,7 +233,7 @@ public sealed class LanWebSocketTransport : IMessageTransport
         Interlocked.Exchange(ref _stopped, 1);
         try
         {
-            foreach (var connection in _connections.Values.ToArray())
+            foreach (var connection in _connectionOrder.ToArray())
             {
                 if (!RemoveConnection(connection, TransportCloseReason.TransportStopped))
                 {
@@ -456,6 +457,7 @@ public sealed class LanWebSocketTransport : IMessageTransport
             var connection = new LanConnection(new ConnectionId(rawId), socket);
             if (_connections.TryAdd(connection.ConnectionId, connection))
             {
+                _connectionOrder.Enqueue(connection);
                 return connection;
             }
         }
@@ -572,10 +574,9 @@ public sealed class LanWebSocketTransport : IMessageTransport
                     ProtocolJson.Read<ConnectRequestPayload>(json, ProtocolMessageTypes.ConnectRequest).IsSuccess
                         ? new(true, string.Empty)
                         : new(false, InvalidHandshakeReason),
-                ProtocolMessageTypes.ResumeRequest =>
-                    ProtocolJson.Read<ResumeRequestPayload>(json, ProtocolMessageTypes.ResumeRequest).IsSuccess
-                        ? new(true, string.Empty)
-                        : new(false, InvalidHandshakeReason),
+                ProtocolMessageTypes.ResumeRequest => IsValidResumeRequest(json)
+                    ? new(true, string.Empty)
+                    : new(false, InvalidHandshakeReason),
                 _ => new(false, InvalidHandshakeReason),
             };
         }
@@ -583,6 +584,15 @@ public sealed class LanWebSocketTransport : IMessageTransport
         {
             return new(false, InvalidHandshakeReason);
         }
+    }
+
+    private static bool IsValidResumeRequest(string json)
+    {
+        var result = ProtocolJson.Read<ResumeRequestPayload>(json, ProtocolMessageTypes.ResumeRequest);
+        return result.IsSuccess &&
+               result.Message?.Payload is { } resume &&
+               !string.IsNullOrWhiteSpace(resume.PeerId.Value) &&
+               !string.IsNullOrWhiteSpace(resume.ResumeToken);
     }
 
     private static TransportException CreateException(
