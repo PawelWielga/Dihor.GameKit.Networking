@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Text;
+using PartyGameKit.Transport.Abstractions;
 
 namespace PartyGameKit.Transport.Lan;
 
@@ -12,7 +13,7 @@ public sealed record LanWebSocketClientMessage(
     public bool IsClose => MessageType == WebSocketMessageType.Close;
 }
 
-public sealed class LanWebSocketClient : IAsyncDisposable
+public sealed class LanWebSocketClient : IMessageTransportClient
 {
     private readonly ClientWebSocket _socket;
     private readonly int _maxMessageBytes;
@@ -88,6 +89,16 @@ public sealed class LanWebSocketClient : IAsyncDisposable
             _socket,
             _maxMessageBytes,
             cancellationToken).ConfigureAwait(false);
+    }
+
+    async ValueTask<ClientTransportMessage> IMessageTransportClient.ReceiveAsync(
+        CancellationToken cancellationToken)
+    {
+        var message = await ReceiveAsync(cancellationToken).ConfigureAwait(false);
+        return new ClientTransportMessage(
+            message.Payload,
+            message.IsClose,
+            message.CloseDescription);
     }
 
     public async ValueTask DisposeAsync()
