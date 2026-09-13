@@ -15,14 +15,16 @@ PartyBeam / Państwa Miasta / future multiplayer products
                 │
         transports + discovery
                 │
-      LAN / future transports
+       LAN / SignalR / future WebRTC
 ```
 
 ## 0.2 communication boundary
 
 `0.1.0-preview.1` proved the LAN transport, discovery and reconnect approach, but also exposed product concepts such as players, client roles, room sessions, authority and public/private game-state projections.
 
-`0.2.0-preview.1` corrects that boundary. Protocol v2 and the base APIs use communication-neutral concepts:
+`0.2.0-preview.1` corrected that boundary. `0.2.0-preview.2` keeps protocol v2 and the same communication-only model while adding optional backend-assisted SignalR relay connectivity.
+
+Protocol v2 and the base APIs use communication-neutral concepts:
 
 - transient `ConnectionId`;
 - optional stable `PeerId` for resume/reconnect;
@@ -32,7 +34,8 @@ PartyBeam / Państwa Miasta / future multiplayer products
 - opaque `application.message` payloads owned by the consumer;
 - transport-neutral send/receive, targeted delivery and broadcast;
 - deterministic connection continuity and generic ordering helpers;
-- direct LAN WebSocket transport and optional UDP LAN discovery.
+- direct LAN WebSocket transport and optional UDP LAN discovery;
+- optional backend-assisted SignalR relay transport.
 
 The migration from v0.1 is intentionally breaking. See [Migration 0.1 → 0.2](docs/migration-0.1-to-0.2.md).
 
@@ -62,6 +65,8 @@ The .NET prerelease is split by communication responsibility:
 - `PartyGameKit.Transport.Abstractions` — transport-neutral message contracts;
 - `PartyGameKit.Transport.InMemory` — deterministic reference/test transport;
 - `PartyGameKit.Transport.Lan` — direct LAN WebSocket transport;
+- `PartyGameKit.Transport.SignalR` — optional backend-assisted SignalR relay client/listener transport;
+- `PartyGameKit.Transport.SignalR.Server` — minimal ASP.NET Core relay endpoint for routing opaque PartyGameKit traffic;
 - `PartyGameKit.Discovery.Lan` — optional UDP LAN discovery.
 
 Browser consumers use `@partygamekit/client`. Flutter/Dart consumers can use the small `interop/dart` protocol package when they need canonical protocol compatibility without a duplicated game/session engine.
@@ -80,28 +85,35 @@ protocol/fixtures/v2-*.json
 
 PartyGameKit control messages are distinct from `application.message`; the library carries application data without understanding its game/product meaning.
 
-## LAN and discovery
+## LAN and backend relay
 
 Direct LAN WebSocket transport works without Internet or a cloud backend. UDP discovery is optional convenience infrastructure, not a prerequisite for connecting.
 
 A serialized `ConnectionDescriptor` can be passed directly through any product-owned invitation flow, including QR, deep links, manual codes or another backend.
 
+When peers cannot communicate directly over LAN, `PartyGameKit.Transport.SignalR` can route the same protocol-v2 and application payloads through an optional backend relay. The relay owns only transient connections and opaque `ChannelId` routing scopes. It does not own players, parties, product join codes, authority or game state.
+
+See [SignalR relay](docs/signalr-relay.md) for server setup, deployment and security assumptions. LAN mode remains fully usable with no SignalR server deployed.
+
 ## Neutral reference sample
 
-`samples/CommunicationDemo` exercises the real communication-only stack with no player/game model:
+`samples/CommunicationDemo` exercises the same communication-only scenario over both supported real transports:
 
-- real Kestrel/WebSocket listener;
-- UDP discovery plus direct descriptor connection;
+- direct Kestrel/WebSocket LAN transport;
+- UDP discovery plus direct descriptor connection for LAN;
+- backend-assisted SignalR relay transport;
 - two generic peers;
 - opaque peer-to-host application messages;
 - targeted and broadcast host delivery;
 - disconnect and resume of the same `PeerId` on a replacement `ConnectionId`.
 
-Run it from the repository root:
+Run both paths from the repository root:
 
 ```bash
 dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj
 ```
+
+Run a single path with `-- lan` or `-- signalr`.
 
 The former `SharedCounter` and `DungeonPrototype` samples belonged to the historical v0.1 session-oriented API. They were retired from the active v0.2 tree during the boundary correction and remain available through Git history and the v0.1 tag.
 
@@ -154,7 +166,7 @@ dart analyze
 dart test
 ```
 
-CI also packs all .NET packages and runs `packaging/consumer` from those generated NuGet artifacts only. The package-only consumer verifies opaque message exchange and neutral peer resume without source-project references.
+CI also packs all .NET packages and runs `packaging/consumer` from those generated NuGet artifacts only. The package-only consumer verifies opaque message exchange, neutral peer resume and availability of the SignalR client/server packages without source-project references.
 
 ## Documentation
 
@@ -167,6 +179,7 @@ CI also packs all .NET packages and runs `packaging/consumer` from those generat
 - [Protocol](docs/protocol.md)
 - [Networking](docs/networking.md)
 - [LAN WebSocket](docs/lan-websocket.md)
+- [SignalR relay](docs/signalr-relay.md)
 - [LAN discovery](docs/discovery.md)
 - [Compatibility matrix](docs/compatibility.md)
 - [Versioning](docs/versioning.md)
