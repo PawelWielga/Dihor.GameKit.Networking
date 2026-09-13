@@ -32,11 +32,11 @@ public sealed class SignalRRelayIntegrationTests
             new SignalRRelayOptions(server.Endpoint, channelB),
             cancellationToken);
         await using var eventsA = transportA
-            .ReadEventsAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .ReadEventsAsync()
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
         await using var eventsB = transportB
-            .ReadEventsAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .ReadEventsAsync()
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
         await using var clientA1 = await SignalRRelayClient.ConnectAsync(
             new SignalRRelayOptions(server.Endpoint, channelA),
@@ -132,8 +132,8 @@ public sealed class SignalRRelayIntegrationTests
             new SignalRRelayOptions(server.Endpoint, channel),
             cancellationToken);
         await using var events = transport
-            .ReadEventsAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .ReadEventsAsync()
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
         var continuity = new ConnectionContinuityCoordinator(
             new ConnectionContinuityOptions(
                 peerTimeout: TimeSpan.FromSeconds(5),
