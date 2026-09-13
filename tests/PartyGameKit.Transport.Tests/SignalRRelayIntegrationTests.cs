@@ -166,7 +166,7 @@ public sealed class SignalRRelayIntegrationTests
         var disconnected = await ReadEventAsync<TransportConnectionClosed>(events);
         Assert.Equal(firstConnection, disconnected.ConnectionId);
         var marked = continuity.MarkDisconnected(firstConnection);
-        Assert.Equal(DisconnectClientStatus.Disconnected, marked.Status);
+        Assert.Equal(DisconnectPeerStatus.Disconnected, marked.Status);
 
         await using var resumedClient = await SignalRRelayClient.ConnectAsync(
             new SignalRRelayOptions(server.Endpoint, channel),
