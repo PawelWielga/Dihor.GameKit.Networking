@@ -26,7 +26,7 @@ public sealed class ReconnectIntegrationTests
             cancellationToken: TestContext.Current.CancellationToken);
         await using var events = transport
             .ReadEventsAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
         var connectHandshake = ProtocolJson.Serialize(PartyGameKitMessages.Create(
             ProtocolMessageTypes.ConnectRequest,

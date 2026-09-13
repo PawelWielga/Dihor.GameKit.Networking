@@ -19,7 +19,7 @@ public sealed class InMemoryTransportTests
             TestContext.Current.CancellationToken);
         await using var events = transport
             .ReadEventsAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
         Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
         Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
@@ -35,14 +35,14 @@ public sealed class InMemoryTransportTests
             TestContext.Current.CancellationToken);
         await using var peerBMessages = peerB
             .ReadMessagesAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
         Assert.True(await peerBMessages.MoveNextAsync());
         Assert.Equal("only-b", Text(peerBMessages.Current));
 
         await transport.BroadcastAsync(Bytes("everyone"), TestContext.Current.CancellationToken);
         await using var peerAMessages = peerA
             .ReadMessagesAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
         Assert.True(await peerAMessages.MoveNextAsync());
         Assert.Equal("everyone", Text(peerAMessages.Current));
         Assert.True(await peerBMessages.MoveNextAsync());
@@ -58,7 +58,7 @@ public sealed class InMemoryTransportTests
             TestContext.Current.CancellationToken);
         await using var events = transport
             .ReadEventsAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
         await NextAsync(events);
 
         await transport.DisconnectAsync(

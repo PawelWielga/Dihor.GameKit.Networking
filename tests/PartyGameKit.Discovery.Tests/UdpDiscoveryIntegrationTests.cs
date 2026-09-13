@@ -30,7 +30,7 @@ public sealed class UdpDiscoveryIntegrationTests
 
         await using var changes = listener
             .ReadChangesAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
         DiscoveredEndpoint? found = null;
         while (await changes.MoveNextAsync())
         {

@@ -16,7 +16,7 @@ public sealed class LanWebSocketTransportTests
         await using var transport = await StartTransportAsync(TestContext.Current.CancellationToken);
         await using var events = transport
             .ReadEventsAsync(TestContext.Current.CancellationToken)
-            .GetAsyncEnumerator();
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
         var handshake = ConnectHandshake("peer-a");
 
         await using var client = await LanWebSocketClient.ConnectAsync(
@@ -63,6 +63,61 @@ public sealed class LanWebSocketTransportTests
         Assert.Equal(0, transport.ConnectionCount);
     }
 
+    [Theory]
+    [InlineData("{\"type\":\"connection.resume.request\",\"protocolVersion\":2,\"messageId\":\"resume-missing\"}")]
+    [InlineData("{\"type\":\"connection.resume.request\",\"protocolVersion\":2,\"messageId\":\"resume-empty\",\"payload\":{}}")]
+    [InlineData("{\"type\":\"connection.resume.request\",\"protocolVersion\":2,\"messageId\":\"resume-blank\",\"payload\":{\"peerId\":\"peer-a\",\"resumeToken\":\" \"}}")]
+    public async Task IncompleteResumeHandshakeIsRejectedBeforeConnectionIsOpened(string handshake)
+    {
+        await using var transport = await StartTransportAsync(TestContext.Current.CancellationToken);
+
+        await using var client = await LanWebSocketClient.ConnectAsync(
+            transport.CreateClientUri("127.0.0.1"),
+            handshake,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var close = await client.ReceiveAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(close.IsClose);
+        Assert.Equal(WebSocketCloseStatus.PolicyViolation, close.CloseStatus);
+        Assert.Equal("invalid-handshake", close.CloseDescription);
+        Assert.Equal(0, transport.ConnectionCount);
+    }
+
+    [Fact]
+    public async Task StopPublishesCloseEventsInConnectionOpenOrder()
+    {
+        var connectionIds = new Queue<string>(["connection-a", "connection-b", "connection-c"]);
+        await using var transport = await LanWebSocketTransport.StartAsync(
+            new LanWebSocketHostOptions(
+                IPAddress.Loopback,
+                port: 0,
+                handshakeTimeout: TimeSpan.FromSeconds(2),
+                keepAliveInterval: TimeSpan.FromSeconds(2)),
+            connectionIdFactory: () => connectionIds.Dequeue(),
+            cancellationToken: TestContext.Current.CancellationToken);
+        await using var events = transport
+            .ReadEventsAsync(TestContext.Current.CancellationToken)
+            .GetAsyncEnumerator(TestContext.Current.CancellationToken);
+
+        await using var clientA = await ConnectAndConsumeHandshakeAsync(transport, events, "peer-a");
+        await using var clientB = await ConnectAndConsumeHandshakeAsync(transport, events, "peer-b");
+        await using var clientC = await ConnectAndConsumeHandshakeAsync(transport, events, "peer-c");
+
+        await transport.StopAsync(TestContext.Current.CancellationToken);
+
+        var firstClosed = Assert.IsType<TransportConnectionClosed>(await NextAsync(events));
+        var secondClosed = Assert.IsType<TransportConnectionClosed>(await NextAsync(events));
+        var thirdClosed = Assert.IsType<TransportConnectionClosed>(await NextAsync(events));
+
+        Assert.Equal(new ConnectionId("connection-a"), firstClosed.ConnectionId);
+        Assert.Equal(new ConnectionId("connection-b"), secondClosed.ConnectionId);
+        Assert.Equal(new ConnectionId("connection-c"), thirdClosed.ConnectionId);
+        Assert.Equal(TransportCloseReason.TransportStopped, firstClosed.Reason);
+        Assert.Equal(TransportCloseReason.TransportStopped, secondClosed.Reason);
+        Assert.Equal(TransportCloseReason.TransportStopped, thirdClosed.Reason);
+    }
+
     [Fact]
     public void LanDescriptorContainsOnlyTechnicalConnectionMetadata()
     {
@@ -85,6 +140,20 @@ public sealed class LanWebSocketTransportTests
                 handshakeTimeout: TimeSpan.FromSeconds(2),
                 keepAliveInterval: TimeSpan.FromSeconds(2)),
             cancellationToken: cancellationToken);
+
+    private static async Task<LanWebSocketClient> ConnectAndConsumeHandshakeAsync(
+        LanWebSocketTransport transport,
+        IAsyncEnumerator<TransportEvent> events,
+        string peerId)
+    {
+        var client = await LanWebSocketClient.ConnectAsync(
+            transport.CreateClientUri("127.0.0.1"),
+            ConnectHandshake(peerId),
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
+        Assert.IsType<TransportMessageReceived>(await NextAsync(events));
+        return client;
+    }
 
     private static string ConnectHandshake(string peerId) =>
         ProtocolJson.Serialize(PartyGameKitMessages.Create(
