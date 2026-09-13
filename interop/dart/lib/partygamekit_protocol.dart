@@ -3,13 +3,19 @@ import 'dart:convert';
 const partyGameKitProtocolVersion = 2;
 
 final class PartyGameKitEnvelope {
-  PartyGameKitEnvelope({required this.type, required this.protocolVersion, required this.messageId, required this.payload, this.correlationId});
+  PartyGameKitEnvelope(
+      {required this.type,
+      required this.protocolVersion,
+      required this.messageId,
+      required this.payload,
+      this.correlationId});
 
   factory PartyGameKitEnvelope.parse(String source) {
     final json = _jsonObject(jsonDecode(source), 'envelope');
     final version = _requiredInt(json, 'protocolVersion');
     if (version != partyGameKitProtocolVersion) {
-      throw FormatException('Unsupported PartyGameKit protocol version: $version.');
+      throw FormatException(
+          'Unsupported PartyGameKit protocol version: $version.');
     }
     return PartyGameKitEnvelope(
       type: _requiredString(json, 'type'),
@@ -28,18 +34,26 @@ final class PartyGameKitEnvelope {
 }
 
 final class PartyGameKitConnectionDescriptor {
-  PartyGameKitConnectionDescriptor({required int protocolVersion, required String transport, required String endpoint, String? channelId})
+  PartyGameKitConnectionDescriptor(
+      {required int protocolVersion,
+      required String transport,
+      required String endpoint,
+      String? channelId})
       : protocolVersion = protocolVersion,
         transport = _normalizeRequired(transport, 'transport'),
         endpoint = _normalizeEndpoint(endpoint),
         channelId = _normalizeOptional(channelId, 'channelId') {
-    if (protocolVersion <= 0) throw const FormatException('protocolVersion must be positive.');
+    if (protocolVersion <= 0)
+      throw const FormatException('protocolVersion must be positive.');
   }
 
   factory PartyGameKitConnectionDescriptor.parseJson(String source) =>
-      PartyGameKitConnectionDescriptor.fromJsonObject(_jsonObject(jsonDecode(source), 'connection descriptor'));
+      PartyGameKitConnectionDescriptor.fromJsonObject(
+          _jsonObject(jsonDecode(source), 'connection descriptor'));
 
-  factory PartyGameKitConnectionDescriptor.fromJsonObject(Map<String, Object?> json) => PartyGameKitConnectionDescriptor(
+  factory PartyGameKitConnectionDescriptor.fromJsonObject(
+          Map<String, Object?> json) =>
+      PartyGameKitConnectionDescriptor(
         protocolVersion: _requiredInt(json, 'protocolVersion'),
         transport: _requiredString(json, 'transport'),
         endpoint: _requiredString(json, 'endpoint'),
@@ -54,11 +68,15 @@ final class PartyGameKitConnectionDescriptor {
     final query = _parseQuery(uri.query);
     String required(String key) {
       final value = query[key];
-      if (value == null || value.trim().isEmpty) throw FormatException('Connection URI is missing $key.');
+      if (value == null || value.trim().isEmpty)
+        throw FormatException('Connection URI is missing $key.');
       return value;
     }
+
     final version = int.tryParse(required('protocolVersion'));
-    if (version == null) throw const FormatException('Connection URI protocolVersion must be an integer.');
+    if (version == null)
+      throw const FormatException(
+          'Connection URI protocolVersion must be an integer.');
     return PartyGameKitConnectionDescriptor(
       protocolVersion: version,
       transport: required('transport'),
@@ -99,9 +117,14 @@ final class PartyGameKitDiscoveryAnnouncement {
       throw const FormatException('Invalid discovery announcement type.');
     }
     final version = _requiredInt(json, 'protocolVersion');
-    if (version != partyGameKitProtocolVersion) throw FormatException('Unsupported PartyGameKit protocol version: $version.');
-    final descriptor = PartyGameKitConnectionDescriptor.fromJsonObject(_jsonObject(json['descriptor'], 'descriptor'));
-    if (descriptor.protocolVersion != version) throw const FormatException('Discovery and descriptor protocol versions must match.');
+    if (version != partyGameKitProtocolVersion)
+      throw FormatException(
+          'Unsupported PartyGameKit protocol version: $version.');
+    final descriptor = PartyGameKitConnectionDescriptor.fromJsonObject(
+        _jsonObject(json['descriptor'], 'descriptor'));
+    if (descriptor.protocolVersion != version)
+      throw const FormatException(
+          'Discovery and descriptor protocol versions must match.');
     return PartyGameKitDiscoveryAnnouncement(descriptor);
   }
 
@@ -113,7 +136,8 @@ final class PartyGameKitMessageSequenceGate {
   int get lastAcceptedSequence => _lastAcceptedSequence;
 
   bool tryAccept(int sequence) {
-    if (sequence <= 0) throw ArgumentError.value(sequence, 'sequence', 'Must be positive.');
+    if (sequence <= 0)
+      throw ArgumentError.value(sequence, 'sequence', 'Must be positive.');
     if (sequence <= _lastAcceptedSequence) return false;
     _lastAcceptedSequence = sequence;
     return true;
@@ -124,7 +148,8 @@ Map<String, Object?> _jsonObject(Object? value, String name) {
   if (value is! Map) throw FormatException('$name must be a JSON object.');
   final result = <String, Object?>{};
   for (final entry in value.entries) {
-    if (entry.key is! String) throw FormatException('$name contains a non-string key.');
+    if (entry.key is! String)
+      throw FormatException('$name contains a non-string key.');
     result[entry.key as String] = entry.value;
   }
   return result;
@@ -135,10 +160,12 @@ Map<String, String> _parseQuery(String query) {
   for (final segment in query.split('&')) {
     if (segment.isEmpty) continue;
     final separator = segment.indexOf('=');
-    if (separator <= 0) throw const FormatException('Invalid connection URI query.');
+    if (separator <= 0)
+      throw const FormatException('Invalid connection URI query.');
     final key = Uri.decodeComponent(segment.substring(0, separator));
     final value = Uri.decodeComponent(segment.substring(separator + 1));
-    if (result.containsKey(key)) throw FormatException("Duplicate connection URI field '$key'.");
+    if (result.containsKey(key))
+      throw FormatException("Duplicate connection URI field '$key'.");
     result[key] = value;
   }
   return result;
@@ -146,31 +173,36 @@ Map<String, String> _parseQuery(String query) {
 
 String _normalizeRequired(String value, String name) {
   final normalized = value.trim();
-  if (normalized.isEmpty) throw FormatException('$name must be a non-empty string.');
+  if (normalized.isEmpty)
+    throw FormatException('$name must be a non-empty string.');
   return normalized;
 }
 
-String? _normalizeOptional(String? value, String name) => value == null ? null : _normalizeRequired(value, name);
+String? _normalizeOptional(String? value, String name) =>
+    value == null ? null : _normalizeRequired(value, name);
 
 String _normalizeEndpoint(String value) {
   final normalized = _normalizeRequired(value, 'endpoint');
   final uri = Uri.tryParse(normalized);
   if (uri == null || !uri.hasScheme || uri.scheme == 'file') {
-    throw const FormatException('Connection descriptor endpoint must be an absolute non-file URI.');
+    throw const FormatException(
+        'Connection descriptor endpoint must be an absolute non-file URI.');
   }
   return uri.toString();
 }
 
 String _requiredString(Map<String, Object?> json, String key) {
   final value = json[key];
-  if (value is! String || value.trim().isEmpty) throw FormatException('$key must be a non-empty string.');
+  if (value is! String || value.trim().isEmpty)
+    throw FormatException('$key must be a non-empty string.');
   return value;
 }
 
 String? _optionalString(Map<String, Object?> json, String key) {
   final value = json[key];
   if (value == null) return null;
-  if (value is! String || value.trim().isEmpty) throw FormatException('$key must be a non-empty string when present.');
+  if (value is! String || value.trim().isEmpty)
+    throw FormatException('$key must be a non-empty string when present.');
   return value;
 }
 
