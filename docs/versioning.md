@@ -6,14 +6,17 @@ PartyGameKit uses Semantic Versioning for distributed packages and a separate in
 
 The historical first packaged line is `0.1.0-preview.1`. The corrected communication-only line starts at `0.2.0-preview.1` because the public API break is deliberate and substantial.
 
-`0.2.0-preview.2` is the first compatible transport expansion on that corrected boundary. It adds optional SignalR relay connectivity without changing the protocol-v2 wire contract.
+Compatible transport/capability expansions on that corrected boundary use later prerelease suffixes:
+
+- `0.2.0-preview.2` adds optional SignalR relay connectivity;
+- `0.2.0-preview.3` adds browser-native WebRTC DataChannels plus optional SignalR SDP/ICE signaling.
 
 For preview releases:
 
 - compatible fixes/features may increment the prerelease suffix;
 - removing or changing a public API requires an explicit changelog/migration entry and an appropriate SemVer prerelease version change;
 - a stable `1.0.0` is not implied by completion of the current backlog;
-- the supported .NET, TypeScript and Dart surfaces use the same release version for one PartyGameKit compatibility line.
+- the supported .NET, TypeScript and Dart package surfaces use the same release version for one PartyGameKit compatibility line even when runtime capabilities differ by platform.
 
 The repository's default package version is declared in `Directory.Build.targets`. CI derives artifact names from that value rather than duplicating a specific prerelease suffix. The explicit versions in the TypeScript/Dart manifests and package-only consumer must match the same release line.
 
@@ -23,19 +26,40 @@ Package version and protocol version are independent:
 
 - `0.1.0-preview.1` used wire protocol `1` with room/player/session semantics;
 - `0.2.0-preview.1` uses wire protocol `2` with neutral connection/resume/application-message semantics;
-- `0.2.0-preview.2` also uses wire protocol `2`; adding a transport does not change the communication envelope.
+- `0.2.0-preview.2` also uses wire protocol `2`; adding SignalR relay does not change the communication envelope;
+- `0.2.0-preview.3` also uses wire protocol `2`; adding browser WebRTC and signaling does not change the protocol-v2 control/application envelope.
 
 A wire-incompatible change requires a new protocol version even while package versions are pre-1.0. Clients must reject unsupported protocol versions before using payload data.
 
 Consumer/application payloads are opaque to PartyGameKit and may be independently versioned by their owner without incrementing the PartyGameKit protocol unless the base communication envelope/control contract changes.
 
+## WebRTC and protocol versioning
+
+The initial browser WebRTC path carries opaque binary application data directly between peers. Its SDP/ICE signaling is transport negotiation infrastructure, not a new PartyGameKit application wire protocol.
+
+Therefore adding `WebRtcPeer`, DataChannel profiles, signaling adapters, buffering policy or diagnostics does not by itself increment protocol `2`.
+
+If a consumer chooses to carry PartyGameKit protocol envelopes over a DataChannel, those envelopes still obey their own `protocolVersion` field. The WebRTC signaling layer must not silently reinterpret one PartyGameKit protocol version as another.
+
 ## Canonical fixtures
 
 The active canonical fixture set is `protocol/fixtures/v2-*.json`.
 
-C#, Dart and TypeScript tests consume those vectors as the single source of truth for the PartyGameKit v2 wire contract. Protocol-v1 fixtures were retired from the active tree when `[17]` completed cross-language migration; the v1 contract remains available in Git history and the `0.1.0-preview.1` tag/release.
+C#, Dart and TypeScript protocol tests consume those vectors as the single source of truth for the PartyGameKit v2 wire contract. Protocol-v1 fixtures were retired from the active tree when `[17]` completed cross-language migration; the v1 contract remains available in Git history and the `0.1.0-preview.1` tag/release.
 
-SignalR integration tests add transport-level proof that the same v2 connect/resume and opaque application-message semantics survive backend relay without changing the canonical fixtures.
+SignalR relay integration tests prove the same v2 connect/resume/application-message semantics over backend relay. WebRTC integration tests are separate because they validate native browser DataChannel behavior and signaling boundaries rather than modifying the canonical v2 fixtures.
+
+## Runtime capability differences
+
+Matching package versions do not imply every language/runtime implements every transport.
+
+For `0.2.0-preview.3`:
+
+- .NET provides LAN WebSocket, SignalR relay and optional WebRTC signaling hosting;
+- TypeScript/browser provides the protocol-v2 WebSocket client and native WebRTC DataChannels;
+- Dart provides protocol-v2 interoperability only and does not claim a WebRTC runtime.
+
+These differences must be explicit in compatibility/package documentation rather than hidden by pretending all runtimes have identical transport features.
 
 ## Compatibility promise
 
