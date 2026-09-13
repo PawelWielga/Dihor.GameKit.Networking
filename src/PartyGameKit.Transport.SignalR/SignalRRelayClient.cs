@@ -185,6 +185,7 @@ public sealed class SignalRRelayClient : IAsyncDisposable
             ReadOnlyMemory<byte>.Empty,
             IsClose: true,
             CloseDescription: reason));
+        _messages.Writer.TryComplete();
     }
 
     private Task HandleRelayClosedAsync(Exception? exception)
