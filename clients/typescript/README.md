@@ -19,7 +19,7 @@ client.on("applicationMessage", (message) => {
 });
 
 await client.connect(parseConnectionDescriptor(connectionPayload));
-client.sendApplicationMessage("my-app.command", { value: 42 });
+client.send("my-app.command", { value: 42 });
 ```
 
 The client provides:
