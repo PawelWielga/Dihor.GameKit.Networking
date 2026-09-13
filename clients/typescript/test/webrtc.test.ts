@@ -188,14 +188,14 @@ class FakePeerConnection {
   async addIceCandidate(_candidate?: RTCIceCandidateInit | null): Promise<void> {}
 
   async getStats(): Promise<RTCStatsReport> {
-    const report: RTCStats = {
+    const report = {
       id: "candidate-pair",
       timestamp: 0,
       type: "candidate-pair",
       state: "succeeded",
       nominated: true,
       currentRoundTripTime: this.roundTripTimeSeconds,
-    };
+    } as unknown as RTCStats;
     return {
       forEach(callback: (value: RTCStats, key: string, parent: RTCStatsReport) => void) {
         callback(report, "candidate-pair", this as unknown as RTCStatsReport);
