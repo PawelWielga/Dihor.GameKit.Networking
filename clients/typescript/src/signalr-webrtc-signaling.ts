@@ -80,6 +80,7 @@ export class SignalRWebRtcSignalingClient {
     });
     this.connection.on(peerJoinedMethod, (...args: unknown[]) => {
       const connectionId = requiredString(args[0], "peer connection id");
+      this.pendingSignalFailures.delete(connectionId);
       for (const listener of this.peerJoinedListeners) {
         listener(connectionId);
       }
@@ -93,7 +94,7 @@ export class SignalRWebRtcSignalingClient {
 
       this.pendingSignals.delete(connectionId);
       this.pendingSignalOverflowPeers.delete(connectionId);
-      this.pendingSignalFailures.delete(connectionId);
+      this.pendingSignalFailures.set(connectionId, reason);
 
       for (const failure of failures) {
         failure(reason);
