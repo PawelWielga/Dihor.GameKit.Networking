@@ -24,43 +24,41 @@ The central architectural rule is:
 
 > PartyGameKit moves messages and maintains communication continuity. Consumers decide what those messages and connected peers mean.
 
-## Target layers
+## Communication identities and control protocol
 
-### Communication identities and control protocol
-
-PartyGameKit may define only identities required by communication itself:
+PartyGameKit defines only identities required by communication itself:
 
 - transient `ConnectionId`;
-- optional stable neutral peer identity for resume/reconnect;
-- optional neutral routing scope if a transport needs isolation.
+- optional stable neutral `PeerId` for resume/reconnect;
+- optional technical `ChannelId` for routing/discovery isolation.
 
-These identities must not imply player, host, TV, controller, spectator, party or game-session semantics.
+These identities do not imply player, host, TV, controller, spectator, party or game-session semantics.
 
-The language-neutral control protocol owns:
+The language-neutral protocol owns:
 
 - protocol version and compatibility;
 - connection handshake/version validation;
 - heartbeat/connectivity messages;
 - neutral resume request/accept/reject;
 - message identifiers/correlation metadata;
-- opaque application payload transport.
+- opaque `application.message` payload transport.
 
-Application messages are consumer-owned. PartyGameKit must not require a game/session schema.
+Application messages are consumer-owned. PartyGameKit does not require a game/session schema.
 
-### Transport abstractions
+## Transport abstractions
 
-Transport abstractions own technology-neutral communication operations:
+`IMessageTransport` owns technology-neutral communication operations:
 
 - connection opened/closed/faulted events;
 - receive message events;
 - targeted send;
-- broadcast/multicast where supported;
+- broadcast where supported;
 - disconnect, stop, cancellation and disposal;
 - transport-neutral errors and diagnostics.
 
-The current `IGameTransport` capability is valid but the name is too product-specific. Issue `[16]` will neutralize this vocabulary and remove any dependency on session/player Core types.
+The abstraction operates on transient `ConnectionId` plus opaque bytes. It has no player/session dependency.
 
-### Concrete transports
+## Concrete transports
 
 Concrete adapters remain separate packages:
 
@@ -72,32 +70,34 @@ Concrete adapters remain separate packages:
 
 Adding a transport must never add player/session/authority semantics to base APIs.
 
-### Discovery and connection descriptors
+## Discovery and connection descriptors
 
 Discovery advertises technical connection endpoints/services. It is separate from message transport.
 
-A neutral connection descriptor may contain only data required to establish communication, for example transport kind, endpoint, protocol version and optional routing scope.
+`ConnectionDescriptor` contains only data required to establish communication: transport kind, endpoint, protocol version and optional technical `ChannelId`.
 
 Product invitation concepts such as party join code, game id, display name or QR presentation belong to the consumer. PartyBeam may wrap a PartyGameKit connection descriptor inside its own invite payload.
 
-### Client SDKs
+## Client SDKs
 
-TypeScript and Dart SDKs implement the same communication contract as C#.
+TypeScript and Dart implement the same protocol-v2 communication contract as C#.
 
-The base SDKs may expose connect/disconnect/send/receive/resume, connection state, protocol compatibility and descriptor parsing. They must not require PartyBeam roles or player/game-state projections.
+The browser SDK exposes connect/disconnect/send/receive/resume, connection state, protocol compatibility and descriptor parsing without requiring PartyBeam roles or player/game-state projections.
+
+The Dart package remains a thin interoperability/protocol layer and deliberately does not duplicate a game/session runtime.
 
 Framework UI/state-management concerns remain outside PartyGameKit.
 
 ## Cross-language boundary
 
-The compatibility model remains:
+The compatibility model is:
 
 ```text
-canonical JSON fixtures + documented version rules
-                     │
-        ┌────────────┼────────────┐
-        ▼            ▼            ▼
-       C#           Dart      TypeScript
+protocol/fixtures/v2-*.json
+             │
+   ┌─────────┼─────────┐
+   ▼         ▼         ▼
+  C#        Dart   TypeScript
 ```
 
 The fixtures specify the PartyGameKit communication contract. Consumer/game protocols may be independently versioned by their owners.
@@ -111,15 +111,15 @@ ConnectionId = current transport connection
 PeerId       = optional stable logical communication identity
 ```
 
-A reconnect credential may prove that a new connection can resume the same `PeerId`.
+A resume credential proves that a replacement connection may resume the same `PeerId`.
 
-PartyGameKit may then rebind the replacement connection and report connectivity state. It must not decide whether that peer is a player, whether it occupies a slot, whether a game pauses or whether the participant should be removed.
+`ConnectionContinuityCoordinator` rebinds that communication identity and tracks connectivity state. It does not decide whether the peer is a player, whether it occupies a slot, whether a game pauses or whether the participant should be removed.
 
 ## Routing scope
 
-If a routing identifier is needed, it is a technical `ChannelId`/`ScopeId`-like concept, not a game session.
+`ChannelId` is an optional technical routing/discovery identifier, not a game session.
 
-It may isolate delivery but does not own:
+It may isolate communication but does not own:
 
 - lifecycle;
 - player membership;
@@ -129,15 +129,15 @@ It may isolate delivery but does not own:
 - score;
 - game phase.
 
-Current `RoomId` is retained only if `[16]` can justify it as this neutral routing concept; otherwise it moves to consumers.
+Consumers remain free to maintain their own party/room/session identifiers independently.
 
 ## Ordering and snapshots
 
-Monotonic ordering/deduplication can be a generic optional utility.
+`MessageSequence` / `SequenceGate` are optional neutral monotonic ordering/deduplication utilities.
 
-Game snapshot semantics are not base PartyGameKit responsibilities. Current public/private player projections, authority-bound snapshot publication and game-state restoration move to consumers.
+Game snapshot semantics are not PartyGameKit base responsibilities. Public/private player projections, authority-bound publication and game-state restoration belong to consumers.
 
-Państwa Miasta may continue to publish its own authoritative game snapshots as opaque application messages and use a neutral sequence helper to reject stale payloads.
+Państwa Miasta may carry its own authoritative game snapshots as opaque application data and use the neutral sequence helper only where its application protocol needs it.
 
 ## Consumer examples
 
@@ -157,7 +157,7 @@ browser clients  = collaborators
 no players at all
 ```
 
-Both must use the same PartyGameKit base APIs without changing the library.
+Both use the same PartyGameKit base APIs without changing the library.
 
 ## LAN host constraint
 
@@ -169,17 +169,20 @@ This is a transport capability constraint, not a reason to model `Host` or `Shar
 
 `0.1.0-preview.1` included `RoomSession`, `PlayerId`, `ClientRole`, `AuthorityId`, player capacity/admission, session continuity tied to players, and public/private snapshots.
 
-Those APIs were useful validation scaffolding but crossed the correct ownership boundary. Issues `[15]`–`[17]` deliberately break that preview model.
+Those APIs were useful validation scaffolding but crossed the correct ownership boundary. `[15]`–`[17]` deliberately replaced that preview model with the communication-only `0.2` line.
 
-See [Public API classification](public-api.md) for the per-abstraction decision and [Package boundaries](packages.md) for the intended package direction.
+See [Public API review](public-api.md), [Package boundaries](packages.md) and [Migration 0.1 → 0.2](migration-0.1-to-0.2.md).
 
 ## Architecture invariant
 
-A minimal PartyGameKit consumer must be able to:
+A minimal PartyGameKit consumer can:
 
-1. connect two generic clients;
+1. connect generic clients;
 2. exchange opaque messages;
 3. target or broadcast messages;
 4. detect disconnect/timeout;
 5. resume the same neutral logical peer on a replacement connection when configured;
-6. do all of the above without defining `Player`, `Host`, `SharedScreen`, lobby, score or game state.
+6. use LAN discovery or a directly supplied descriptor;
+7. do all of the above without defining `Player`, `Host`, `SharedScreen`, lobby, score or game state.
+
+`samples/CommunicationDemo` exercises this invariant over the real LAN transport in CI.
