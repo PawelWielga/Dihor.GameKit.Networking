@@ -15,7 +15,6 @@ import {
   serializeMessage,
   type ApplicationMessagePayload,
   type ConnectRequestPayload,
-  type ProtocolEnvelope,
   type ResumeRequestPayload,
   type WebSocketLike,
 } from "../src/index.js";
@@ -52,7 +51,7 @@ test("connection descriptor JSON and URI stay canonical across languages", () =>
   assert.deepEqual(parseConnectionDescriptorUri(uri), descriptor);
 });
 
-test("generic peer connects, exchanges application messages and resumes without product roles", async () => {
+test("generic peer connects, exchanges application messages and resumes without product roles", async (t) => {
   const sockets: FakeWebSocket[] = [];
   const identityStore = new MemoryIdentityStore();
   const ids = ["connect-1", "app-1", "resume-1", "app-2", "disconnect-1"];
@@ -68,6 +67,7 @@ test("generic peer connects, exchanges application messages and resumes without 
       return socket;
     },
   });
+  t.after(() => client.disconnect("test-cleanup"));
 
   const received: ApplicationMessagePayload[] = [];
   client.on("applicationMessage", (message) => received.push(message));
@@ -129,7 +129,7 @@ test("generic peer connects, exchanges application messages and resumes without 
   client.disconnect("test-complete");
 });
 
-test("anonymous connection does not acquire player or role semantics", async () => {
+test("anonymous connection does not acquire player or role semantics", async (t) => {
   const socket = new FakeWebSocket("ws://unused");
   const client = new PartyGameClient({
     peerId: null,
@@ -138,6 +138,7 @@ test("anonymous connection does not acquire player or role semantics", async () 
     messageIdFactory: () => "connect-anonymous",
     webSocketFactory: () => socket,
   });
+  t.after(() => client.disconnect("test-cleanup"));
 
   const descriptor = parseConnectionDescriptorJson(fixture("v2-connection-descriptor.json"));
   const promise = client.connect(descriptor);
