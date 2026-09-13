@@ -17,7 +17,7 @@ PartyBeam / Państwa Miasta / future multiplayer products
                 │
         transports + discovery
                 │
-     LAN / SignalR / WebRTC
+     LAN / SignalR / future WebRTC
 ```
 
 The central architectural rule is:
@@ -64,11 +64,39 @@ Concrete adapters remain separate packages:
 
 - in-memory reference/test transport;
 - direct LAN WebSocket transport;
-- later optional SignalR/backend relay;
+- optional SignalR/backend relay transport;
 - later optional WebRTC DataChannel transport;
 - later automatic selection/fallback above individually reliable transports.
 
+The LAN and SignalR listener sides both implement `IMessageTransport`. Their single-peer client adapters are technology-specific (`LanWebSocketClient` and `SignalRRelayClient`), but they carry the same protocol-v2/application payload semantics.
+
 Adding a transport must never add player/session/authority semantics to base APIs.
+
+## SignalR relay architecture
+
+The SignalR path deliberately separates the transport endpoint from communication continuity:
+
+```text
+consumer/listener
+       │ IMessageTransport
+       ▼
+SignalRRelayTransport
+       │ SignalR
+       ▼
+minimal relay backend
+       │ ChannelId + transient ConnectionId + opaque bytes
+       ▼
+SignalRRelayClient
+       │
+       ▼
+consumer peer
+```
+
+The relay backend does not parse `PeerId`, resume credentials or application-message meaning. Protocol-v2 connect/resume validation remains in the PartyGameKit transport/protocol layer, and `ConnectionContinuityCoordinator` remains responsible for rebinding a stable neutral peer to a replacement connection.
+
+The public server API is limited to service registration, endpoint mapping and transport-level limits. The hub and routing registry are implementation details, not a session engine.
+
+See [SignalR relay](signalr-relay.md).
 
 ## Discovery and connection descriptors
 
@@ -78,6 +106,8 @@ Discovery advertises technical connection endpoints/services. It is separate fro
 
 Product invitation concepts such as party join code, game id, display name or QR presentation belong to the consumer. PartyBeam may wrap a PartyGameKit connection descriptor inside its own invite payload.
 
+LAN UDP discovery remains optional and backend-free. SignalR does not turn discovery into a product lobby service.
+
 ## Client SDKs
 
 TypeScript and Dart implement the same protocol-v2 communication contract as C#.
@@ -85,6 +115,8 @@ TypeScript and Dart implement the same protocol-v2 communication contract as C#.
 The browser SDK exposes connect/disconnect/send/receive/resume, connection state, protocol compatibility and descriptor parsing without requiring PartyBeam roles or player/game-state projections.
 
 The Dart package remains a thin interoperability/protocol layer and deliberately does not duplicate a game/session runtime.
+
+`0.2.0-preview.2` aligns the supported release versions, but the new SignalR transport itself is a .NET transport/server implementation. The TypeScript and Dart packages do not claim transport functionality they do not implement.
 
 Framework UI/state-management concerns remain outside PartyGameKit.
 
@@ -115,6 +147,8 @@ A resume credential proves that a replacement connection may resume the same `Pe
 
 `ConnectionContinuityCoordinator` rebinds that communication identity and tracks connectivity state. It does not decide whether the peer is a player, whether it occupies a slot, whether a game pauses or whether the participant should be removed.
 
+The same continuity semantics work over LAN and SignalR; changing transport does not redefine peer identity.
+
 ## Routing scope
 
 `ChannelId` is an optional technical routing/discovery identifier, not a game session.
@@ -129,7 +163,7 @@ It may isolate communication but does not own:
 - score;
 - game phase.
 
-Consumers remain free to maintain their own party/room/session identifiers independently.
+SignalR uses `ChannelId` only to isolate relay delivery. Consumers remain free to maintain their own party/room/session identifiers independently.
 
 ## Ordering and snapshots
 
@@ -183,6 +217,7 @@ A minimal PartyGameKit consumer can:
 4. detect disconnect/timeout;
 5. resume the same neutral logical peer on a replacement connection when configured;
 6. use LAN discovery or a directly supplied descriptor;
-7. do all of the above without defining `Player`, `Host`, `SharedScreen`, lobby, score or game state.
+7. choose direct LAN or optional backend-assisted SignalR without changing product payload semantics;
+8. do all of the above without defining `Player`, `Host`, `SharedScreen`, lobby, score or game state.
 
-`samples/CommunicationDemo` exercises this invariant over the real LAN transport in CI.
+`samples/CommunicationDemo` exercises this invariant over both real LAN and SignalR transports in CI.
