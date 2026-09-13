@@ -2,6 +2,47 @@
 
 All notable PartyGameKit changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
+## 0.2.0-preview.3 - 2026-09-13
+
+Compatible real-time transport expansion on the existing communication-only protocol-v2 foundation.
+
+### Browser WebRTC DataChannel
+
+- adds browser-native `WebRtcPeer` based on `RTCPeerConnection` / `RTCDataChannel` without a third-party WebRTC runtime;
+- adds explicit `reliable` ordered and `low-latency` unordered/no-retransmit DataChannel profiles;
+- keeps application payloads opaque and peer-to-peer after negotiation;
+- bounds pending ICE candidates and DataChannel buffering instead of maintaining unbounded PartyGameKit send queues;
+- reliable mode reports backpressure while low-latency mode can drop newest stale-prone payloads;
+- adds RTT and RTT-variation diagnostics plus dropped-message counters.
+
+### Signaling
+
+- adds a neutral browser signaling abstraction separated from application payload transport;
+- adds optional SignalR browser signaling through `@microsoft/signalr`;
+- adds `AddPartyGameKitWebRtcSignaling(...)` and `MapPartyGameKitWebRtcSignaling(...)` to the ASP.NET Core server package;
+- SignalR routes only SDP/ICE negotiation data between transient connections sharing the same technical `ChannelId`;
+- cross-channel signaling is rejected and signaling payloads are bounded;
+- stable `PeerId`, players, PartyBeam parties, product roles and game state remain outside the signaling backend.
+
+### Validation
+
+- adds in-process Kestrel/SignalR signaling tests for peer discovery, target routing, leave/disconnect cleanup, channel isolation and signal-size limits;
+- adds browser SDK unit tests for reliability profiles, bounded buffering and signaling behavior;
+- adds a real headless Chromium gate that establishes direct DataChannels, verifies bidirectional binary delivery and exercises an approximately 60 Hz opaque stream;
+- the browser test verifies application traffic does not increase the signaling message count after negotiation;
+- LAN WebSocket and SignalR relay validation remain unchanged and continue to run in the same CI pipeline.
+
+### Dependency policy
+
+- rejects SIPSorcery as a PartyGameKit dependency because its current non-standard license does not match the project's free-commercial-use dependency rule;
+- does not adopt archived MixedReality-WebRTC or the WebRTCme desktop path;
+- uses browser-native WebRTC, MIT-licensed `@microsoft/signalr`, and Apache-2.0 Playwright as dev-only real-browser test tooling.
+
+### Packaging and release
+
+- bumps .NET, TypeScript and Dart package surfaces to `0.2.0-preview.3` while keeping wire protocol `2`;
+- CI and prerelease workflows both run the real Chromium WebRTC validation.
+
 ## 0.2.0-preview.2 - 2026-09-13
 
 Compatible transport expansion on the corrected communication-only protocol-v2 foundation.
