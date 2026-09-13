@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Prerelease tag, for example v0.2.0-preview.1
+        description: Prerelease tag, for example v0.2.0-preview.2
         required: true
-        default: v0.2.0-preview.1
+        default: v0.2.0-preview.2
 
 permissions:
   contents: write
@@ -67,7 +67,8 @@ jobs:
       - name: Verify NuGet packages as a fresh consumer
         shell: bash
         run: |
-          sed -i "s/0.2.0-preview.1/${{ steps.version.outputs.version }}/g" packaging/consumer/PartyGameKit.PackageConsumer.csproj
+          sed -E -i "s/Version=\"0\.2\.0-preview\.[0-9]+\"/Version=\"${{ steps.version.outputs.version }}\"/g" \
+            packaging/consumer/PartyGameKit.PackageConsumer.csproj
           dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj \
             --source "$PWD/artifacts/nuget"
           dotnet build packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-restore
