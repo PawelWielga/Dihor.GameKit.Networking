@@ -18,10 +18,9 @@ namespace PartyGameKit.Transport.Tests;
 public sealed class SignalRRelayIntegrationTests
 {
     [Fact]
-    public async Task MultipleChannels_TargetBroadcastAndDisconnectStayIsolated()
+    public async Task MultipleChannelsTargetBroadcastAndDisconnectStayIsolated()
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var cancellationToken = timeout.Token;
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var server = await RelayTestServer.StartAsync(cancellationToken);
 
         var channelA = new ChannelId("channel-a");
@@ -96,10 +95,9 @@ public sealed class SignalRRelayIntegrationTests
     }
 
     [Fact]
-    public async Task ProtocolV1Handshake_IsRejectedBeforeConnectionOpened()
+    public async Task ProtocolV1HandshakeIsRejectedBeforeConnectionOpened()
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var cancellationToken = timeout.Token;
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var server = await RelayTestServer.StartAsync(cancellationToken);
         var channel = new ChannelId("protocol-mismatch");
         await using var transport = await SignalRRelayTransport.StartAsync(
@@ -121,10 +119,9 @@ public sealed class SignalRRelayIntegrationTests
     }
 
     [Fact]
-    public async Task ReplacementRelayConnection_ResumesSameNeutralPeer()
+    public async Task ReplacementRelayConnectionResumesSameNeutralPeer()
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var cancellationToken = timeout.Token;
+        var cancellationToken = TestContext.Current.CancellationToken;
         await using var server = await RelayTestServer.StartAsync(cancellationToken);
         var channel = new ChannelId("resume-channel");
         await using var transport = await SignalRRelayTransport.StartAsync(
