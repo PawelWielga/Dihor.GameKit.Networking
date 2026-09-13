@@ -66,11 +66,11 @@ The consumer-facing surfaces are aligned to the corrected boundary:
 
 ## Corrected foundation invariant
 
-After the boundary correction, PartyGameKit must continue to satisfy all of these:
+PartyGameKit must continue to satisfy all of these:
 
 - direct LAN connect/send/receive/disconnect/resume works without a cloud backend;
 - LAN discovery and direct descriptor connection are independent;
-- C#, Dart and TypeScript share the language-neutral communication contract;
+- C#, Dart and TypeScript share the language-neutral communication contract where they implement it;
 - application payloads are opaque and consumer-owned;
 - a consumer with **no concept of players** can use the library;
 - PartyBeam owns TV/controller/player/party/authority/game behavior;
@@ -103,17 +103,30 @@ Implemented rules and validation:
 
 See [SignalR relay](signalr-relay.md).
 
-### `[19]` WebRTC DataChannel transport
+### `[19]` WebRTC DataChannel transport — implemented in `0.2.0-preview.3`
 
-Add low-latency peer communication behind the same neutral abstractions.
+Low-latency peer communication is available in the browser SDK while preserving the communication-only boundary.
 
-Rules:
+Implemented rules and validation:
 
-- signaling is infrastructure only;
-- PartyGameKit does not assume peers are phones, players, TV or authority;
-- validate 30–60 Hz opaque message streams;
-- bound buffering/backpressure and expose latency/jitter diagnostics;
-- product state/roles remain opaque.
+- native browser `RTCPeerConnection` / `RTCDataChannel` avoids an unsuitable native WebRTC dependency;
+- `reliable` uses an ordered reliable DataChannel;
+- `low-latency` uses an unordered DataChannel with zero retransmits;
+- PartyGameKit keeps application payloads opaque and peer-to-peer after negotiation;
+- signaling is a separate neutral concern and may use the optional SignalR signaling endpoint;
+- SignalR signaling carries SDP/ICE only, scoped by transient connection IDs and technical `ChannelId`;
+- cross-channel signaling is rejected and signaling payload sizes are bounded;
+- DataChannel buffering and pending ICE buffering are bounded;
+- reliable traffic reports backpressure rather than growing an unbounded queue;
+- low-latency traffic may drop the newest stale-prone payload according to explicit policy;
+- RTT, RTT variation, buffered bytes and drop counters are exposed as communication diagnostics;
+- real Chromium validation establishes direct reliable/low-latency DataChannels and exercises an approximately 60 Hz opaque stream;
+- the browser integration test verifies application traffic does not continue through signaling after negotiation;
+- LAN and SignalR relay remain independent and fully supported.
+
+The initial WebRTC endpoint is browser-native. `0.2.0-preview.3` does not claim a native .NET or Dart WebRTC endpoint.
+
+See [WebRTC DataChannel](webrtc-datachannel.md).
 
 ### `[20]` Automatic transport selection and fallback
 
@@ -121,7 +134,7 @@ Add deterministic communication-path selection after LAN, SignalR and WebRTC are
 
 A strategy may prefer LAN, then WebRTC, then backend relay, but the decision is based on connectivity/capabilities, not product roles.
 
-Automatic mode only answers: **which transport should carry messages now?** It must not decide whether a game pauses, whether a participant keeps a slot or who becomes authority.
+Automatic mode only answers: **which communication path should carry messages now?** It must not decide whether a game pauses, whether a participant keeps a slot or who becomes authority.
 
 ## Explicitly consumer-owned
 
