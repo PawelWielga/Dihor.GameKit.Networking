@@ -41,6 +41,8 @@ try {
       let handlerA = null;
       let handlerB = null;
       let count = 0;
+      let aIceComplete = false;
+      let bIceComplete = false;
 
       const deliver = (handler, signal) => {
         const copy = structuredClone(signal);
@@ -53,6 +55,9 @@ try {
         a: {
           send(signal) {
             count += 1;
+            if (signal.kind === "candidate" && signal.candidate === null) {
+              aIceComplete = true;
+            }
             deliver(handlerB, signal);
           },
           subscribe(handler) {
@@ -67,6 +72,9 @@ try {
         b: {
           send(signal) {
             count += 1;
+            if (signal.kind === "candidate" && signal.candidate === null) {
+              bIceComplete = true;
+            }
             deliver(handlerA, signal);
           },
           subscribe(handler) {
@@ -79,6 +87,7 @@ try {
           },
         },
         count: () => count,
+        iceComplete: () => aIceComplete && bIceComplete,
       };
     }
 
@@ -126,6 +135,11 @@ try {
       10_000,
       "Reliable WebRTC peers did not open a DataChannel.",
     );
+    await waitUntil(
+      () => reliableSignals.iceComplete(),
+      5_000,
+      "Reliable WebRTC ICE gathering did not complete before signaling baseline.",
+    );
 
     const reliableSignalCountAfterConnect = reliableSignals.count();
     reliableA.send(encoder.encode("a-to-b"));
@@ -167,6 +181,11 @@ try {
       Promise.all([lowLatencyAConnect, lowLatencyBConnect]),
       10_000,
       "Low-latency WebRTC peers did not open a DataChannel.",
+    );
+    await waitUntil(
+      () => lowLatencySignals.iceComplete(),
+      5_000,
+      "Low-latency WebRTC ICE gathering did not complete before signaling baseline.",
     );
 
     const lowLatencySignalCountAfterConnect = lowLatencySignals.count();
