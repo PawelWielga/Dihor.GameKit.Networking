@@ -3,10 +3,15 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/PartyGameKit.Core/PartyGameKit.Core.csproj" />
     <ProjectReference Include="../../src/PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
     <ProjectReference Include="../../src/PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj" />
     <ProjectReference Include="../../src/PartyGameKit.Transport.Lan/PartyGameKit.Transport.Lan.csproj" />
+    <ProjectReference Include="../../src/PartyGameKit.Transport.SignalR/PartyGameKit.Transport.SignalR.csproj" />
+    <ProjectReference Include="../../src/PartyGameKit.Transport.SignalR.Server/PartyGameKit.Transport.SignalR.Server.csproj" />
     <ProjectReference Include="../../src/PartyGameKit.Discovery.Lan/PartyGameKit.Discovery.Lan.csproj" />
   </ItemGroup>
 </Project>
