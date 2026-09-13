@@ -17,7 +17,7 @@ public sealed class AutomaticTransportSelectorTests
         await using var connection = await selector.ConnectAsync("connect-handshake");
 
         Assert.Equal(TransportIds.LanWebSocket, connection.TransportId);
-        Assert.Equal([TransportIds.LanWebSocket], attempts);
+        Assert.Equal(new[] { TransportIds.LanWebSocket }, attempts);
         Assert.Single(connection.Diagnostics.Attempts);
         Assert.Equal(ConnectivityAttemptOutcome.Selected, connection.Diagnostics.Attempts[0].Outcome);
     }
@@ -34,7 +34,7 @@ public sealed class AutomaticTransportSelectorTests
         await using var connection = await selector.ConnectAsync("connect-handshake");
 
         Assert.Equal(TransportIds.WebRtcDataChannel, connection.TransportId);
-        Assert.Equal([TransportIds.LanWebSocket, TransportIds.WebRtcDataChannel], attempts);
+        Assert.Equal(new[] { TransportIds.LanWebSocket, TransportIds.WebRtcDataChannel }, attempts);
         Assert.Equal(ConnectivityAttemptOutcome.Failed, connection.Diagnostics.Attempts[0].Outcome);
         Assert.Equal(ConnectivityAttemptOutcome.Selected, connection.Diagnostics.Attempts[1].Outcome);
     }
@@ -52,7 +52,7 @@ public sealed class AutomaticTransportSelectorTests
 
         Assert.Equal(TransportIds.SignalRRelay, connection.TransportId);
         Assert.Equal(
-            [TransportIds.LanWebSocket, TransportIds.WebRtcDataChannel, TransportIds.SignalRRelay],
+            new[] { TransportIds.LanWebSocket, TransportIds.WebRtcDataChannel, TransportIds.SignalRRelay },
             attempts);
     }
 
@@ -134,6 +134,35 @@ public sealed class AutomaticTransportSelectorTests
     }
 
     [Fact]
+    public async Task CancellationDisposesLateSuccessFromCandidateThatIgnoresCancellation()
+    {
+        var lateResult = new TaskCompletionSource<IMessageTransportClient>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var lateClient = new FakeClient();
+        var selector = new AutomaticTransportSelector(
+            [
+                new TransportClientCandidate(
+                    TransportIds.LanWebSocket,
+                    (_, _) => lateResult.Task),
+            ],
+            new ConnectivitySelectionOptions(
+                TimeSpan.FromSeconds(5),
+                [TransportIds.LanWebSocket]));
+        using var cancellation = new CancellationTokenSource();
+
+        var connecting = selector.ConnectAsync(
+            "connect-handshake",
+            cancellationToken: cancellation.Token);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => connecting);
+
+        lateResult.SetResult(lateClient);
+        await lateClient.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.True(lateClient.IsDisposed);
+    }
+
+    [Fact]
     public async Task ReconnectPrefersPreviouslySuccessfulTransport()
     {
         var attempts = new List<string>();
@@ -153,7 +182,7 @@ public sealed class AutomaticTransportSelectorTests
         await using var reconnected = await selector.ReconnectAsync("resume-handshake");
 
         Assert.Equal(TransportIds.WebRtcDataChannel, reconnected.TransportId);
-        Assert.Equal([TransportIds.WebRtcDataChannel], attempts);
+        Assert.Equal(new[] { TransportIds.WebRtcDataChannel }, attempts);
         Assert.Equal(TransportIds.WebRtcDataChannel, reconnected.Diagnostics.PreferredTransport);
         Assert.True(reconnected.Diagnostics.PreferredTransportReused);
     }
@@ -179,7 +208,7 @@ public sealed class AutomaticTransportSelectorTests
 
         Assert.Equal(TransportIds.SignalRRelay, reconnected.TransportId);
         Assert.Equal(
-            [TransportIds.WebRtcDataChannel, TransportIds.LanWebSocket, TransportIds.SignalRRelay],
+            new[] { TransportIds.WebRtcDataChannel, TransportIds.LanWebSocket, TransportIds.SignalRRelay },
             attempts);
         Assert.False(reconnected.Diagnostics.PreferredTransportReused);
     }
@@ -201,7 +230,7 @@ public sealed class AutomaticTransportSelectorTests
         await using var connection = await selector.ConnectAsync("connect-handshake", mode);
 
         Assert.Equal(expectedTransport, connection.TransportId);
-        Assert.Equal([expectedTransport], attempts);
+        Assert.Equal(new[] { expectedTransport }, attempts);
     }
 
     [Fact]
@@ -315,6 +344,10 @@ public sealed class AutomaticTransportSelectorTests
     {
         public List<byte[]> SentPayloads { get; } = new();
 
+        public TaskCompletionSource Disposed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool IsDisposed { get; private set; }
+
         public ValueTask SendAsync(
             ReadOnlyMemory<byte> payload,
             CancellationToken cancellationToken = default)
@@ -328,6 +361,11 @@ public sealed class AutomaticTransportSelectorTests
             CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(new ClientTransportMessage(ReadOnlyMemory<byte>.Empty));
 
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            IsDisposed = true;
+            Disposed.TrySetResult();
+            return ValueTask.CompletedTask;
+        }
     }
 }
