@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Prerelease tag, for example v0.2.0-preview.2
+        description: Prerelease tag, for example v0.2.0-preview.3
         required: true
-        default: v0.2.0-preview.2
+        default: v0.2.0-preview.3
 
 permissions:
   contents: write
@@ -17,7 +17,7 @@ permissions:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -100,11 +100,25 @@ jobs:
         with:
           node-version: 22
 
-      - name: Build, test and pack TypeScript client
+      - name: Install TypeScript client dependencies
+        working-directory: clients/typescript
+        run: npm install --no-audit --no-fund
+
+      - name: Build and test TypeScript client
+        working-directory: clients/typescript
+        run: npm test
+
+      - name: Install Chromium for WebRTC integration
+        working-directory: clients/typescript
+        run: npx playwright install --with-deps chromium
+
+      - name: Test real browser WebRTC DataChannel
+        working-directory: clients/typescript
+        run: npm run test:browser
+
+      - name: Pack TypeScript client
         working-directory: clients/typescript
         run: |
-          npm install --no-audit --no-fund
-          npm test
           npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
           mkdir -p ../../artifacts/npm
           npm pack --pack-destination ../../artifacts/npm
