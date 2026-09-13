@@ -2,7 +2,7 @@
 
 All notable PartyGameKit changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
-## 0.2.0-preview.1 - unreleased
+## 0.2.0-preview.1 - 2026-09-13
 
 Breaking correction of the public architecture boundary. PartyGameKit is now a communication/networking library rather than a generic party/game-session runtime.
 
@@ -23,10 +23,26 @@ Breaking correction of the public architecture boundary. PartyGameKit is now a c
 ### Protocol v2
 
 - connection lifecycle messages use `connection.connect.*`, `connection.resume.*`, `connection.heartbeat` and `connection.disconnect`;
-- consumer data is carried as `application.message` with an opaque consumer-owned payload;
+- consumer data is carried as `application.message` with opaque consumer-owned data;
 - LAN WebSocket handshake accepts connect/resume control messages only;
 - LAN discovery advertises technical `ConnectionDescriptor` data rather than product/game sessions;
-- protocol version mismatch remains deterministic.
+- protocol version mismatch remains deterministic;
+- protocol-v1 canonical fixtures were removed after C#, Dart and TypeScript moved to the v2 fixture set.
+
+### TypeScript and Dart
+
+- `@partygamekit/client` moved to neutral connect/resume APIs with optional stable peer identity;
+- browser role requirements (`player`, `shared-screen`) and snapshot projection handling were removed;
+- browser descriptors now use `ConnectionDescriptor` / `partygamekit://connect`;
+- the Dart interoperability package moved to protocol v2, neutral peer/connection vocabulary and connection descriptors;
+- both language surfaces validate the same `protocol/fixtures/v2-*.json` contract as C#.
+
+### Samples and package validation
+
+- added `samples/CommunicationDemo`, a game-agnostic real-LAN reference sample covering UDP discovery, direct descriptor connection, two generic peers, opaque application messages, targeted delivery, broadcast and resume on a replacement connection;
+- the neutral communication demo runs in CI and prerelease validation;
+- `packaging/consumer` now restores generated NuGet packages only and verifies opaque message exchange plus neutral peer resume instead of merely checking that package types load;
+- historical Shared Counter and Dungeon Prototype remain application-layer examples and are not sources of generic library semantics.
 
 ### Validation
 
@@ -34,13 +50,12 @@ Breaking correction of the public architecture boundary. PartyGameKit is now a c
 - in-memory transport tests cover generic targeted and broadcast payloads;
 - LAN WebSocket integration tests cover opaque bidirectional messaging and protocol mismatch rejection;
 - UDP discovery tests cover endpoint discovery and direct-descriptor independence;
-- public API guard tests prevent the removed v0.1 product/session abstractions from returning to production assemblies.
+- public API guard tests prevent removed v0.1 product/session abstractions from returning to production assemblies;
+- C#, Dart and TypeScript conformance tests target protocol v2.
 
 ### Migration
 
 See `docs/migration-0.1-to-0.2.md`.
-
-Cross-language TypeScript/Dart alignment and sample migration are intentionally completed in ordered issue `[17]`. Legacy protocol-v1 fixtures remain temporarily in the repository until that issue removes the transition bridge.
 
 ## 0.1.0-preview.1 - 2026-09-12
 
