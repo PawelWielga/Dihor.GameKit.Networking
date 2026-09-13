@@ -4,14 +4,14 @@ PartyGameKit uses Semantic Versioning for distributed packages and a separate in
 
 ## Package versions
 
-The historical first packaged line is `0.1.0-preview.1`. The corrected communication-only .NET line starts at `0.2.0-preview.1` because the public API break is deliberate and substantial.
+The historical first packaged line is `0.1.0-preview.1`. The corrected communication-only line starts at `0.2.0-preview.1` because the public API break is deliberate and substantial.
 
 For preview releases:
 
 - compatible fixes/features may increment the prerelease suffix;
 - removing or changing a public API requires an explicit changelog/migration entry and an appropriate SemVer prerelease version change;
 - a stable `1.0.0` is not implied by completion of the current backlog;
-- all language packages should use the same release version once `[17]` restores cross-language alignment.
+- the supported .NET, TypeScript and Dart surfaces use the same release version for one PartyGameKit compatibility line.
 
 ## Protocol versions
 
@@ -26,12 +26,12 @@ Consumer/application payloads are opaque to PartyGameKit and may be independentl
 
 ## Canonical fixtures
 
-Protocol-v2 fixtures are prefixed `v2-` during the `[16]` -> `[17]` transition. Legacy v1 fixture files remain temporarily so the still-v1 TypeScript and Dart implementations continue to verify their historical contract until `[17]` migrates them.
+The active canonical fixture set is `protocol/fixtures/v2-*.json`.
 
-After `[17]`, the supported C#, Dart and TypeScript implementations must consume the same protocol-v2 fixture set.
+C#, Dart and TypeScript tests consume those vectors as the single source of truth for the PartyGameKit v2 wire contract. Protocol-v1 fixtures were retired from the active tree when `[17]` completed cross-language migration; the v1 contract remains available in Git history and the `0.1.0-preview.1` tag/release.
 
 ## Compatibility promise
 
 PartyGameKit does not silently reinterpret protocol v1 as v2. A v2 transport rejects v1 handshakes deterministically.
 
-Product/game rules and product identifiers are versioned by the consuming application, not by PartyGameKit Core.
+Within a protocol version, changes must preserve the documented envelope/control-message contract. Product/game rules and product identifiers are versioned by the consuming application, not by PartyGameKit Core.
