@@ -1,6 +1,6 @@
 name: partygamekit_protocol
-version: 0.1.0-preview.1
-description: PartyGameKit language-neutral protocol v1 and portable join descriptor support for Dart.
+version: 0.2.0-preview.1
+description: PartyGameKit communication protocol v2, connection descriptors and LAN discovery interoperability for Dart.
 publish_to: none
 repository: https://github.com/PawelWielga/PartyGameKit
 
