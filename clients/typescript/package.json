@@ -1,7 +1,7 @@
 {
   "name": "@partygamekit/client",
-  "version": "0.2.0-preview.3",
-  "description": "Communication-neutral browser client for PartyGameKit transports, protocol v2, reconnect and WebRTC DataChannels.",
+  "version": "0.2.0-preview.4",
+  "description": "Communication-neutral browser client for PartyGameKit transports, protocol v2, reconnect, WebRTC DataChannels and automatic transport selection.",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
