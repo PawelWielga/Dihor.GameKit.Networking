@@ -16,16 +16,11 @@ test("WebRTC connection failure rejects connect and exposes failed state", async
   const connecting = peer.connect();
   connection.fail();
 
-  let caught: unknown;
-  try {
-    await connecting;
-  } catch (error) {
-    caught = error;
-  }
-
+  const caught = await captureRejection(connecting);
   assert.ok(caught instanceof Error);
   assert.equal(caught.message, "WebRTC peer connection failed.");
   assert.equal(peer.currentState, "failed");
+  assert.ok(connection.closeCount >= 1);
 });
 
 test("closing before DataChannel open rejects connect instead of leaving it pending", async () => {
@@ -37,17 +32,81 @@ test("closing before DataChannel open rejects connect instead of leaving it pend
   const connecting = peer.connect();
   peer.close();
 
-  let caught: unknown;
-  try {
-    await connecting;
-  } catch (error) {
-    caught = error;
-  }
-
+  const caught = await captureRejection(connecting);
   assert.ok(caught instanceof Error);
   assert.equal(caught.message, "WebRTC peer was closed before the DataChannel opened.");
   assert.equal(peer.currentState, "closed");
 });
+
+test("closing a peer that was never connected is cleanup-safe", async () => {
+  const connection = new LifecyclePeerConnection();
+  const peer = new WebRtcPeer(new IdleSignalingChannel(), {
+    peerConnectionFactory: () => connection.asRtcPeerConnection(),
+  });
+
+  peer.close();
+  await Promise.resolve();
+
+  assert.equal(peer.currentState, "closed");
+  assert.equal(connection.closeCount, 1);
+});
+
+test("synchronous signaling subscription failure becomes terminal and cleans RTC resources", async (t) => {
+  const connection = new LifecyclePeerConnection();
+  const expected = new Error("signaling backlog overflow");
+  const peer = new WebRtcPeer(new ThrowingSignalingChannel(expected), {
+    peerConnectionFactory: () => connection.asRtcPeerConnection(),
+  });
+  t.after(() => peer.close());
+
+  const first = await captureRejection(peer.connect());
+  assert.equal(first, expected);
+  assert.equal(peer.currentState, "failed");
+  assert.equal(connection.closeCount, 1);
+
+  const second = await captureRejection(peer.connect());
+  assert.equal(second, expected);
+  assert.equal(peer.currentState, "failed");
+});
+
+test("a late DataChannel open cannot revive a failed peer", async (t) => {
+  const connection = new LifecyclePeerConnection();
+  const peer = new WebRtcPeer(new IdleSignalingChannel(), {
+    initiator: true,
+    peerConnectionFactory: () => connection.asRtcPeerConnection(),
+  });
+  t.after(() => peer.close());
+
+  const connecting = peer.connect();
+  void connecting.catch(() => {});
+  connection.fail();
+
+  const caught = await captureRejection(connecting);
+  assert.ok(caught instanceof Error);
+  assert.equal(peer.currentState, "failed");
+
+  connection.channel.openEvenIfClosed();
+  connection.connected();
+  assert.equal(peer.currentState, "failed");
+
+  let sendError: unknown;
+  try {
+    peer.send(new Uint8Array([1]));
+  } catch (error) {
+    sendError = error;
+  }
+  assert.ok(sendError instanceof Error);
+  assert.equal(sendError.message, "WebRTC DataChannel is not open.");
+});
+
+async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+    return undefined;
+  } catch (error) {
+    return error;
+  }
+}
 
 class IdleSignalingChannel implements WebRtcSignalingChannel {
   send(_signal: WebRtcSignal): void {}
@@ -57,8 +116,20 @@ class IdleSignalingChannel implements WebRtcSignalingChannel {
   }
 }
 
+class ThrowingSignalingChannel implements WebRtcSignalingChannel {
+  constructor(private readonly error: Error) {}
+
+  send(_signal: WebRtcSignal): void {}
+
+  subscribe(_handler: (signal: WebRtcSignal) => void | Promise<void>): () => void {
+    throw this.error;
+  }
+}
+
 class LifecyclePeerConnection {
+  readonly channel = new LifecycleDataChannel();
   connectionState: RTCPeerConnectionState = "new";
+  closeCount = 0;
   private readonly listeners = new Map<string, Set<() => void>>();
 
   asRtcPeerConnection(): RTCPeerConnection {
@@ -74,7 +145,18 @@ class LifecyclePeerConnection {
     listeners.add(listener);
   }
 
+  createDataChannel(_label: string, _init?: RTCDataChannelInit): RTCDataChannel {
+    return this.channel.asRtcDataChannel();
+  }
+
+  async createOffer(): Promise<RTCSessionDescriptionInit> {
+    return { type: "offer", sdp: "lifecycle-offer" };
+  }
+
+  async setLocalDescription(_description?: RTCLocalSessionDescriptionInit): Promise<void> {}
+
   close(): void {
+    this.closeCount += 1;
     this.connectionState = "closed";
     this.emit("connectionstatechange");
   }
@@ -82,6 +164,50 @@ class LifecyclePeerConnection {
   fail(): void {
     this.connectionState = "failed";
     this.emit("connectionstatechange");
+  }
+
+  connected(): void {
+    this.connectionState = "connected";
+    this.emit("connectionstatechange");
+  }
+
+  private emit(type: string): void {
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener();
+    }
+  }
+}
+
+class LifecycleDataChannel {
+  readyState: RTCDataChannelState = "connecting";
+  bufferedAmount = 0;
+  bufferedAmountLowThreshold = 0;
+  binaryType: BinaryType = "blob";
+  private readonly listeners = new Map<string, Set<() => void>>();
+
+  asRtcDataChannel(): RTCDataChannel {
+    return this as unknown as RTCDataChannel;
+  }
+
+  addEventListener(type: string, listener: () => void): void {
+    let listeners = this.listeners.get(type);
+    if (listeners === undefined) {
+      listeners = new Set();
+      this.listeners.set(type, listeners);
+    }
+    listeners.add(listener);
+  }
+
+  send(_data: string | Blob | ArrayBuffer | ArrayBufferView): void {}
+
+  close(): void {
+    this.readyState = "closed";
+    this.emit("close");
+  }
+
+  openEvenIfClosed(): void {
+    this.readyState = "open";
+    this.emit("open");
   }
 
   private emit(type: string): void {
