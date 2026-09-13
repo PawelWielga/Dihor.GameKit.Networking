@@ -1,10 +1,23 @@
 # Changelog
 
+## 0.2.0-preview.3 - 2026-09-13
+
+- Adds browser-native `WebRtcPeer` using `RTCPeerConnection` and `RTCDataChannel`.
+- Adds explicit `reliable` ordered and `low-latency` unordered/no-retransmit profiles.
+- Adds bounded DataChannel buffering/backpressure with explicit reject/drop behavior instead of an unbounded PartyGameKit queue.
+- Bounds ICE candidates received before the remote description is available.
+- Adds communication diagnostics for buffered bytes, dropped-message count, candidate-pair RTT and RTT variation.
+- Adds neutral `WebRtcSignalingChannel` plus optional `SignalRWebRtcSignalingClient` for SDP/ICE routing only.
+- Adds MIT-licensed `@microsoft/signalr` as the browser signaling runtime dependency.
+- Adds Apache-2.0 Playwright as dev-only tooling for real Chromium DataChannel validation.
+- Keeps protocol v2 unchanged; WebRTC application bytes remain consumer-owned and opaque.
+- Does not define players, controllers, TVs, product sessions, authority or automatic transport fallback.
+
 ## 0.2.0-preview.2 - 2026-09-13
 
 - Aligns the browser package version with the PartyGameKit preview.2 release line.
 - Keeps protocol v2 and the preview.1 browser API unchanged.
-- The new SignalR relay transport is provided by the .NET transport packages; this release does not claim a browser SignalR transport implementation.
+- The SignalR relay transport is provided by the .NET transport packages; this release does not claim a browser SignalR relay transport implementation.
 
 ## 0.2.0-preview.1 - 2026-09-13
 
