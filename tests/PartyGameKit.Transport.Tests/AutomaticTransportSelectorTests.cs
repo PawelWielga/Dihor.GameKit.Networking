@@ -14,7 +14,9 @@ public sealed class AutomaticTransportSelectorTests
             Success(TransportIds.WebRtcDataChannel, attempts),
             Success(TransportIds.SignalRRelay, attempts));
 
-        await using var connection = await selector.ConnectAsync("connect-handshake");
+        await using var connection = await selector.ConnectAsync(
+            "connect-handshake",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(TransportIds.LanWebSocket, connection.TransportId);
         Assert.Equal(new[] { TransportIds.LanWebSocket }, attempts);
@@ -31,7 +33,9 @@ public sealed class AutomaticTransportSelectorTests
             Success(TransportIds.WebRtcDataChannel, attempts),
             Success(TransportIds.SignalRRelay, attempts));
 
-        await using var connection = await selector.ConnectAsync("connect-handshake");
+        await using var connection = await selector.ConnectAsync(
+            "connect-handshake",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(TransportIds.WebRtcDataChannel, connection.TransportId);
         Assert.Equal(new[] { TransportIds.LanWebSocket, TransportIds.WebRtcDataChannel }, attempts);
@@ -48,7 +52,9 @@ public sealed class AutomaticTransportSelectorTests
             Failure(TransportIds.WebRtcDataChannel, attempts),
             Success(TransportIds.SignalRRelay, attempts));
 
-        await using var connection = await selector.ConnectAsync("connect-handshake");
+        await using var connection = await selector.ConnectAsync(
+            "connect-handshake",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(TransportIds.SignalRRelay, connection.TransportId);
         Assert.Equal(
@@ -65,7 +71,9 @@ public sealed class AutomaticTransportSelectorTests
             Failure(TransportIds.SignalRRelay));
 
         var exception = await Assert.ThrowsAsync<ConnectivitySelectionException>(
-            () => selector.ConnectAsync("connect-handshake"));
+            () => selector.ConnectAsync(
+                "connect-handshake",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Null(exception.Diagnostics.SelectedTransport);
         Assert.Collection(
@@ -95,7 +103,9 @@ public sealed class AutomaticTransportSelectorTests
                 TimeSpan.FromSeconds(1),
                 [TransportIds.LanWebSocket, TransportIds.WebRtcDataChannel]));
 
-        await using var connection = await selector.ConnectAsync("connect-handshake");
+        await using var connection = await selector.ConnectAsync(
+            "connect-handshake",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(TransportIds.WebRtcDataChannel, connection.TransportId);
         Assert.Equal(ConnectivityAttemptOutcome.TimedOut, connection.Diagnostics.Attempts[0].Outcome);
@@ -125,7 +135,9 @@ public sealed class AutomaticTransportSelectorTests
             new ConnectivitySelectionOptions(
                 TimeSpan.FromSeconds(5),
                 [TransportIds.LanWebSocket, TransportIds.WebRtcDataChannel]));
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            TestContext.Current.CancellationToken);
+        cancellation.CancelAfter(TimeSpan.FromMilliseconds(25));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => selector.ConnectAsync("connect-handshake", cancellationToken: cancellation.Token));
@@ -148,7 +160,8 @@ public sealed class AutomaticTransportSelectorTests
             new ConnectivitySelectionOptions(
                 TimeSpan.FromSeconds(5),
                 [TransportIds.LanWebSocket]));
-        using var cancellation = new CancellationTokenSource();
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            TestContext.Current.CancellationToken);
 
         var connecting = selector.ConnectAsync(
             "connect-handshake",
@@ -157,7 +170,9 @@ public sealed class AutomaticTransportSelectorTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => connecting);
 
         lateResult.SetResult(lateClient);
-        await lateClient.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await lateClient.Disposed.Task.WaitAsync(
+            TimeSpan.FromSeconds(1),
+            TestContext.Current.CancellationToken);
 
         Assert.True(lateClient.IsDisposed);
     }
@@ -172,14 +187,18 @@ public sealed class AutomaticTransportSelectorTests
             Success(TransportIds.WebRtcDataChannel, attempts),
             Success(TransportIds.SignalRRelay, attempts));
 
-        await using (var initial = await selector.ConnectAsync("connect-handshake"))
+        await using (var initial = await selector.ConnectAsync(
+                         "connect-handshake",
+                         cancellationToken: TestContext.Current.CancellationToken))
         {
             Assert.Equal(TransportIds.WebRtcDataChannel, initial.TransportId);
         }
 
         attempts.Clear();
         lanAvailable = true;
-        await using var reconnected = await selector.ReconnectAsync("resume-handshake");
+        await using var reconnected = await selector.ReconnectAsync(
+            "resume-handshake",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(TransportIds.WebRtcDataChannel, reconnected.TransportId);
         Assert.Equal(new[] { TransportIds.WebRtcDataChannel }, attempts);
@@ -197,14 +216,18 @@ public sealed class AutomaticTransportSelectorTests
             Conditional(TransportIds.WebRtcDataChannel, attempts, () => webRtcAvailable),
             Success(TransportIds.SignalRRelay, attempts));
 
-        await using (var initial = await selector.ConnectAsync("connect-handshake"))
+        await using (var initial = await selector.ConnectAsync(
+                         "connect-handshake",
+                         cancellationToken: TestContext.Current.CancellationToken))
         {
             Assert.Equal(TransportIds.WebRtcDataChannel, initial.TransportId);
         }
 
         attempts.Clear();
         webRtcAvailable = false;
-        await using var reconnected = await selector.ReconnectAsync("resume-handshake");
+        await using var reconnected = await selector.ReconnectAsync(
+            "resume-handshake",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(TransportIds.SignalRRelay, reconnected.TransportId);
         Assert.Equal(
@@ -227,7 +250,10 @@ public sealed class AutomaticTransportSelectorTests
             Success(TransportIds.WebRtcDataChannel, attempts),
             Success(TransportIds.SignalRRelay, attempts));
 
-        await using var connection = await selector.ConnectAsync("connect-handshake", mode);
+        await using var connection = await selector.ConnectAsync(
+            "connect-handshake",
+            mode,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(expectedTransport, connection.TransportId);
         Assert.Equal(new[] { expectedTransport }, attempts);
@@ -270,18 +296,22 @@ public sealed class AutomaticTransportSelectorTests
             ]);
 
         var payloadBefore = new byte[] { 1, 2, 3, 4 };
-        await using (var initial = await selector.ConnectAsync("peer=stable-id;phase=connect"))
+        await using (var initial = await selector.ConnectAsync(
+                         "peer=stable-id;phase=connect",
+                         cancellationToken: TestContext.Current.CancellationToken))
         {
-            await initial.SendAsync(payloadBefore);
+            await initial.SendAsync(payloadBefore, TestContext.Current.CancellationToken);
             Assert.Equal(payloadBefore, clients.Last().SentPayloads.Single());
         }
 
         signalRAvailable = true;
         var payloadAfter = new byte[] { 5, 6, 7, 8 };
-        await using (var reconnected = await selector.ReconnectAsync("peer=stable-id;phase=resume"))
+        await using (var reconnected = await selector.ReconnectAsync(
+                         "peer=stable-id;phase=resume",
+                         cancellationToken: TestContext.Current.CancellationToken))
         {
             Assert.Equal(TransportIds.SignalRRelay, reconnected.TransportId);
-            await reconnected.SendAsync(payloadAfter);
+            await reconnected.SendAsync(payloadAfter, TestContext.Current.CancellationToken);
             Assert.Equal(payloadAfter, clients.Last().SentPayloads.Single());
         }
 
