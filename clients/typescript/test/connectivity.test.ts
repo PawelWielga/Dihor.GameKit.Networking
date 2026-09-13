@@ -326,5 +326,5 @@ async function eventually(condition: () => boolean): Promise<void> {
     if (condition()) return;
     await new Promise((resolve) => setTimeout(resolve, 1));
   }
-  assert.fail("Condition did not become true in time");
+  throw new Error("Condition did not become true in time");
 }
