@@ -12,7 +12,7 @@ permissions:
 jobs:
   build-test-package:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -105,6 +105,14 @@ jobs:
       - name: Build and test TypeScript browser client
         working-directory: clients/typescript
         run: npm test
+
+      - name: Install Chromium for WebRTC integration
+        working-directory: clients/typescript
+        run: npx playwright install --with-deps chromium
+
+      - name: Test real browser WebRTC DataChannel
+        working-directory: clients/typescript
+        run: npm run test:browser
 
       - name: Pack TypeScript prerelease artifact
         working-directory: clients/typescript

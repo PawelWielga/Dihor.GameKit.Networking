@@ -17,7 +17,7 @@ PartyBeam / Państwa Miasta / future multiplayer products
                 │
         transports + discovery
                 │
-     LAN / SignalR / future WebRTC
+       LAN / SignalR / WebRTC
 ```
 
 The central architectural rule is:
@@ -39,6 +39,8 @@ Every third-party dependency introduced into the project must permit commercial 
 Prefer permissive open-source licenses such as MIT, Apache-2.0 or BSD when a suitable dependency exists. Dual-licensed libraries are acceptable only when PartyGameKit and its commercial consumers can legally use the dependency under a free, commercial-compatible license.
 
 The license of a new external dependency must be verified before the dependency is added. If commercial-use rights are unclear, treat the dependency as unsuitable until the license is confirmed.
+
+For `[19]`, native browser WebRTC was chosen rather than introducing a native .NET WebRTC runtime with unsuitable licensing/maintenance characteristics. `@microsoft/signalr` is MIT-licensed; Playwright is Apache-2.0 and used only for browser integration testing.
 
 ## Communication identities and control protocol
 
@@ -63,7 +65,7 @@ Application messages are consumer-owned. PartyGameKit does not require a game/se
 
 ## Transport abstractions
 
-`IMessageTransport` owns technology-neutral communication operations:
+`IMessageTransport` owns technology-neutral .NET listener operations:
 
 - connection opened/closed/faulted events;
 - receive message events;
@@ -74,23 +76,27 @@ Application messages are consumer-owned. PartyGameKit does not require a game/se
 
 The abstraction operates on transient `ConnectionId` plus opaque bytes. It has no player/session dependency.
 
-## Concrete transports
+Not every runtime-specific communication capability must pretend to implement this exact .NET interface. The browser WebRTC endpoint is exposed through the TypeScript SDK using native browser APIs while preserving the same communication-only ownership boundary.
 
-Concrete adapters remain separate packages:
+## Concrete communication paths
+
+Concrete adapters remain separate by technology/runtime:
 
 - in-memory reference/test transport;
 - direct LAN WebSocket transport;
 - optional SignalR/backend relay transport;
-- later optional WebRTC DataChannel transport;
-- later automatic selection/fallback above individually reliable transports.
+- browser-native WebRTC DataChannel communication;
+- later automatic selection/fallback above individually reliable paths.
 
-The LAN and SignalR listener sides both implement `IMessageTransport`. Their single-peer client adapters are technology-specific (`LanWebSocketClient` and `SignalRRelayClient`), but they carry the same protocol-v2/application payload semantics.
+The LAN and SignalR listener sides implement `IMessageTransport`. Their single-peer client adapters are technology-specific (`LanWebSocketClient` and `SignalRRelayClient`), but they carry the same protocol-v2/application payload semantics.
 
-Adding a transport must never add player/session/authority semantics to base APIs.
+Browser WebRTC uses `WebRtcPeer` in `@partygamekit/client`. It carries opaque binary consumer data directly over `RTCDataChannel`; it does not claim to be a native .NET or Dart endpoint.
+
+Adding a communication path must never add player/session/authority semantics to base APIs.
 
 ## SignalR relay architecture
 
-The SignalR path deliberately separates the transport endpoint from communication continuity:
+The SignalR relay path deliberately separates the transport endpoint from communication continuity:
 
 ```text
 consumer/listener
@@ -110,9 +116,38 @@ consumer peer
 
 The relay backend does not parse `PeerId`, resume credentials or application-message meaning. Protocol-v2 connect/resume validation remains in the PartyGameKit transport/protocol layer, and `ConnectionContinuityCoordinator` remains responsible for rebinding a stable neutral peer to a replacement connection.
 
-The public server API is limited to service registration, endpoint mapping and transport-level limits. The hub and routing registry are implementation details, not a session engine.
-
 See [SignalR relay](signalr-relay.md).
+
+## WebRTC architecture
+
+The WebRTC path separates negotiation from application data:
+
+```text
+browser peer A                         browser peer B
+     │                                      │
+     │        SDP / ICE signaling           │
+     ├──────── optional SignalR ─────────────┤
+     │                                      │
+     ╰══════ RTCDataChannel (direct) ═══════╯
+              opaque application bytes
+```
+
+The browser SDK provides:
+
+- neutral `WebRtcSignalingChannel` abstraction;
+- `WebRtcPeer` around `RTCPeerConnection` / `RTCDataChannel`;
+- reliable ordered and low-latency unordered/no-retransmit profiles;
+- bounded DataChannel buffering/backpressure;
+- bounded pending ICE buffering;
+- connection state and communication diagnostics.
+
+The optional ASP.NET Core signaling endpoint provides only technical SDP/ICE routing. It scopes transient SignalR connection IDs by `ChannelId`, rejects cross-channel targets and bounds signal payload size.
+
+It does not relay normal DataChannel application traffic and does not own `PeerId`, player identity, parties or game state.
+
+TURN may be required in some Internet/NAT topologies, but PartyGameKit does not implement or operate a TURN service in `[19]`.
+
+See [WebRTC DataChannel](webrtc-datachannel.md).
 
 ## Discovery and connection descriptors
 
@@ -124,21 +159,23 @@ Product invitation concepts such as party join code, game id, display name or QR
 
 LAN UDP discovery remains optional and backend-free. SignalR does not turn discovery into a product lobby service.
 
+WebRTC peer negotiation currently uses transient signaling membership rather than redefining `ConnectionDescriptor` as a product session object.
+
 ## Client SDKs
 
-TypeScript and Dart implement the same protocol-v2 communication contract as C#.
+TypeScript and Dart implement the same protocol-v2 communication contract where applicable.
 
-The browser SDK exposes connect/disconnect/send/receive/resume, connection state, protocol compatibility and descriptor parsing without requiring PartyBeam roles or player/game-state projections.
+The browser SDK exposes protocol-v2 connect/disconnect/send/receive/resume plus native WebRTC DataChannels without requiring PartyBeam roles or player/game-state projections.
 
-The Dart package remains a thin interoperability/protocol layer and deliberately does not duplicate a game/session runtime.
+The Dart package remains a thin interoperability/protocol layer and deliberately does not duplicate a game/session runtime or claim a WebRTC transport it does not implement.
 
-`0.2.0-preview.2` aligns the supported release versions, but the new SignalR transport itself is a .NET transport/server implementation. The TypeScript and Dart packages do not claim transport functionality they do not implement.
+`0.2.0-preview.3` aligns package versions across supported surfaces while allowing runtime-specific capability differences. Version alignment does not mean every language implements every transport.
 
 Framework UI/state-management concerns remain outside PartyGameKit.
 
 ## Cross-language boundary
 
-The compatibility model is:
+The compatibility model for PartyGameKit protocol v2 is:
 
 ```text
 protocol/fixtures/v2-*.json
@@ -148,7 +185,9 @@ protocol/fixtures/v2-*.json
   C#        Dart   TypeScript
 ```
 
-The fixtures specify the PartyGameKit communication contract. Consumer/game protocols may be independently versioned by their owners.
+The fixtures specify the PartyGameKit protocol communication contract. Consumer/game protocols may be independently versioned by their owners.
+
+WebRTC DataChannel tests validate browser transport behavior separately; adding WebRTC does not modify the canonical protocol-v2 fixture set.
 
 ## Identity and reconnect
 
@@ -163,13 +202,13 @@ A resume credential proves that a replacement connection may resume the same `Pe
 
 `ConnectionContinuityCoordinator` rebinds that communication identity and tracks connectivity state. It does not decide whether the peer is a player, whether it occupies a slot, whether a game pauses or whether the participant should be removed.
 
-The same continuity semantics work over LAN and SignalR; changing transport does not redefine peer identity.
+WebRTC signaling connection IDs are ephemeral negotiation-routing identifiers and are not a replacement for `PeerId`.
 
 ## Routing scope
 
 `ChannelId` is an optional technical routing/discovery identifier, not a game session.
 
-It may isolate communication but does not own:
+It may isolate communication/signaling but does not own:
 
 - lifecycle;
 - player membership;
@@ -179,15 +218,15 @@ It may isolate communication but does not own:
 - score;
 - game phase.
 
-SignalR uses `ChannelId` only to isolate relay delivery. Consumers remain free to maintain their own party/room/session identifiers independently.
+SignalR relay uses `ChannelId` to isolate application-data delivery. WebRTC signaling uses it to isolate SDP/ICE exchange. Consumers remain free to maintain their own party/room/session identifiers independently.
 
-## Ordering and snapshots
+## Ordering, buffering and snapshots
 
 `MessageSequence` / `SequenceGate` are optional neutral monotonic ordering/deduplication utilities.
 
-Game snapshot semantics are not PartyGameKit base responsibilities. Public/private player projections, authority-bound publication and game-state restoration belong to consumers.
+WebRTC adds transport-level buffering policy, not game-state semantics. Reliable DataChannel traffic reports backpressure when the configured buffer bound would be exceeded; low-latency traffic may drop newest payloads according to explicit communication policy.
 
-Państwa Miasta may carry its own authoritative game snapshots as opaque application data and use the neutral sequence helper only where its application protocol needs it.
+Game snapshot semantics are not PartyGameKit base responsibilities. Public/private player projections, authority-bound publication and game-state restoration belong to consumers.
 
 ## Consumer examples
 
@@ -207,13 +246,15 @@ browser clients  = collaborators
 no players at all
 ```
 
-Both use the same PartyGameKit base APIs without changing the library.
+Both use the same PartyGameKit communication foundation without changing the library's ownership boundary.
 
 ## LAN host constraint
 
 The direct LAN WebSocket listener requires a server-capable runtime. A browser can initiate WebSocket connections but cannot be the raw inbound WebSocket listener.
 
 This is a transport capability constraint, not a reason to model `Host` or `SharedScreen` in PartyGameKit.
+
+Browser WebRTC changes the peer-to-peer capability picture for browser consumers but does not turn browser transport capability into a product role.
 
 ## Historical v0.1 implementation
 
@@ -229,11 +270,13 @@ A minimal PartyGameKit consumer can:
 
 1. connect generic clients;
 2. exchange opaque messages;
-3. target or broadcast messages;
-4. detect disconnect/timeout;
-5. resume the same neutral logical peer on a replacement connection when configured;
+3. target or broadcast messages where the selected path supports it;
+4. detect communication failure/state changes;
+5. resume the same neutral logical peer on a replacement protocol-v2 connection when configured;
 6. use LAN discovery or a directly supplied descriptor;
 7. choose direct LAN or optional backend-assisted SignalR without changing product payload semantics;
-8. do all of the above without defining `Player`, `Host`, `SharedScreen`, lobby, score or game state.
+8. establish direct browser WebRTC DataChannels with signaling kept separate from application data;
+9. use reliable or low-latency communication profiles without defining product/game roles;
+10. do all of the above without defining `Player`, `Host`, `SharedScreen`, lobby, score or game state.
 
-`samples/CommunicationDemo` exercises this invariant over both real LAN and SignalR transports in CI.
+`samples/CommunicationDemo` validates LAN and SignalR relay. Real Chromium integration validates WebRTC peer-to-peer DataChannels.

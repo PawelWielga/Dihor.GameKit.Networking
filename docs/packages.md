@@ -1,6 +1,6 @@
 # Package boundaries
 
-PartyGameKit `0.2.0-preview.2` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
+PartyGameKit `0.2.0-preview.3` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
 
 The authoritative ownership decision is [Communication boundary](communication-boundary.md).
 
@@ -8,7 +8,7 @@ The authoritative ownership decision is [Communication boundary](communication-b
 
 A PartyGameKit package may depend on communication concepts. It must not require consumers to adopt players, hosts, shared screens, game sessions, authority policy, scoring or game-state projections.
 
-## Current packages
+## Current .NET packages
 
 ### `PartyGameKit.Core`
 
@@ -70,16 +70,16 @@ The client package depends on the SignalR client stack but does not require an A
 
 ### `PartyGameKit.Transport.SignalR.Server`
 
-Minimal ASP.NET Core relay hosting support.
+Minimal ASP.NET Core communication hosting support.
 
-The public setup surface is intentionally small:
+The public setup surface includes:
 
-- `AddPartyGameKitSignalRRelay(...)`;
-- `MapPartyGameKitSignalRRelay(...)`.
+- `AddPartyGameKitSignalRRelay(...)` / `MapPartyGameKitSignalRRelay(...)` for opaque application-data relay;
+- `AddPartyGameKitWebRtcSignaling(...)` / `MapPartyGameKitWebRtcSignaling(...)` for SDP/ICE signaling only.
 
-The hub and routing registry are implementation details. The server routes opaque bytes by technical `ChannelId` and transient `ConnectionId`; it does not parse PartyGameKit application payloads and does not model players, parties, lobbies, authority or game state.
+The hubs and registries remain implementation details. Relay routing uses technical `ChannelId` and transient `ConnectionId`; WebRTC signaling uses technical `ChannelId` plus transient SignalR connection IDs. Neither endpoint models players, parties, lobbies, authority or game state.
 
-See [SignalR relay](signalr-relay.md) for deployment and security assumptions.
+See [SignalR relay](signalr-relay.md) and [WebRTC DataChannel](webrtc-datachannel.md).
 
 ### `PartyGameKit.Discovery.Lan`
 
@@ -89,22 +89,32 @@ Optional UDP discovery for technical `ConnectionDescriptor` endpoints. Discovery
 
 ### `@partygamekit/client`
 
-The `0.2.0-preview.2` browser client exposes communication-neutral capabilities:
+The `0.2.0-preview.3` browser client exposes two communication paths.
+
+Protocol-v2 WebSocket capabilities:
 
 - connect/disconnect;
 - send/receive opaque application messages;
-- connection state;
-- heartbeat;
+- connection state and heartbeat;
 - optional stable peer identity;
 - resume/reconnect;
 - protocol compatibility;
 - `ConnectionDescriptor` parsing.
 
-It does not require `player`, `host` or `shared-screen` roles and does not implement public/private game-state projection policy.
+Browser-native WebRTC capabilities:
 
-The preview.2 version aligns the supported language surfaces; the browser API and protocol remain v2-compatible with preview.1. The .NET SignalR transport does not silently change the browser SDK transport implementation.
+- `WebRtcPeer` using the runtime's `RTCPeerConnection` / `RTCDataChannel`;
+- reliable ordered and low-latency unordered/no-retransmit profiles;
+- bounded `bufferedAmount` policy with explicit reject/drop behavior;
+- bounded pre-description ICE candidate buffering;
+- direct opaque binary peer-to-peer payloads;
+- communication diagnostics including RTT samples and dropped-message count;
+- neutral `WebRtcSignalingChannel` abstraction;
+- optional `SignalRWebRtcSignalingClient` for SDP/ICE routing.
 
-PartyBeam may build a product-specific facade above it if that improves its TV/controller UX.
+WebRTC application data does not flow through SignalR after negotiation. The SDK does not require `player`, `host`, `controller` or `shared-screen` roles and does not implement game-state projection policy.
+
+The npm runtime dependency added for `[19]` is MIT-licensed `@microsoft/signalr`; WebRTC itself is provided by the browser runtime. Playwright is a dev-only Apache-2.0 dependency for real-browser CI validation.
 
 ## Dart package
 
@@ -112,13 +122,13 @@ PartyBeam may build a product-specific facade above it if that improves its TV/c
 
 The Dart package is a thin implementation of the PartyGameKit v2 protocol and connection-descriptor contract.
 
-`0.2.0-preview.2` keeps the same protocol-v2 wire contract as preview.1. It deliberately does not include a Dart SignalR transport or game/session runtime. Państwa Miasta keeps its player model, host-authoritative game engine, snapshots and lifecycle policy above the adapter boundary.
+`0.2.0-preview.3` keeps the same protocol-v2 wire contract. It deliberately does not claim a Dart WebRTC runtime, SignalR transport or game/session engine. Państwa Miasta keeps its player model, host-authoritative game engine, snapshots and lifecycle policy above the adapter boundary.
 
-## Reference sample
+## Reference validation
 
-`samples/CommunicationDemo` is the active v0.2 reference sample. It runs the same neutral communication scenario over direct LAN WebSocket and backend-assisted SignalR, covering two generic peers, opaque messages, targeted/broadcast delivery and resume on a replacement connection. LAN additionally validates UDP endpoint discovery and a serialized direct connection descriptor.
+`samples/CommunicationDemo` remains the active .NET v0.2 reference sample. It runs the same neutral communication scenario over direct LAN WebSocket and backend-assisted SignalR, covering two generic peers, opaque messages, targeted/broadcast delivery and resume on a replacement connection. LAN additionally validates UDP endpoint discovery and a serialized direct connection descriptor.
 
-The former `SharedCounter` and `DungeonPrototype` samples belonged to the historical v0.1 session-oriented API and were retired from the active tree during `[17]`. Their implementations remain available in Git history and the v0.1 tag; they are not compatibility requirements for the corrected API.
+WebRTC is validated separately in the browser package through unit tests and a real Chromium integration test that establishes peer-to-peer DataChannels and exercises an approximately 60 Hz opaque stream without routing application traffic through signaling.
 
 ## Dependency direction
 
@@ -130,27 +140,28 @@ The former `SharedCounter` and `DungeonPrototype` samples belonged to the histor
                          │
                          ▼
                   PartyGameKit 0.2
-        ┌────────────────┼──────────────────────────┐
-        ▼                ▼                          ▼
-      Core            Protocol             Transport abstractions
-        │                │                          │
-        │                │          ┌───────────────┼───────────────┐
-        │                │          ▼               ▼               ▼
-        │                │     InMemory       LAN WebSocket    SignalR relay
-        │                │                        │               │
-        └────────────────┴──────── optional LAN discovery     optional backend
+        ┌────────────────┼────────────────────────────┐
+        ▼                ▼                            ▼
+      Core            Protocol               Transport/browser APIs
+        │                │               ┌─────────────┼──────────────┐
+        │                │               ▼             ▼              ▼
+        │                │          LAN WebSocket  SignalR relay  WebRTC browser
+        │                │               │             │              │
+        └────────────────┴──── optional discovery   backend      SDP/ICE signaling
 ```
 
 No base package may depend upward on PartyBeam or concrete game semantics.
 
-## Package-only validation
+## Package-only and browser validation
 
-CI builds NuGet packages first, restores `packaging/consumer` using only those generated artifacts and then validates:
+CI builds NuGet packages first, restores `packaging/consumer` using only those generated artifacts and validates package boundaries. It also builds/tests the npm package and runs the real Chromium WebRTC test.
+
+The combined gate verifies:
 
 - opaque `application.message` exchange;
 - neutral connection events;
 - stable `PeerId` resume on a replacement `ConnectionId`;
 - SignalR client/server package availability from the generated NuGet feed;
-- absence of source-project dependencies in the consumer.
-
-This catches packaging/dependency mistakes that ordinary project-reference tests cannot catch.
+- WebRTC signaling isolation;
+- real browser DataChannel establishment and high-frequency bounded messaging;
+- absence of source-project dependencies in the NuGet consumer.
