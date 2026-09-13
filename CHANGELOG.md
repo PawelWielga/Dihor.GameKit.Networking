@@ -42,7 +42,13 @@ Breaking correction of the public architecture boundary. PartyGameKit is now a c
 - added `samples/CommunicationDemo`, a game-agnostic real-LAN reference sample covering UDP discovery, direct descriptor connection, two generic peers, opaque application messages, targeted delivery, broadcast and resume on a replacement connection;
 - the neutral communication demo runs in CI and prerelease validation;
 - `packaging/consumer` now restores generated NuGet packages only and verifies opaque message exchange plus neutral peer resume instead of merely checking that package types load;
-- historical Shared Counter and Dungeon Prototype remain application-layer examples and are not sources of generic library semantics.
+- retired the v0.1 `SharedCounter` and `DungeonPrototype` source/tests from the active tree rather than keeping non-compiling examples tied to removed session APIs; they remain available in Git history and the v0.1 tag.
+
+### Cross-repository validation
+
+- validated the corrected primitives against the current Państwa Miasta multiplayer/LAN structure without moving `PlayerProfile`, room policy or Countries & Cities game state into PartyGameKit;
+- validated that PartyBeam can keep PartySession, TV/controller/player roles, technical-authority policy and game-state projections entirely above PartyGameKit;
+- documented required consumer-side follow-up separately in `docs/cross-repo-validation.md`.
 
 ### Validation
 
