@@ -8,6 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
+    <ProjectReference Include="../PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
     <ProjectReference Include="../PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj" />
   </ItemGroup>
 </Project>
