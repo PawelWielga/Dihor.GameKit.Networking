@@ -1,6 +1,6 @@
 # Package boundaries
 
-PartyGameKit `0.2.0-preview.3` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
+PartyGameKit `0.2.0-preview.4` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
 
 The authoritative ownership decision is [Communication boundary](communication-boundary.md).
 
@@ -36,15 +36,21 @@ Owns the language-neutral protocol-v2 communication contract:
 
 ### `PartyGameKit.Transport.Abstractions`
 
-Owns technology-neutral connection/message events and operations:
+Owns technology-neutral host/client communication contracts and orchestration:
 
-- `IMessageTransport`;
+- `IMessageTransport` for listener/multi-connection transports;
+- `IMessageTransportClient` for a single connected client path;
 - transient connection open/close lifecycle;
 - receive events;
-- targeted send;
-- broadcast;
+- targeted send and broadcast on the listener side;
+- client send/receive/disposal;
 - transport fault reporting;
-- cancellation/disposal.
+- `ConnectivityMode` / `AutomaticTransportSelector`;
+- deterministic candidate ordering, timeout budgets and reconnect preference;
+- structured automatic-connectivity diagnostics;
+- cancellation and late-connection cleanup.
+
+The selector works on registered communication candidates only. It does not own product roles, sessions, game state or application-failure policy.
 
 ### `PartyGameKit.Transport.InMemory`
 
@@ -54,6 +60,8 @@ Deterministic transport for tests, package consumers and applications that need 
 
 Direct LAN WebSocket communication using the same neutral protocol/transport boundary. It validates connect/resume admission but does not own product/player admission or game-session rules.
 
+`LanWebSocketClient` implements `IMessageTransportClient`, so it can be registered as an automatic-connectivity candidate without hiding its concrete LAN API from callers that intentionally force LAN.
+
 ### `PartyGameKit.Transport.SignalR`
 
 Optional backend-assisted connectivity over SignalR.
@@ -61,7 +69,7 @@ Optional backend-assisted connectivity over SignalR.
 It provides:
 
 - `SignalRRelayTransport` as the listener/multi-connection implementation of `IMessageTransport`;
-- `SignalRRelayClient` as the single-peer counterpart;
+- `SignalRRelayClient` as the single-peer counterpart and `IMessageTransportClient` implementation;
 - the same protocol-v2 connect/resume handshake semantics as LAN;
 - targeted delivery, broadcast and transport lifecycle events;
 - opaque `ChannelId` routing scopes without product/session meaning.
@@ -79,7 +87,7 @@ The public setup surface includes:
 
 The hubs and registries remain implementation details. Relay routing uses technical `ChannelId` and transient `ConnectionId`; WebRTC signaling uses technical `ChannelId` plus transient SignalR connection IDs. Neither endpoint models players, parties, lobbies, authority or game state.
 
-See [SignalR relay](signalr-relay.md) and [WebRTC DataChannel](webrtc-datachannel.md).
+See [SignalR relay](signalr-relay.md), [WebRTC DataChannel](webrtc-datachannel.md) and [Automatic connectivity](automatic-connectivity.md).
 
 ### `PartyGameKit.Discovery.Lan`
 
@@ -89,7 +97,7 @@ Optional UDP discovery for technical `ConnectionDescriptor` endpoints. Discovery
 
 ### `@partygamekit/client`
 
-The `0.2.0-preview.3` browser client exposes two communication paths.
+The `0.2.0-preview.4` browser client exposes protocol-v2 WebSocket, native WebRTC and generic transport-selection capabilities.
 
 Protocol-v2 WebSocket capabilities:
 
@@ -112,9 +120,21 @@ Browser-native WebRTC capabilities:
 - neutral `WebRtcSignalingChannel` abstraction;
 - optional `SignalRWebRtcSignalingClient` for SDP/ICE routing.
 
+Automatic selection capabilities:
+
+- generic `AutomaticTransportSelector<TContext, TConnection>`;
+- default transport IDs/order for LAN, WebRTC and SignalR;
+- forced transport modes;
+- per-attempt timeout budgets;
+- previous-path preference on reconnect;
+- structured attempt diagnostics;
+- abort and late-success cleanup hooks.
+
+The TypeScript selector does not pretend all browser candidates share one concrete connection class. Runtime-specific adapters stay explicit at the composition root while selection policy remains communication-only.
+
 WebRTC application data does not flow through SignalR after negotiation. The SDK does not require `player`, `host`, `controller` or `shared-screen` roles and does not implement game-state projection policy.
 
-The npm runtime dependency added for `[19]` is MIT-licensed `@microsoft/signalr`; WebRTC itself is provided by the browser runtime. Playwright is a dev-only Apache-2.0 dependency for real-browser CI validation.
+The npm runtime dependency added for `[19]` is MIT-licensed `@microsoft/signalr`; WebRTC itself is provided by the browser runtime. Playwright is a dev-only Apache-2.0 dependency for real-browser CI validation. `[20]` adds no new external dependency.
 
 ## Dart package
 
@@ -122,11 +142,13 @@ The npm runtime dependency added for `[19]` is MIT-licensed `@microsoft/signalr`
 
 The Dart package is a thin implementation of the PartyGameKit v2 protocol and connection-descriptor contract.
 
-`0.2.0-preview.3` keeps the same protocol-v2 wire contract. It deliberately does not claim a Dart WebRTC runtime, SignalR transport or game/session engine. Państwa Miasta keeps its player model, host-authoritative game engine, snapshots and lifecycle policy above the adapter boundary.
+`0.2.0-preview.4` keeps the same protocol-v2 wire contract. It deliberately does not claim a Dart LAN, SignalR, WebRTC or automatic transport runtime and does not contain a game/session engine. Państwa Miasta keeps its player model, host-authoritative game engine, snapshots and lifecycle policy above the adapter boundary.
 
 ## Reference validation
 
-`samples/CommunicationDemo` remains the active .NET v0.2 reference sample. It runs the same neutral communication scenario over direct LAN WebSocket and backend-assisted SignalR, covering two generic peers, opaque messages, targeted/broadcast delivery and resume on a replacement connection. LAN additionally validates UDP endpoint discovery and a serialized direct connection descriptor.
+`samples/CommunicationDemo` remains the listener-side .NET v0.2 reference sample. It runs the same neutral communication scenario over direct LAN WebSocket and backend-assisted SignalR, covering two generic peers, opaque messages, targeted/broadcast delivery and resume on a replacement connection. LAN additionally validates UDP endpoint discovery and a serialized direct connection descriptor.
+
+`samples/AutoConnectivityDemo` validates the client-side automatic orchestration boundary. The scenario asks for `ConnectivityMode.Auto`, receives only `IMessageTransportClient`, preserves a stable `PeerId` and verifies byte-for-byte opaque payload delivery. The concrete LAN client appears only where the candidate is registered.
 
 WebRTC is validated separately in the browser package through unit tests and a real Chromium integration test that establishes peer-to-peer DataChannels and exercises an approximately 60 Hz opaque stream without routing application traffic through signaling.
 
@@ -148,6 +170,9 @@ WebRTC is validated separately in the browser package through unit tests and a r
         │                │          LAN WebSocket  SignalR relay  WebRTC browser
         │                │               │             │              │
         └────────────────┴──── optional discovery   backend      SDP/ICE signaling
+                                           │
+                                  automatic selector
+                           (registered client candidates only)
 ```
 
 No base package may depend upward on PartyBeam or concrete game semantics.
@@ -162,6 +187,8 @@ The combined gate verifies:
 - neutral connection events;
 - stable `PeerId` resume on a replacement `ConnectionId`;
 - SignalR client/server package availability from the generated NuGet feed;
+- bounded/deterministic automatic transport selection and cancellation cleanup;
+- neutral Auto sample behavior;
 - WebRTC signaling isolation;
 - real browser DataChannel establishment and high-frequency bounded messaging;
 - absence of source-project dependencies in the NuGet consumer.
