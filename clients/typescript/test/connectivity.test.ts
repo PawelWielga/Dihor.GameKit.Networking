@@ -94,7 +94,7 @@ test("timed-out candidate is bounded and late success is disposed", async () => 
 
   const selected = await selector.connect("opaque-connect");
   resolveLate?.(lateConnection);
-  await Promise.resolve();
+  await eventually(() => lateConnection.disposed);
 
   assert.equal(selected.transportId, connectivityTransportIds.webRtcDataChannel);
   assert.equal(selected.diagnostics.attempts[0]?.outcome, "timed-out");
@@ -127,6 +127,34 @@ test("external cancellation stops selection without trying fallback", async () =
   assert.ok(caught instanceof DOMException);
   assert.equal(caught.name, "AbortError");
   assert.equal(secondAttempted, false);
+});
+
+test("external cancellation disposes a late success from a candidate that ignores abort", async () => {
+  let resolveLate: ((connection: FakeConnection) => void) | undefined;
+  const lateConnection = connection(connectivityTransportIds.lanWebSocket, "opaque-connect");
+  const selector = createSelector([
+    {
+      transportId: connectivityTransportIds.lanWebSocket,
+      connect: () => new Promise<FakeConnection>((resolve) => {
+        resolveLate = resolve;
+      }),
+      disposeLateConnection: (candidateConnection) => {
+        candidateConnection.disposed = true;
+      },
+    },
+  ]);
+  const cancellation = new AbortController();
+  const pending = selector.connect("opaque-connect", "auto", cancellation.signal);
+  cancellation.abort();
+
+  const caught = await captureRejection(pending);
+  assert.ok(caught instanceof DOMException);
+  assert.equal(caught.name, "AbortError");
+
+  resolveLate?.(lateConnection);
+  await eventually(() => lateConnection.disposed);
+
+  assert.equal(lateConnection.disposed, true);
 });
 
 test("reconnect prefers the previously successful path", async () => {
@@ -291,4 +319,12 @@ async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
   } catch (error) {
     return error;
   }
+}
+
+async function eventually(condition: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (condition()) return;
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+  assert.fail("Condition did not become true in time");
 }
