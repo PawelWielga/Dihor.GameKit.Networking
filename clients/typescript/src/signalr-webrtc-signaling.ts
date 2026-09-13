@@ -13,6 +13,7 @@ export interface SignalRWebRtcSignalingClientOptions {
   endpoint: string;
   channelId: string;
   connectionOptions?: IHttpConnectionOptions;
+  maxPendingSignalsPerPeer?: number;
   hubConnectionFactory?: () => SignalRHubConnectionLike;
 }
 
@@ -33,12 +34,15 @@ export interface SignalRHubConnectionLike {
 export class SignalRWebRtcSignalingClient {
   private readonly connection: SignalRHubConnectionLike;
   private readonly channelId: string;
+  private readonly maxPendingSignalsPerPeer: number;
   private readonly peerJoinedListeners = new Set<(connectionId: string) => void>();
   private readonly peerLeftListeners = new Set<(connectionId: string) => void>();
   private readonly signalListeners = new Map<
     string,
     Set<(signal: WebRtcSignal) => void | Promise<void>>
   >();
+  private readonly pendingSignals = new Map<string, WebRtcSignal[]>();
+  private readonly pendingSignalOverflowPeers = new Set<string>();
   private started = false;
   private disposed = false;
 
@@ -48,6 +52,11 @@ export class SignalRWebRtcSignalingClient {
     }
     if (options.channelId.trim().length === 0) {
       throw new Error("SignalR WebRTC signaling channelId is required.");
+    }
+
+    this.maxPendingSignalsPerPeer = options.maxPendingSignalsPerPeer ?? 64;
+    if (this.maxPendingSignalsPerPeer <= 0) {
+      throw new RangeError("maxPendingSignalsPerPeer must be positive.");
     }
 
     this.channelId = options.channelId.trim();
@@ -71,6 +80,8 @@ export class SignalRWebRtcSignalingClient {
     });
     this.connection.on(peerLeftMethod, (...args: unknown[]) => {
       const connectionId = requiredString(args[0], "peer connection id");
+      this.pendingSignals.delete(connectionId);
+      this.pendingSignalOverflowPeers.delete(connectionId);
       for (const listener of this.peerLeftListeners) {
         listener(connectionId);
       }
@@ -79,8 +90,17 @@ export class SignalRWebRtcSignalingClient {
       const sourceConnectionId = requiredString(args[0], "signal source connection id");
       const signalJson = requiredString(args[1], "WebRTC signal payload");
       const signal = parseWebRtcSignal(signalJson);
-      for (const listener of this.signalListeners.get(sourceConnectionId) ?? []) {
-        void listener(signal);
+      const listeners = this.signalListeners.get(sourceConnectionId);
+      if (listeners === undefined || listeners.size === 0) {
+        this.bufferEarlySignal(sourceConnectionId, signal);
+        return;
+      }
+
+      for (const listener of listeners) {
+        void Promise.resolve(listener(signal)).catch(() => {
+          // A WebRtcPeer listener transitions itself to failed before rejecting.
+          // Consume the callback rejection at this event-dispatch boundary.
+        });
       }
     });
   }
@@ -149,12 +169,33 @@ export class SignalRWebRtcSignalingClient {
         );
       },
       subscribe: (listener) => {
+        if (this.pendingSignalOverflowPeers.delete(target)) {
+          this.pendingSignals.delete(target);
+          throw new Error(
+            `WebRTC signaling pending signal limit of ${this.maxPendingSignalsPerPeer} was exceeded for peer ${target}.`,
+          );
+        }
+
         let listeners = this.signalListeners.get(target);
         if (listeners === undefined) {
           listeners = new Set();
           this.signalListeners.set(target, listeners);
         }
         listeners.add(listener);
+
+        const pending = this.pendingSignals.get(target);
+        this.pendingSignals.delete(target);
+        if (pending !== undefined && pending.length > 0) {
+          let delivery = Promise.resolve();
+          for (const signal of pending) {
+            delivery = delivery.then(() => listener(signal));
+          }
+          void delivery.catch(() => {
+            // WebRtcPeer owns the failure state; avoid an unhandled rejection
+            // from this synchronous subscription boundary.
+          });
+        }
+
         return () => {
           const current = this.signalListeners.get(target);
           current?.delete(listener);
@@ -193,12 +234,35 @@ export class SignalRWebRtcSignalingClient {
 
     this.started = false;
     this.signalListeners.clear();
+    this.pendingSignals.clear();
+    this.pendingSignalOverflowPeers.clear();
     this.peerJoinedListeners.clear();
     this.peerLeftListeners.clear();
     this.connection.off(peerJoinedMethod);
     this.connection.off(peerLeftMethod);
     this.connection.off(signalMethod);
     await this.connection.stop();
+  }
+
+  private bufferEarlySignal(sourceConnectionId: string, signal: WebRtcSignal): void {
+    if (this.pendingSignalOverflowPeers.has(sourceConnectionId)) {
+      return;
+    }
+
+    let pending = this.pendingSignals.get(sourceConnectionId);
+    if (pending === undefined) {
+      pending = [];
+      this.pendingSignals.set(sourceConnectionId, pending);
+    }
+
+    if (pending.length >= this.maxPendingSignalsPerPeer) {
+      pending.length = 0;
+      this.pendingSignals.delete(sourceConnectionId);
+      this.pendingSignalOverflowPeers.add(sourceConnectionId);
+      return;
+    }
+
+    pending.push(signal);
   }
 }
 
