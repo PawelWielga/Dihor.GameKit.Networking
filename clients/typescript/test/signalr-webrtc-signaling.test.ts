@@ -6,6 +6,7 @@ import {
   type WebRtcSignal,
 } from "../src/index.js";
 
+const peerLeftMethod = "PartyGameKit.WebRtcPeerLeft";
 const signalMethod = "PartyGameKit.WebRtcSignal";
 
 test("SignalR signaling buffers an early offer until the peer channel subscribes", async (t) => {
@@ -93,6 +94,51 @@ test("SignalR closure propagates a terminal failure to subscribed negotiating ch
   connection.closeUnexpectedly(expected);
 
   assert.deepEqual(failures, [expected]);
+});
+
+test("peer departure fails an active negotiation channel", async (t) => {
+  const connection = new FakeHubConnection("local");
+  const client = new SignalRWebRtcSignalingClient({
+    endpoint: "https://example.test/signaling",
+    channelId: "channel-a",
+    hubConnectionFactory: () => connection,
+  });
+  t.after(() => client.dispose());
+
+  await client.connect();
+  const failures: unknown[] = [];
+  client.createChannel("remote").subscribe(
+    () => {},
+    (reason) => failures.push(reason),
+  );
+
+  connection.emit(peerLeftMethod, "remote");
+
+  assert.equal(failures.length, 1);
+  assert.ok(failures[0] instanceof Error);
+  assert.ok(failures[0].message.includes("left before negotiation completed"));
+});
+
+test("disposing signaling fails active negotiation channels before listeners are cleared", async () => {
+  const connection = new FakeHubConnection("local");
+  const client = new SignalRWebRtcSignalingClient({
+    endpoint: "https://example.test/signaling",
+    channelId: "channel-a",
+    hubConnectionFactory: () => connection,
+  });
+
+  await client.connect();
+  const failures: unknown[] = [];
+  client.createChannel("remote").subscribe(
+    () => {},
+    (reason) => failures.push(reason),
+  );
+
+  await client.dispose();
+
+  assert.equal(failures.length, 1);
+  assert.ok(failures[0] instanceof Error);
+  assert.equal(failures[0].message, "SignalR WebRTC signaling client was disposed.");
 });
 
 test("malformed signaling payload fails the affected subscribed peer channel", async (t) => {
