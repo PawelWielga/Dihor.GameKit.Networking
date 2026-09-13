@@ -69,6 +69,45 @@ test("synchronous signaling subscription failure becomes terminal and cleans RTC
   assert.equal(peer.currentState, "failed");
 });
 
+test("asynchronous signaling failure rejects a pending negotiation and cleans RTC resources", async (t) => {
+  const connection = new LifecyclePeerConnection();
+  const signaling = new FailableSignalingChannel();
+  const peer = new WebRtcPeer(signaling, {
+    peerConnectionFactory: () => connection.asRtcPeerConnection(),
+  });
+  t.after(() => peer.close());
+
+  const connecting = peer.connect();
+  const expected = new Error("SignalR signaling connection closed");
+  signaling.fail(expected);
+
+  const caught = await captureRejection(connecting);
+  assert.equal(caught, expected);
+  assert.equal(peer.currentState, "failed");
+  assert.equal(connection.closeCount, 1);
+});
+
+test("signaling failure after DataChannel open does not tear down direct peer traffic", async (t) => {
+  const connection = new LifecyclePeerConnection();
+  const signaling = new FailableSignalingChannel();
+  const peer = new WebRtcPeer(signaling, {
+    initiator: true,
+    peerConnectionFactory: () => connection.asRtcPeerConnection(),
+  });
+  t.after(() => peer.close());
+
+  const connecting = peer.connect();
+  connection.channel.openEvenIfClosed();
+  connection.connected();
+  await connecting;
+
+  signaling.fail(new Error("signaling backend unavailable"));
+
+  assert.equal(peer.currentState, "open");
+  assert.equal(connection.closeCount, 0);
+  assert.equal(peer.send(new Uint8Array([1])).sent, true);
+});
+
 test("a late DataChannel open cannot revive a failed peer", async (t) => {
   const connection = new LifecyclePeerConnection();
   const peer = new WebRtcPeer(new IdleSignalingChannel(), {
@@ -123,6 +162,28 @@ class ThrowingSignalingChannel implements WebRtcSignalingChannel {
 
   subscribe(_handler: (signal: WebRtcSignal) => void | Promise<void>): () => void {
     throw this.error;
+  }
+}
+
+class FailableSignalingChannel implements WebRtcSignalingChannel {
+  private failureHandler: ((reason: unknown) => void) | undefined;
+
+  send(_signal: WebRtcSignal): void {}
+
+  subscribe(
+    _handler: (signal: WebRtcSignal) => void | Promise<void>,
+    failureHandler?: (reason: unknown) => void,
+  ): () => void {
+    this.failureHandler = failureHandler;
+    return () => {
+      if (this.failureHandler === failureHandler) {
+        this.failureHandler = undefined;
+      }
+    };
+  }
+
+  fail(reason: unknown): void {
+    this.failureHandler?.(reason);
   }
 }
 
