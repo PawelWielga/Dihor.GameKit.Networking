@@ -1,7 +1,7 @@
 {
   "name": "@partygamekit/client",
-  "version": "0.1.0-preview.1",
-  "description": "Browser client SDK for PartyGameKit controllers and shared screens.",
+  "version": "0.2.0-preview.1",
+  "description": "Communication-neutral browser client for PartyGameKit transports, protocol v2, reconnect and application messages.",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -27,10 +27,11 @@
     "directory": "clients/typescript"
   },
   "keywords": [
-    "party-game",
     "multiplayer",
-    "shared-screen",
-    "websocket"
+    "networking",
+    "websocket",
+    "lan",
+    "reconnect"
   ],
   "devDependencies": {
     "typescript": "^5.8.3"
