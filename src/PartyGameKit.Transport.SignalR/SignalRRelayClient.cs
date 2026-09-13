@@ -23,17 +23,16 @@ public sealed class SignalRRelayClient : IAsyncDisposable
                 SingleWriter = false,
             });
     private readonly List<IDisposable> _subscriptions = new();
+    private ConnectionId? _connectionId;
     private int _closed;
     private int _disposed;
 
     private SignalRRelayClient(
         SignalRRelayOptions options,
-        HubConnection connection,
-        ConnectionId connectionId)
+        HubConnection connection)
     {
         _options = options;
         _connection = connection;
-        ConnectionId = connectionId;
         _subscriptions.Add(_connection.On<byte[]>(
             SignalRRelayMethods.ClientMessage,
             HandleMessage));
@@ -43,7 +42,8 @@ public sealed class SignalRRelayClient : IAsyncDisposable
         _connection.Closed += HandleRelayClosedAsync;
     }
 
-    public ConnectionId ConnectionId { get; }
+    public ConnectionId ConnectionId =>
+        _connectionId ?? throw new InvalidOperationException("SignalR relay client has not attached yet.");
 
     public static async Task<SignalRRelayClient> ConnectAsync(
         SignalRRelayOptions options,
@@ -67,6 +67,7 @@ public sealed class SignalRRelayClient : IAsyncDisposable
                 options.Endpoint,
                 httpOptions => options.ConfigureConnection?.Invoke(httpOptions))
             .Build();
+        var client = new SignalRRelayClient(options, connection);
 
         try
         {
@@ -77,23 +78,12 @@ public sealed class SignalRRelayClient : IAsyncDisposable
                     handshake,
                     cancellationToken)
                 .ConfigureAwait(false);
-            var connectionId = new ConnectionId(rawConnectionId);
-            return new SignalRRelayClient(options, connection, connectionId);
+            client._connectionId = new ConnectionId(rawConnectionId);
+            return client;
         }
         catch
         {
-            try
-            {
-                if (connection.State != HubConnectionState.Disconnected)
-                {
-                    await connection.StopAsync(CancellationToken.None).ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                await connection.DisposeAsync().ConfigureAwait(false);
-            }
-
+            await client.DisposeConnectionAfterFailedStartAsync().ConfigureAwait(false);
             throw;
         }
     }
@@ -129,14 +119,16 @@ public sealed class SignalRRelayClient : IAsyncDisposable
 
         try
         {
+            var connectionId = _connectionId;
             if (Interlocked.Exchange(ref _closed, 1) == 0 &&
+                connectionId is { } attachedConnectionId &&
                 _connection.State == HubConnectionState.Connected)
             {
                 try
                 {
                     await _connection.InvokeAsync(
                             SignalRRelayMethods.DetachClient,
-                            ConnectionId.Value,
+                            attachedConnectionId.Value,
                             CancellationToken.None)
                         .ConfigureAwait(false);
                 }
@@ -158,11 +150,7 @@ public sealed class SignalRRelayClient : IAsyncDisposable
         }
         finally
         {
-            foreach (var subscription in _subscriptions)
-            {
-                subscription.Dispose();
-            }
-
+            DisposeSubscriptions();
             _messages.Writer.TryComplete();
             await _connection.DisposeAsync().ConfigureAwait(false);
         }
@@ -208,10 +196,45 @@ public sealed class SignalRRelayClient : IAsyncDisposable
         return Task.CompletedTask;
     }
 
+    private async Task DisposeConnectionAfterFailedStartAsync()
+    {
+        Interlocked.Exchange(ref _disposed, 1);
+        Interlocked.Exchange(ref _closed, 1);
+        try
+        {
+            if (_connection.State != HubConnectionState.Disconnected)
+            {
+                try
+                {
+                    await _connection.StopAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+        finally
+        {
+            DisposeSubscriptions();
+            _messages.Writer.TryComplete();
+            await _connection.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private void DisposeSubscriptions()
+    {
+        foreach (var subscription in _subscriptions)
+        {
+            subscription.Dispose();
+        }
+    }
+
     private void ThrowIfClosed()
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-        if (Volatile.Read(ref _closed) != 0 || _connection.State != HubConnectionState.Connected)
+        if (Volatile.Read(ref _closed) != 0 ||
+            _connectionId is null ||
+            _connection.State != HubConnectionState.Connected)
         {
             throw new InvalidOperationException("SignalR relay client is not connected.");
         }
