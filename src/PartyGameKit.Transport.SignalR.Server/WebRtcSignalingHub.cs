@@ -211,7 +211,7 @@ internal sealed class WebRtcSignalingRegistry
         }
     }
 
-    private IReadOnlyList<string> GetOtherPeersCore(string signalRConnectionId, ChannelId channelId)
+    private string[] GetOtherPeersCore(string signalRConnectionId, ChannelId channelId)
     {
         if (!_channels.TryGetValue(channelId, out var peers))
         {
