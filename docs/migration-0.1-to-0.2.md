@@ -144,8 +144,44 @@ LAN discovery now returns `DiscoveredEndpoint` objects with technical `Connectio
 
 Direct connection remains independent from UDP discovery: a valid serialized `ConnectionDescriptor` is sufficient.
 
-## TypeScript, Dart and samples
+## TypeScript browser SDK
 
-The .NET production boundary is corrected in `[16]`. The TypeScript SDK, Dart package, canonical cross-language fixture set and game-oriented samples are migrated in the immediately following ordered issue `[17]`.
+The browser API changed at the same boundary.
 
-Do not add compatibility shims that reintroduce v0.1 room/player/session types into production packages during that transition.
+| v0.1 | v0.2 |
+| --- | --- |
+| `new PartyGameClient({ role: "player" })` | `new PartyGameClient()` |
+| `join(...)` | `connect(...)` |
+| `JoinDescriptor` / `partygamekit://join` | `ConnectionDescriptor` / `partygamekit://connect` |
+| `stablePlayerId` | neutral peer identity managed by `PeerIdentityStore` |
+| join/rejoin messages | connect/resume messages |
+| `snapshot` event | `applicationMessage` event |
+| public/private snapshot filtering | consumer-owned application payload/schema |
+
+Do not recreate a `role` option in a wrapper around the SDK just to preserve the old PartyGameKit API. If PartyBeam needs TV/controller/player roles, define them in PartyBeam and associate them with its own peer/session model.
+
+## Dart interoperability
+
+The Dart package now validates protocol v2 fixtures and exposes communication-neutral names:
+
+- `PartyGameKitConnectionDescriptor` instead of a join/room descriptor;
+- stable peer/connection fields instead of player identity;
+- connect/resume envelopes;
+- opaque application messages;
+- generic message sequence gating rather than game-snapshot sequencing.
+
+It remains intentionally protocol-only. Państwa Miasta can keep its player identity, host-authoritative game state and snapshot schema in its own code.
+
+## Samples
+
+`samples/CommunicationDemo` is the v0.2 reference sample. It contains no game/player role model and verifies the real LAN transport, UDP discovery, multiple peers, opaque message exchange, targeted/broadcast delivery and resume.
+
+`SharedCounter` and `DungeonPrototype` are historical/game-oriented consumers. Their player, authority and game-state concepts are application-owned examples, not PartyGameKit abstractions.
+
+## Package-only validation
+
+`packaging/consumer` restores only generated `0.2` NuGet packages. It verifies:
+
+- an opaque `application.message` can travel peer → transport and transport → peer;
+- `ConnectionContinuityCoordinator` can resume one stable `PeerId` on a replacement `ConnectionId` without creating a duplicate logical peer;
+- no source-project reference or party-game/session abstraction is required.
