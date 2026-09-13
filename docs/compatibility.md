@@ -2,16 +2,16 @@
 
 The language-neutral PartyGameKit wire protocol is the compatibility boundary. Package versions do not replace protocol negotiation.
 
-## `[16]` transition state
+## 0.2 compatibility
 
 | Implementation | Package line | Protocol | Runtime target | Scope |
 | --- | --- | ---: | --- | --- |
 | .NET | `PartyGameKit.*` `0.2.0-preview.1` | 2 | .NET 10 | neutral connection continuity, protocol, transports and LAN discovery |
-| TypeScript | `@partygamekit/client` `0.1.0-preview.1` | 1 | ES2022 browser | historical player/shared-screen v1 client, migrated in `[17]` |
-| Dart | `partygamekit_protocol` `0.1.0-preview.1` | 1 | Dart `>=3.3 <4.0` | historical protocol-v1 implementation, migrated in `[17]` |
-| Państwa Miasta legacy LAN | application-owned v3 | separate contract | Flutter/Dart | existing game protocol remains consumer-owned |
+| TypeScript | `@partygamekit/client` `0.2.0-preview.1` | 2 | ES2022 browser | neutral connect/resume and opaque application messages |
+| Dart | `partygamekit_protocol` `0.2.0-preview.1` | 2 | Dart `>=3.3 <4.0` | protocol-v2 envelopes and connection descriptors |
+| Państwa Miasta current LAN | application-owned contract | separate contract | Flutter/Dart | existing product/game protocol remains consumer-owned until an adapter migration is scheduled |
 
-The temporary v1/v2 split is intentional inside issue `[16]`; it is not a supported mixed-version runtime topology. Cross-language PartyGameKit v2 compatibility is restored in the immediately following ordered issue `[17]`.
+The PartyGameKit C#, TypeScript and Dart surfaces all validate the same v2 canonical fixtures. A consumer does not need to adopt PartyGameKit protocol v2 merely to keep its existing product protocol alive; migration can happen behind an adapter boundary.
 
 ## Protocol-v2 rules
 
@@ -27,6 +27,14 @@ The temporary v1/v2 split is intentional inside issue `[16]`; it is not a suppor
 
 Protocol v1 and v2 are deliberately incompatible. A protocol-v2 LAN listener rejects a v1 handshake with `protocol-version-mismatch` before exposing the connection to the application.
 
+`0.1.0-preview.1` remains available through its historical tag/release. Active conformance fixtures on `main` represent protocol v2 only.
+
 ## Canonical compatibility checks
 
-C# tests consume the new `v2-*` fixture set. Legacy root v1 fixtures remain temporarily for the still-v1 Dart/TypeScript tests and are removed or archived when `[17]` aligns those implementations.
+The following implementations read the repository's `protocol/fixtures/v2-*.json` vectors directly:
+
+- C# protocol tests;
+- Dart interoperability tests;
+- TypeScript browser-client tests.
+
+A change to the cross-language wire contract is incomplete unless the canonical fixture set and all three implementations agree.
