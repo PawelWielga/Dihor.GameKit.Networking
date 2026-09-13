@@ -22,7 +22,7 @@ PartyBeam / Państwa Miasta / future multiplayer products
 
 `0.1.0-preview.1` proved the LAN transport, discovery and reconnect approach, but also exposed product concepts such as players, client roles, room sessions, authority and public/private game-state projections.
 
-`0.2.0-preview.1` corrected that boundary. `0.2.0-preview.2` added optional backend-assisted SignalR relay connectivity. `0.2.0-preview.3` keeps protocol v2 and adds browser-native WebRTC DataChannel communication with optional SignalR signaling.
+`0.2.0-preview.1` corrected that boundary. `0.2.0-preview.2` added optional backend-assisted SignalR relay connectivity. `0.2.0-preview.3` added browser-native WebRTC DataChannel communication with optional SignalR signaling. `0.2.0-preview.4` adds deterministic automatic transport selection/fallback without changing protocol v2 or reintroducing product/session semantics.
 
 Protocol v2 and the base APIs use communication-neutral concepts:
 
@@ -36,7 +36,8 @@ Protocol v2 and the base APIs use communication-neutral concepts:
 - deterministic connection continuity and generic ordering helpers;
 - direct LAN WebSocket transport and optional UDP LAN discovery;
 - optional backend-assisted SignalR relay transport;
-- browser-native WebRTC DataChannels for direct low-latency peer communication.
+- browser-native WebRTC DataChannels for direct low-latency peer communication;
+- deterministic automatic client transport selection with bounded fallback and structured diagnostics.
 
 The migration from v0.1 is intentionally breaking. See [Migration 0.1 → 0.2](docs/migration-0.1-to-0.2.md).
 
@@ -63,14 +64,14 @@ The .NET prerelease is split by communication responsibility:
 
 - `PartyGameKit.Core` — neutral identity, connection continuity and ordering primitives;
 - `PartyGameKit.Protocol` — protocol v2 envelopes, connection descriptors and codecs;
-- `PartyGameKit.Transport.Abstractions` — transport-neutral message contracts;
+- `PartyGameKit.Transport.Abstractions` — transport-neutral host and client message contracts plus automatic connectivity orchestration;
 - `PartyGameKit.Transport.InMemory` — deterministic reference/test transport;
 - `PartyGameKit.Transport.Lan` — direct LAN WebSocket transport;
 - `PartyGameKit.Transport.SignalR` — optional backend-assisted SignalR relay client/listener transport;
 - `PartyGameKit.Transport.SignalR.Server` — ASP.NET Core endpoints for opaque SignalR relay traffic and optional WebRTC SDP/ICE signaling;
 - `PartyGameKit.Discovery.Lan` — optional UDP LAN discovery.
 
-Browser consumers use `@partygamekit/client`, which includes protocol-v2 WebSocket connectivity plus native browser WebRTC DataChannels. Flutter/Dart consumers can use the small `interop/dart` protocol package when they need canonical protocol compatibility without a duplicated game/session engine.
+Browser consumers use `@partygamekit/client`, which includes protocol-v2 WebSocket connectivity, native browser WebRTC DataChannels and generic automatic transport selection. Flutter/Dart consumers can use the small `interop/dart` protocol package when they need canonical protocol compatibility without a duplicated game/session engine.
 
 ## Cross-language contract
 
@@ -100,6 +101,22 @@ WebRTC supports explicit `reliable` and `low-latency` profiles plus bounded buff
 
 See [SignalR relay](docs/signalr-relay.md) and [WebRTC DataChannel](docs/webrtc-datachannel.md). LAN mode remains fully usable without a SignalR server deployed.
 
+## Automatic connectivity
+
+`ConnectivityMode.Auto` chooses among transport candidates registered by the current runtime. The default order is:
+
+1. LAN WebSocket;
+2. WebRTC DataChannel;
+3. SignalR relay.
+
+Selection is deterministic and bounded. Every candidate is attempted at most once per selection operation with an explicit timeout budget. Failures, timeouts and unavailable runtime candidates are exposed in structured diagnostics instead of being hidden.
+
+Reconnect in `Auto` mode first retries the previously successful transport. If it no longer works, fallback continues through the configured order. Callers can still force LAN, WebRTC or SignalR for tests and product requirements.
+
+Automatic fallback applies to connection establishment/reconnect only. PartyGameKit does not silently interpret application-level failures as a reason to change transport. Connect/resume handshakes, stable `PeerId` continuity and application payload bytes stay outside the selector's interpretation.
+
+See [Automatic connectivity](docs/automatic-connectivity.md) for policy, diagnostics, cancellation behavior and .NET/TypeScript examples.
+
 ## Neutral reference validation
 
 `samples/CommunicationDemo` exercises the same communication-only scenario over the two .NET listener transports:
@@ -119,6 +136,12 @@ dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.Communication
 ```
 
 Run a single path with `-- lan` or `-- signalr`.
+
+`samples/AutoConnectivityDemo` validates the high-level client path. Scenario code requests `ConnectivityMode.Auto`, receives only `IMessageTransportClient`, verifies stable peer identity and exchanges the same opaque application bytes without depending on a concrete client class:
+
+```bash
+dotnet run --project samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj
+```
 
 Real WebRTC validation runs separately in Chromium from `clients/typescript/test/browser-webrtc.mjs`. It establishes direct reliable and low-latency DataChannels and sends an approximately 60 Hz opaque stream while verifying that application traffic does not continue through signaling.
 
@@ -164,6 +187,8 @@ if (target !== undefined) {
 }
 ```
 
+Automatic selection is exposed through generic `AutomaticTransportSelector<TContext, TConnection>` and `connectivityTransportIds`. Runtime adapters remain explicit composition-root concerns, while the selection policy stays free of product roles and session rules.
+
 The browser SDK can persist neutral peer identity for protocol-v2 reconnect, but it does not assign a product role to that peer. WebRTC signaling identifiers are transient transport infrastructure and are not `PeerId` values.
 
 ## Dependency policy
@@ -181,13 +206,14 @@ Requirements:
 - Dart stable for Dart conformance tests;
 - Chromium installed by Playwright for the WebRTC integration gate.
 
-Build/test the repository and run the neutral demo:
+Build/test the repository and run the neutral demos:
 
 ```bash
 dotnet restore PartyGameKit.slnx
 dotnet build PartyGameKit.slnx --configuration Release --no-restore
 dotnet test PartyGameKit.slnx --configuration Release --no-build
 dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj --configuration Release --no-build
+dotnet run --project samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj --configuration Release --no-build
 ```
 
 TypeScript and real browser WebRTC:
@@ -225,6 +251,7 @@ CI also packs all .NET packages and runs `packaging/consumer` from those generat
 - [LAN WebSocket](docs/lan-websocket.md)
 - [SignalR relay](docs/signalr-relay.md)
 - [WebRTC DataChannel](docs/webrtc-datachannel.md)
+- [Automatic connectivity](docs/automatic-connectivity.md)
 - [LAN discovery](docs/discovery.md)
 - [Compatibility matrix](docs/compatibility.md)
 - [Versioning](docs/versioning.md)

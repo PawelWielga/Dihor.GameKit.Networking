@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0-preview.4 - 2026-09-13
+
+- Adds generic `AutomaticTransportSelector` with `auto`, forced LAN, forced WebRTC and forced SignalR modes.
+- Uses deterministic bounded candidate order with per-attempt timeout overrides.
+- Reconnect prefers the previously successful transport before falling back through the configured order.
+- Exposes structured attempt diagnostics including selected, failed, timed-out and unavailable candidates.
+- Stops fallback immediately on caller cancellation and can dispose connections that succeed after timeout/cancellation.
+- Keeps selector context and connection types generic so browser WebRTC/LAN/relay adapters remain communication concerns rather than product/session abstractions.
+- Keeps protocol v2 and consumer-owned payloads unchanged when the selected transport changes.
+
 ## 0.2.0-preview.3 - 2026-09-13
 
 - Adds browser-native `WebRtcPeer` using `RTCPeerConnection` and `RTCDataChannel`.

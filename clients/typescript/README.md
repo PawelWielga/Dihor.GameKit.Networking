@@ -91,6 +91,52 @@ Both profiles can be configured through `WebRtcPeerOptions`.
 
 No game/player semantics are attached to these diagnostics.
 
+## Automatic connectivity
+
+`0.2.0-preview.4` adds `AutomaticTransportSelector<TContext, TConnection>` for deterministic runtime-specific path selection. The built-in transport identifiers use this default order:
+
+1. `lan-websocket`;
+2. `webrtc-datachannel`;
+3. `signalr-relay`.
+
+The selector is generic because the concrete browser connection objects are intentionally different. Register candidates in the composition root and keep application code dependent only on the selected connection abstraction you choose.
+
+```ts
+import {
+  AutomaticTransportSelector,
+  connectivityTransportIds,
+} from "@partygamekit/client";
+
+const selector = new AutomaticTransportSelector([
+  {
+    transportId: connectivityTransportIds.lanWebSocket,
+    connect: (context, signal) => connectLan(context, signal),
+    disposeLateConnection: (connection) => connection.close(),
+  },
+  {
+    transportId: connectivityTransportIds.webRtcDataChannel,
+    connect: (context, signal) => connectWebRtc(context, signal),
+    disposeLateConnection: (connection) => connection.close(),
+  },
+  {
+    transportId: connectivityTransportIds.signalRRelay,
+    connect: (context, signal) => connectRelay(context, signal),
+    disposeLateConnection: (connection) => connection.close(),
+  },
+], {
+  attemptTimeoutMs: 3_000,
+});
+
+const selected = await selector.connect(connectContext, "auto", abortSignal);
+console.log(selected.transportId, selected.diagnostics.attempts);
+```
+
+Each candidate is attempted at most once per selection call. Timeout/failure/unavailable outcomes are observable. `reconnect(...)` prefers the previously successful path first. Forced `"lan"`, `"webrtc"` and `"signalr"` modes never silently select another transport.
+
+Caller cancellation stops fallback immediately. If a candidate ignores `AbortSignal` and later succeeds, its `disposeLateConnection` hook is used to clean up the abandoned connection.
+
+The selector does not turn application-level errors into transport fallback and does not interpret the context or payloads it is given.
+
 ## SignalR signaling
 
 The optional `SignalRWebRtcSignalingClient` uses the MIT-licensed `@microsoft/signalr` package. A compatible ASP.NET Core endpoint is provided by `PartyGameKit.Transport.SignalR.Server`:

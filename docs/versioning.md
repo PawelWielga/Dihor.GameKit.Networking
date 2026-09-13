@@ -9,7 +9,8 @@ The historical first packaged line is `0.1.0-preview.1`. The corrected communica
 Compatible transport/capability expansions on that corrected boundary use later prerelease suffixes:
 
 - `0.2.0-preview.2` adds optional SignalR relay connectivity;
-- `0.2.0-preview.3` adds browser-native WebRTC DataChannels plus optional SignalR SDP/ICE signaling.
+- `0.2.0-preview.3` adds browser-native WebRTC DataChannels plus optional SignalR SDP/ICE signaling;
+- `0.2.0-preview.4` adds bounded automatic transport selection/fallback and reconnect preference across registered communication paths.
 
 For preview releases:
 
@@ -27,7 +28,8 @@ Package version and protocol version are independent:
 - `0.1.0-preview.1` used wire protocol `1` with room/player/session semantics;
 - `0.2.0-preview.1` uses wire protocol `2` with neutral connection/resume/application-message semantics;
 - `0.2.0-preview.2` also uses wire protocol `2`; adding SignalR relay does not change the communication envelope;
-- `0.2.0-preview.3` also uses wire protocol `2`; adding browser WebRTC and signaling does not change the protocol-v2 control/application envelope.
+- `0.2.0-preview.3` also uses wire protocol `2`; adding browser WebRTC and signaling does not change the protocol-v2 control/application envelope;
+- `0.2.0-preview.4` also uses wire protocol `2`; automatic transport selection changes connection orchestration only and carries the same opaque protocol/application data.
 
 A wire-incompatible change requires a new protocol version even while package versions are pre-1.0. Clients must reject unsupported protocol versions before using payload data.
 
@@ -41,6 +43,12 @@ Therefore adding `WebRtcPeer`, DataChannel profiles, signaling adapters, bufferi
 
 If a consumer chooses to carry PartyGameKit protocol envelopes over a DataChannel, those envelopes still obey their own `protocolVersion` field. The WebRTC signaling layer must not silently reinterpret one PartyGameKit protocol version as another.
 
+## Automatic connectivity and protocol versioning
+
+`ConnectivityMode.Auto` selects among registered transport candidates before or during a neutral reconnect. It does not rewrite connect/resume handshakes or application payloads and therefore does not define another wire protocol.
+
+Changing from LAN to WebRTC or SignalR may create a new transient `ConnectionId`, while stable logical continuity remains governed by protocol-v2 `PeerId`/resume semantics. The selector treats that handshake data as opaque input rather than adding product/session meaning.
+
 ## Canonical fixtures
 
 The active canonical fixture set is `protocol/fixtures/v2-*.json`.
@@ -53,11 +61,11 @@ SignalR relay integration tests prove the same v2 connect/resume/application-mes
 
 Matching package versions do not imply every language/runtime implements every transport.
 
-For `0.2.0-preview.3`:
+For `0.2.0-preview.4`:
 
-- .NET provides LAN WebSocket, SignalR relay and optional WebRTC signaling hosting;
-- TypeScript/browser provides the protocol-v2 WebSocket client and native WebRTC DataChannels;
-- Dart provides protocol-v2 interoperability only and does not claim a WebRTC runtime.
+- .NET provides LAN WebSocket, SignalR relay, the transport-neutral automatic client selector and optional WebRTC signaling hosting;
+- TypeScript/browser provides protocol-v2 WebSocket connectivity, native WebRTC DataChannels and the generic automatic selector used to orchestrate runtime-specific candidates;
+- Dart provides protocol-v2 interoperability only and does not claim a LAN/SignalR/WebRTC transport runtime or automatic transport implementation.
 
 These differences must be explicit in compatibility/package documentation rather than hidden by pretending all runtimes have identical transport features.
 

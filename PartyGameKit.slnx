@@ -10,6 +10,7 @@
     <Project Path="src/PartyGameKit.Transport.SignalR.Server/PartyGameKit.Transport.SignalR.Server.csproj" />
   </Folder>
   <Folder Name="/samples/">
+    <Project Path="samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj" />
     <Project Path="samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj" />
   </Folder>
   <Folder Name="/tests/">

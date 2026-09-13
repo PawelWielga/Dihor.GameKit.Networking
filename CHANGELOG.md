@@ -2,6 +2,42 @@
 
 All notable PartyGameKit changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
+## 0.2.0-preview.4 - 2026-09-13
+
+Deterministic communication-path orchestration on the existing protocol-v2 and communication-only foundation.
+
+### Automatic connectivity
+
+- adds `ConnectivityMode.Auto` plus forced LAN, WebRTC and SignalR modes;
+- adds a transport-neutral `IMessageTransportClient` contract for client-side send/receive/disposal without changing the host-side `IMessageTransport` contract;
+- makes the existing .NET LAN WebSocket and SignalR relay clients implement that neutral client contract while retaining their concrete APIs;
+- adds `AutomaticTransportSelector` with default `LAN -> WebRTC -> SignalR` candidate order;
+- each candidate is considered at most once per selection operation and has an explicit bounded attempt budget;
+- missing runtime candidates are reported as unavailable instead of being silently ignored;
+- reconnect first retries the previously successful transport before deterministic fallback through the configured order;
+- caller cancellation stops fallback immediately and abandoned late connections are disposed instead of leaking;
+- connect/resume handshakes and application payloads remain opaque to the selector.
+
+### Diagnostics and browser SDK
+
+- adds structured diagnostics for every candidate considered, outcome, duration, error, selected transport and reconnect preference reuse;
+- terminal no-path failures expose complete diagnostics through `ConnectivitySelectionException` in .NET and `ConnectivitySelectionError` in TypeScript;
+- adds a generic TypeScript `AutomaticTransportSelector<TContext, TConnection>` with the same bounded fallback/reconnect policy so browser-native WebRTC can participate without introducing a second product/session model;
+- transport changes do not alter stable protocol-v2 `PeerId` continuity or consumer-owned payload bytes.
+
+### Validation
+
+- adds .NET tests for LAN success, LAN -> WebRTC fallback, direct-path -> SignalR fallback, all-path failure, timeout, cancellation, late-success cleanup, reconnect preference, previous-path failure, forced transport modes and opaque identity/payload continuity;
+- adds equivalent TypeScript selector coverage including abort cleanup for candidates that ignore `AbortSignal`;
+- adds `samples/AutoConnectivityDemo`, where scenario code requests `Auto`, receives only `IMessageTransportClient`, preserves a stable `PeerId` and verifies byte-for-byte opaque payload delivery;
+- CI runs the automatic connectivity sample alongside the existing LAN/SignalR communication sample and real Chromium WebRTC gate.
+
+### Boundary and release
+
+- automatic selection answers only which registered communication path should carry messages; it does not define players, hosts, authority, game sessions, state migration or PartyBeam recovery behavior;
+- application-level failures do not silently trigger transport fallback;
+- bumps .NET, TypeScript and Dart package surfaces to `0.2.0-preview.4` while keeping wire protocol `2`.
+
 ## 0.2.0-preview.3 - 2026-09-13
 
 Compatible real-time transport expansion on the existing communication-only protocol-v2 foundation.

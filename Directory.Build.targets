@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
-    <Version>0.2.0-preview.3</Version>
+    <Version>0.2.0-preview.4</Version>
     <Authors>PawelWielga</Authors>
     <Company>PartyGameKit</Company>
     <RepositoryUrl>https://github.com/PawelWielga/PartyGameKit</RepositoryUrl>
@@ -8,7 +8,7 @@
     <PackageProjectUrl>https://github.com/PawelWielga/PartyGameKit</PackageProjectUrl>
     <PackageTags>multiplayer;communication;networking;lan;signalr;relay;webrtc;datachannel</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>PartyGameKit 0.2.0-preview.3 adds browser-native WebRTC DataChannel communication with optional SignalR signaling while retaining protocol v2 and the communication-only boundary. See CHANGELOG.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>PartyGameKit 0.2.0-preview.4 adds deterministic automatic transport selection and fallback across registered LAN, WebRTC and SignalR candidates while retaining protocol v2 and the communication-only boundary. See CHANGELOG.md.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IncludeSymbols>true</IncludeSymbols>

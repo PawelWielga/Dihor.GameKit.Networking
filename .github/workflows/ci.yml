@@ -51,6 +51,13 @@ jobs:
           --configuration Release
           --no-build
 
+      - name: Run automatic connectivity demo
+        run: >-
+          dotnet run
+          --project samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj
+          --configuration Release
+          --no-build
+
       - name: Pack NuGet prerelease artifacts
         run: bash eng/pack-dotnet.sh artifacts/nuget
 
