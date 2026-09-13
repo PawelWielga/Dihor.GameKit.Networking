@@ -1,10 +1,13 @@
 using System.Net;
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using PartyGameKit.Core;
 using PartyGameKit.Protocol;
 using PartyGameKit.Transport.Abstractions;
@@ -15,6 +18,25 @@ namespace PartyGameKit.Transport.Tests;
 
 public sealed class SignalRRelayLimitIntegrationTests
 {
+    [Fact]
+    public void RelayRegistrationDoesNotOverrideGlobalSignalROptions()
+    {
+        var services = new ServiceCollection();
+        services.AddSignalR(options =>
+        {
+            options.MaximumReceiveMessageSize = 12_345;
+        });
+        services.AddPartyGameKitSignalRRelay(options =>
+        {
+            options.MaxMessageBytes = 1024;
+        });
+
+        using var provider = services.BuildServiceProvider();
+        var globalOptions = provider.GetRequiredService<IOptions<HubOptions>>().Value;
+
+        Assert.Equal(12_345, globalOptions.MaximumReceiveMessageSize);
+    }
+
     [Fact]
     public async Task LocalClientPayloadLimitClosesAndRemovesRelayBinding()
     {
@@ -50,6 +72,11 @@ public sealed class SignalRRelayLimitIntegrationTests
         var closedClient = await client.ReceiveAsync(cancellationToken);
         Assert.True(closedClient.IsClose);
         Assert.Equal("message-too-large", closedClient.CloseDescription);
+
+        await Assert.ThrowsAsync<ChannelClosedException>(async () =>
+        {
+            await client.ReceiveAsync(TestContext.Current.CancellationToken);
+        });
 
         var closedTransport = await ReadEventAsync<TransportConnectionClosed>(events);
         Assert.Equal(client.ConnectionId, closedTransport.ConnectionId);
