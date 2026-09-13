@@ -34,14 +34,15 @@ public static class SignalRRelayServiceCollectionExtensions
 
         services.AddSingleton(options);
         services.AddSingleton<SignalRRelayRegistry>();
-        services.AddSignalR(hubOptions =>
-        {
-            // The default JSON SignalR protocol represents byte[] as base64. Keep the
-            // PartyGameKit payload limit authoritative while allowing enough framing
-            // overhead for a payload at that limit to reach the hub for validation.
-            var base64Bytes = (((long)options.MaxMessageBytes + 2L) / 3L) * 4L;
-            hubOptions.MaximumReceiveMessageSize = checked(base64Bytes + 16_384L);
-        });
+        services.AddSignalR()
+            .AddHubOptions<SignalRRelayHub>(hubOptions =>
+            {
+                // The default JSON SignalR protocol represents byte[] as base64. Keep the
+                // PartyGameKit payload limit authoritative while allowing enough framing
+                // overhead for a payload at that limit to reach this hub for validation.
+                var base64Bytes = (((long)options.MaxMessageBytes + 2L) / 3L) * 4L;
+                hubOptions.MaximumReceiveMessageSize = checked(base64Bytes + 16_384L);
+            });
         return services;
     }
 }
