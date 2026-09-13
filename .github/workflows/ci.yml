@@ -33,6 +33,13 @@ jobs:
       - name: Test
         run: dotnet test PartyGameKit.slnx --configuration Release --no-build
 
+      - name: Run neutral communication demo
+        run: >-
+          dotnet run
+          --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj
+          --configuration Release
+          --no-build
+
       - name: Pack NuGet prerelease artifacts
         run: bash eng/pack-dotnet.sh artifacts/nuget
 
@@ -72,7 +79,7 @@ jobs:
       - name: Pack Dart protocol source artifact
         run: |
           mkdir -p artifacts/dart
-          tar -czf artifacts/dart/partygamekit_protocol-0.1.0-preview.1.tar.gz \
+          tar -czf artifacts/dart/partygamekit_protocol-0.2.0-preview.1.tar.gz \
             -C interop/dart pubspec.yaml README.md CHANGELOG.md lib
 
       - name: Setup Node
@@ -97,6 +104,6 @@ jobs:
       - name: Upload prerelease package artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: partygamekit-0.1.0-preview.1
+          name: partygamekit-0.2.0-preview.1
           path: artifacts/
           if-no-files-found: error
