@@ -2,6 +2,7 @@ using System.Text;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.SignalR.Client;
 using PartyGameKit.Core;
+using PartyGameKit.Transport.Abstractions;
 
 namespace PartyGameKit.Transport.SignalR;
 
@@ -10,7 +11,7 @@ public sealed record SignalRRelayClientMessage(
     bool IsClose = false,
     string? CloseDescription = null);
 
-public sealed class SignalRRelayClient : IAsyncDisposable
+public sealed class SignalRRelayClient : IMessageTransportClient
 {
     private readonly SignalRRelayOptions _options;
     private readonly HubConnection _connection;
@@ -108,6 +109,16 @@ public sealed class SignalRRelayClient : IAsyncDisposable
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         return await _messages.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    async ValueTask<ClientTransportMessage> IMessageTransportClient.ReceiveAsync(
+        CancellationToken cancellationToken)
+    {
+        var message = await ReceiveAsync(cancellationToken).ConfigureAwait(false);
+        return new ClientTransportMessage(
+            message.Payload,
+            message.IsClose,
+            message.CloseDescription);
     }
 
     public async ValueTask DisposeAsync()
