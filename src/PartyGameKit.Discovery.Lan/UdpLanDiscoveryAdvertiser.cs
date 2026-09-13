@@ -10,7 +10,7 @@ public sealed class UdpLanDiscoveryAdvertiser : IAsyncDisposable
 {
     public const int DefaultDiscoveryPort = 45678;
     private readonly object _gate = new();
-    private readonly JoinDescriptor _descriptor;
+    private readonly ConnectionDescriptor _descriptor;
     private readonly int _discoveryPort;
     private readonly TimeSpan _interval;
     private readonly IReadOnlyList<IPAddress> _targetAddresses;
@@ -20,7 +20,7 @@ public sealed class UdpLanDiscoveryAdvertiser : IAsyncDisposable
     private bool _disposed;
 
     public UdpLanDiscoveryAdvertiser(
-        JoinDescriptor descriptor,
+        ConnectionDescriptor descriptor,
         int discoveryPort = DefaultDiscoveryPort,
         TimeSpan? interval = null,
         IReadOnlyList<IPAddress>? targetAddresses = null)
@@ -135,7 +135,7 @@ public sealed class UdpLanDiscoveryAdvertiser : IAsyncDisposable
     private async Task RunAsync(UdpClient client, CancellationToken cancellationToken)
     {
         var payload = Encoding.UTF8.GetBytes(
-            DiscoveryAnnouncementCodec.Serialize(new DiscoveryAnnouncement(_descriptor)));
+            DiscoveryEndpointAnnouncementCodec.Serialize(new DiscoveryEndpointAnnouncement(_descriptor)));
         while (!cancellationToken.IsCancellationRequested)
         {
             foreach (var address in _targetAddresses)

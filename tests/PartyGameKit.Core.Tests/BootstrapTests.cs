@@ -1,14 +1,14 @@
-using System.Reflection;
+using PartyGameKit.Core;
 
 namespace PartyGameKit.Core.Tests;
 
 public sealed class BootstrapTests
 {
     [Fact]
-    public void CoreAssemblyBuildsAndLoads()
+    public void CoreAssemblyExposesNeutralConnectionPrimitive()
     {
-        var assembly = Assembly.Load("PartyGameKit.Core");
+        var connectionId = new ConnectionId("connection-1");
 
-        Assert.Equal("PartyGameKit.Core", assembly.GetName().Name);
+        Assert.Equal("connection-1", connectionId.Value);
     }
 }

@@ -1,77 +1,75 @@
-using System.Text;
+using System.Net;
 using PartyGameKit.Core;
+using PartyGameKit.Protocol;
 using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.InMemory;
+using PartyGameKit.Transport.Lan;
 
 namespace PartyGameKit.Transport.Tests;
 
 public sealed class ReconnectIntegrationTests
 {
     [Fact]
-    public async Task ReconnectRebindsNewTransportConnectionAndDeliversLatestState()
+    public async Task ReplacementLanConnectionResumesSameLogicalPeerWithoutDuplicate()
     {
-        var session = new RoomSession(
-            new RoomId("room-1"),
-            new JoinCode("ROOM1"),
-            playerCapacity: 2,
-            new AuthorityId("authority-1"));
-        var publisher = new AuthoritativeSnapshotPublisher<PublicView, PrivateView>(session.RoomId);
-        var now = new DateTimeOffset(2026, 9, 12, 12, 0, 0, TimeSpan.Zero);
-        var continuity = new SessionContinuityCoordinator<PublicView, PrivateView>(
-            session,
-            publisher,
-            new SessionContinuityOptions(
-                hostTimeout: TimeSpan.FromSeconds(5),
-                clientTimeout: TimeSpan.FromSeconds(10),
-                reconnectWindow: TimeSpan.FromSeconds(30)),
-            utcNow: () => now,
-            reconnectTokenFactory: () => "resume-token");
-        await using var transport = new InMemoryGameTransport();
-        var playerId = new PlayerId("player-1");
-        var firstConnection = new ConnectionId("connection-1");
-        await using var firstPeer = await transport.OpenConnectionAsync(
-            firstConnection,
-            TestContext.Current.CancellationToken);
-        var join = continuity.JoinPlayer(playerId, firstConnection);
-        publisher.Publish(
-            session.AuthorityId,
-            new PublicView("public-1"),
-            new Dictionary<PlayerId, PrivateView> { [playerId] = new("private-1") });
-        publisher.Publish(
-            session.AuthorityId,
-            new PublicView("public-2"),
-            new Dictionary<PlayerId, PrivateView> { [playerId] = new("private-2") });
+        var now = new DateTimeOffset(2026, 9, 12, 20, 0, 0, TimeSpan.Zero);
+        var tokens = new Queue<string>(["token-1", "token-2"]);
+        var continuity = new ConnectionContinuityCoordinator(
+            new ConnectionContinuityOptions(
+                peerTimeout: TimeSpan.FromSeconds(30),
+                reconnectWindow: TimeSpan.FromMinutes(2)),
+            () => now,
+            () => tokens.Dequeue());
+        var peerId = new PeerId("peer-a");
 
-        await transport.DisconnectAsync(
-            firstConnection,
-            TransportCloseReason.RemoteClosed,
-            TestContext.Current.CancellationToken);
-        continuity.MarkDisconnected(firstConnection);
-
-        var secondConnection = new ConnectionId("connection-2");
-        await using var secondPeer = await transport.OpenConnectionAsync(
-            secondConnection,
-            TestContext.Current.CancellationToken);
-        await using var secondMessages = secondPeer
-            .ReadMessagesAsync(TestContext.Current.CancellationToken)
+        await using var transport = await LanWebSocketTransport.StartAsync(
+            new LanWebSocketHostOptions(IPAddress.Loopback, port: 0),
+            cancellationToken: TestContext.Current.CancellationToken);
+        await using var events = transport
+            .ReadEventsAsync(TestContext.Current.CancellationToken)
             .GetAsyncEnumerator(TestContext.Current.CancellationToken);
-        var resumed = continuity.RejoinPlayer(playerId, secondConnection, join.ReconnectToken!);
-        Assert.True(resumed.IsAccepted);
-        Assert.Equal(2, resumed.PlayerSnapshot!.Sequence.Value);
 
-        var restoredState = resumed.PlayerSnapshot.Projection.PrivateState.Value;
-        await transport.SendAsync(
-            secondConnection,
-            Encoding.UTF8.GetBytes(restoredState),
-            TestContext.Current.CancellationToken);
+        var connectHandshake = ProtocolJson.Serialize(PartyGameKitMessages.Create(
+            ProtocolMessageTypes.ConnectRequest,
+            "connect-1",
+            new ConnectRequestPayload(peerId)));
+        var firstClient = await LanWebSocketClient.ConnectAsync(
+            transport.CreateClientUri("127.0.0.1"),
+            connectHandshake,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var firstOpened = Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
+        Assert.IsType<TransportMessageReceived>(await NextAsync(events));
+        var registered = continuity.Register(peerId, firstOpened.ConnectionId);
+        Assert.Equal(RegisterPeerStatus.Connected, registered.Status);
 
-        Assert.True(await secondMessages.MoveNextAsync());
-        Assert.Equal("private-2", Encoding.UTF8.GetString(secondMessages.Current.Span));
-        Assert.Single(session.Players);
-        Assert.Equal(secondConnection, session.FindPlayer(playerId)!.ConnectionId);
+        await firstClient.DisposeAsync();
+        var firstClosed = Assert.IsType<TransportConnectionClosed>(await NextAsync(events));
+        Assert.Equal(firstOpened.ConnectionId, firstClosed.ConnectionId);
+        Assert.Equal(DisconnectPeerStatus.Disconnected, continuity.MarkDisconnected(firstClosed.ConnectionId).Status);
+
+        now = now.AddSeconds(5);
+        var resumeHandshake = ProtocolJson.Serialize(PartyGameKitMessages.Create(
+            ProtocolMessageTypes.ResumeRequest,
+            "resume-1",
+            new ResumeRequestPayload(peerId, registered.ResumeToken!)));
+        await using var replacementClient = await LanWebSocketClient.ConnectAsync(
+            transport.CreateClientUri("127.0.0.1"),
+            resumeHandshake,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var replacementOpened = Assert.IsType<TransportConnectionOpened>(await NextAsync(events));
+        Assert.IsType<TransportMessageReceived>(await NextAsync(events));
+        var resumed = continuity.Resume(peerId, registered.ResumeToken!, replacementOpened.ConnectionId);
+
+        Assert.Equal(ResumePeerStatus.Resumed, resumed.Status);
+        Assert.Equal("token-2", resumed.ResumeToken);
+        Assert.Equal(1, continuity.PeerCount);
+        Assert.Equal(1, continuity.ConnectedPeerCount);
+        Assert.Null(continuity.GetPeerId(firstOpened.ConnectionId));
+        Assert.Equal(peerId, continuity.GetPeerId(replacementOpened.ConnectionId));
     }
 
-    private sealed record PublicView(string Value);
-
-    private sealed record PrivateView(string Value);
+    private static async ValueTask<TransportEvent> NextAsync(IAsyncEnumerator<TransportEvent> events)
+    {
+        Assert.True(await events.MoveNextAsync());
+        return events.Current;
+    }
 }

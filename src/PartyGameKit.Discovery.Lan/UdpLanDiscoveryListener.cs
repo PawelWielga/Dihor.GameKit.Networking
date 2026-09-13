@@ -12,8 +12,9 @@ public sealed class UdpLanDiscoveryListener : IAsyncDisposable
     private readonly IPAddress _bindAddress;
     private readonly int _configuredPort;
     private readonly TimeSpan _cleanupInterval;
-    private readonly DiscoveredSessionRegistry _registry;
-    private readonly Channel<IReadOnlyList<DiscoveredSession>> _changes = Channel.CreateUnbounded<IReadOnlyList<DiscoveredSession>>();
+    private readonly DiscoveredEndpointRegistry _registry;
+    private readonly Channel<IReadOnlyList<DiscoveredEndpoint>> _changes =
+        Channel.CreateUnbounded<IReadOnlyList<DiscoveredEndpoint>>();
     private UdpClient? _client;
     private CancellationTokenSource? _runSource;
     private Task? _receiveTask;
@@ -24,7 +25,7 @@ public sealed class UdpLanDiscoveryListener : IAsyncDisposable
         IPAddress? bindAddress = null,
         int discoveryPort = UdpLanDiscoveryAdvertiser.DefaultDiscoveryPort,
         TimeSpan? cleanupInterval = null,
-        DiscoveredSessionRegistry? registry = null)
+        DiscoveredEndpointRegistry? registry = null)
     {
         if (discoveryPort is < 0 or > 65535)
         {
@@ -40,7 +41,7 @@ public sealed class UdpLanDiscoveryListener : IAsyncDisposable
         _bindAddress = bindAddress ?? IPAddress.Any;
         _configuredPort = discoveryPort;
         _cleanupInterval = resolvedCleanupInterval;
-        _registry = registry ?? new DiscoveredSessionRegistry();
+        _registry = registry ?? new DiscoveredEndpointRegistry();
     }
 
     public int BoundPort { get; private set; }
@@ -56,7 +57,7 @@ public sealed class UdpLanDiscoveryListener : IAsyncDisposable
         }
     }
 
-    public IReadOnlyList<DiscoveredSession> Sessions => _registry.Sessions;
+    public IReadOnlyList<DiscoveredEndpoint> Endpoints => _registry.Endpoints;
 
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -92,12 +93,12 @@ public sealed class UdpLanDiscoveryListener : IAsyncDisposable
         }
     }
 
-    public async IAsyncEnumerable<IReadOnlyList<DiscoveredSession>> ReadChangesAsync(
+    public async IAsyncEnumerable<IReadOnlyList<DiscoveredEndpoint>> ReadChangesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var sessions in _changes.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        await foreach (var endpoints in _changes.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
-            yield return sessions;
+            yield return endpoints;
         }
     }
 
@@ -201,7 +202,7 @@ public sealed class UdpLanDiscoveryListener : IAsyncDisposable
         }
     }
 
-    private void Publish() => _changes.Writer.TryWrite(_registry.Sessions);
+    private void Publish() => _changes.Writer.TryWrite(_registry.Endpoints);
 
     private static async Task IgnoreCancellationAsync(Task task)
     {

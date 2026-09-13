@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Transport-agnostic multiplayer session primitives for PartyGameKit.</Description>
+    <Description>Communication identities, connection continuity and ordering primitives for PartyGameKit.</Description>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 </Project>

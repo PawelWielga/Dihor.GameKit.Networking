@@ -25,27 +25,28 @@ public sealed record TransportError(
     string Message,
     ConnectionId? ConnectionId = null);
 
-public sealed class PartyGameTransportException : Exception
+public sealed class TransportException : Exception
 {
-    public PartyGameTransportException()
+    public TransportException()
         : this(new TransportError(TransportErrorCode.DeliveryFailed, "Transport operation failed."))
     {
     }
 
-    public PartyGameTransportException(string message)
+    public TransportException(string message)
         : this(new TransportError(TransportErrorCode.DeliveryFailed, message))
     {
     }
 
-    public PartyGameTransportException(string message, Exception innerException)
+    public TransportException(string message, Exception innerException)
         : base(message, innerException)
     {
         Error = new TransportError(TransportErrorCode.DeliveryFailed, message);
     }
 
-    public PartyGameTransportException(TransportError error)
+    public TransportException(TransportError error)
         : base(error.Message)
     {
+        ArgumentNullException.ThrowIfNull(error);
         Error = error;
     }
 
@@ -66,7 +67,7 @@ public sealed record TransportMessageReceived(
 
 public sealed record TransportFaulted(TransportError Error) : TransportEvent;
 
-public interface IGameTransport : IAsyncDisposable
+public interface IMessageTransport : IAsyncDisposable
 {
     IAsyncEnumerable<TransportEvent> ReadEventsAsync(
         CancellationToken cancellationToken = default);

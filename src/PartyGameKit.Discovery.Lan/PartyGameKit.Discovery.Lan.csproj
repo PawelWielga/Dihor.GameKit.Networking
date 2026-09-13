@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>UDP LAN discovery for PartyGameKit sessions.</Description>
+    <Description>UDP LAN discovery for PartyGameKit connection endpoints.</Description>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>

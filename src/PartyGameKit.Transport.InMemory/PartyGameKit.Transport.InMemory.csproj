@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Deterministic in-memory reference transport for PartyGameKit tests and samples.</Description>
+    <Description>Deterministic in-memory message transport for PartyGameKit.</Description>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
