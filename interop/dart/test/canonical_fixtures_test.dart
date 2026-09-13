@@ -22,8 +22,10 @@ void main() {
     });
 
     test('connect and resume preserve neutral peer identity', () {
-      final connect = PartyGameKitEnvelope.parse(_fixture('v2-connect-request.json'));
-      final resume = PartyGameKitEnvelope.parse(_fixture('v2-resume-request.json'));
+      final connect =
+          PartyGameKitEnvelope.parse(_fixture('v2-connect-request.json'));
+      final resume =
+          PartyGameKitEnvelope.parse(_fixture('v2-resume-request.json'));
 
       expect(connect.type, 'connection.connect.request');
       expect(resume.type, 'connection.resume.request');
@@ -35,13 +37,15 @@ void main() {
     });
 
     test('application message payload remains consumer owned and opaque', () {
-      final message = PartyGameKitEnvelope.parse(_fixture('v2-application-message.json'));
+      final message =
+          PartyGameKitEnvelope.parse(_fixture('v2-application-message.json'));
       expect(message.type, 'application.message');
       expect(message.payload['applicationType'], isNotEmpty);
       expect(message.payload.containsKey('data'), isTrue);
     });
 
-    test('connection descriptor matches canonical JSON and deterministic URI', () {
+    test('connection descriptor matches canonical JSON and deterministic URI',
+        () {
       final canonical = _fixture('v2-connection-descriptor.json');
       final descriptor = PartyGameKitConnectionDescriptor.parseJson(canonical);
 
@@ -69,7 +73,8 @@ void main() {
       expect(descriptor.channelId, 'channel+a');
     });
 
-    test('discovery announcement carries only technical descriptor metadata', () {
+    test('discovery announcement carries only technical descriptor metadata',
+        () {
       final announcement = PartyGameKitDiscoveryAnnouncement.parse(
         _fixture('v2-discovery-announcement.json'),
       );
