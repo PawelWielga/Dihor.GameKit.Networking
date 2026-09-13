@@ -24,6 +24,22 @@ The central architectural rule is:
 
 > PartyGameKit moves messages and maintains communication continuity. Consumers decide what those messages and connected peers mean.
 
+## Dependency licensing policy
+
+PartyGameKit must not depend on external libraries or packages whose commercial use requires payment.
+
+Every third-party dependency introduced into the project must permit commercial use without requiring:
+
+- a paid commercial license;
+- a subscription or recurring license fee;
+- per-seat, per-device or per-runtime fees;
+- royalties or revenue sharing;
+- any other mandatory payment triggered by commercial use of PartyGameKit or products that consume it.
+
+Prefer permissive open-source licenses such as MIT, Apache-2.0 or BSD when a suitable dependency exists. Dual-licensed libraries are acceptable only when PartyGameKit and its commercial consumers can legally use the dependency under a free, commercial-compatible license.
+
+The license of a new external dependency must be verified before the dependency is added. If commercial-use rights are unclear, treat the dependency as unsuitable until the license is confirmed.
+
 ## Communication identities and control protocol
 
 PartyGameKit defines only identities required by communication itself:
