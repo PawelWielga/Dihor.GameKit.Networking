@@ -83,14 +83,20 @@ test("WebRTC peer sends offer and trickle ICE only through signaling", async (t)
   t.after(() => peer.close());
 
   const connected = peer.connect();
-  await Promise.resolve();
+  void connected.catch(() => {
+    // The test intentionally performs assertions before opening the fake
+    // DataChannel. Observe any cleanup rejection so a failed assertion cannot
+    // create a secondary unhandled-rejection failure.
+  });
+
+  await eventually(() => signaling.sent.length >= 1);
   assert.deepEqual(signaling.sent[0], {
     kind: "description",
     description: { type: "offer", sdp: "fake-offer" },
   });
 
   connection.emitIceCandidate({ candidate: "candidate:1" });
-  await Promise.resolve();
+  await eventually(() => signaling.sent.length >= 2);
   assert.deepEqual(signaling.sent[1], {
     kind: "candidate",
     candidate: { candidate: "candidate:1" },
@@ -123,6 +129,16 @@ test("WebRTC diagnostics expose RTT variation without inspecting application pay
   assert.equal(second.roundTripTimeMs, 18);
   assert.equal(second.rttJitterMs, 6);
 });
+
+async function eventually(condition: () => boolean, attempts = 32): Promise<void> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (condition()) {
+      return;
+    }
+    await Promise.resolve();
+  }
+  throw new Error("Expected asynchronous WebRTC test condition was not satisfied.");
+}
 
 class FakeSignalingChannel implements WebRtcSignalingChannel {
   readonly sent: WebRtcSignal[] = [];
