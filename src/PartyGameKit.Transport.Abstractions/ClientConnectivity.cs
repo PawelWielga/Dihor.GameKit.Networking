@@ -302,6 +302,11 @@ public sealed class AutomaticTransportSelector
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 attemptCancellation.Cancel();
+                if (connectTask is not null)
+                {
+                    _ = DisposeLateConnectionAsync(connectTask);
+                }
+
                 throw;
             }
             catch (Exception exception)
@@ -378,8 +383,8 @@ public sealed class AutomaticTransportSelector
         }
         catch (Exception)
         {
-            // A timed-out candidate owns its eventual failure. If it succeeds after
-            // the budget, dispose the late connection so fallback cannot leak it.
+            // An abandoned candidate owns its eventual failure. If it succeeds after
+            // timeout or caller cancellation, dispose the late connection so it cannot leak.
         }
     }
 }
