@@ -2,9 +2,9 @@
 
 ## Boundary decision
 
-PartyGameKit base packages do **not** own a generic game snapshot model.
+PartyGameKit `0.2` base packages do **not** own a generic game snapshot model.
 
-The historical v0.1 implementation combined useful ordering mechanics with product/game semantics such as authority, room identity, public/shared-screen state and private per-player projections. Issue `[15]` moves those semantics to consumers.
+The historical v0.1 implementation combined useful ordering mechanics with product/game semantics such as authority, room identity, public/shared-screen state and private per-player projections. Those semantics are now consumer-owned.
 
 See [Communication boundary](communication-boundary.md).
 
@@ -20,11 +20,11 @@ PartyBeam, Państwa Miasta or another application owns:
 - latest-state restore policy after reconnect;
 - whether snapshots exist at all.
 
-Those snapshots may travel through PartyGameKit as opaque application messages.
+Those snapshots may travel through PartyGameKit as opaque `application.message` data.
 
 ## Optional PartyGameKit utility
 
-A small monotonic ordering/deduplication helper may remain because it is communication-neutral.
+`MessageSequence` and `SequenceGate` provide a small monotonic ordering/deduplication helper that is communication-neutral.
 
 For example:
 
@@ -35,25 +35,25 @@ sequence 42 -> reject duplicate
 sequence 40 -> reject stale
 ```
 
-The helper must not require:
+The helper does not require:
 
 - `RoomId`;
 - `PlayerId`;
 - `AuthorityId`;
 - public/private audience;
-- game state types.
+- game-state types.
 
-`SnapshotSequence` / `SnapshotSequenceGate` may therefore become a general `MessageSequence` / `SequenceGate`-style optional utility in `[16]`.
+A consumer is free not to use this helper if its application protocol has different ordering semantics.
 
 ## Reconnect
 
 PartyGameKit resume restores communication identity/binding only.
 
-After resume, a consumer may choose to send its newest application snapshot or reconstruct state another way. PartyGameKit does not impose state restoration semantics.
+After resume, a consumer may choose to send its newest application snapshot, replay events or reconstruct state another way. PartyGameKit does not impose state restoration semantics.
 
 ## Historical v0.1 API
 
-The following current preview types are scheduled to move out of the base API:
+The v0.1 snapshot surface included:
 
 - `SnapshotAudience`;
 - `SnapshotTarget`;
@@ -63,4 +63,4 @@ The following current preview types are scheduled to move out of the base API:
 - `PublishedSnapshotSet<...>`;
 - `AuthoritativeSnapshotPublisher<...>`.
 
-Only a neutral ordering/deduplication primitive may survive after `[16]`.
+These types were removed from the active `0.2` base API. Their history remains available in the v0.1 tag, but new consumers should keep equivalent game/application state models in their own layer.

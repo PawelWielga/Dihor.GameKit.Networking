@@ -2,11 +2,11 @@
 
 ## Status
 
-The `0.1.0-preview.1` protocol contains historical room/player/session messages. Issue `[15]` established that the target PartyGameKit protocol is communication-only. Production contracts are refactored in `[16]` and C#/Dart/TypeScript fixtures are aligned in `[17]`.
+PartyGameKit `0.2.0-preview.1` uses wire protocol **2**. Protocol v2 is communication-only and intentionally incompatible with the historical room/player/session protocol v1 from `0.1.0-preview.1`.
 
-See [Communication boundary](communication-boundary.md).
+See [Communication boundary](communication-boundary.md) and [Compatibility](compatibility.md).
 
-## Target protocol layers
+## Protocol layers
 
 The PartyGameKit wire contract has two distinct layers:
 
@@ -14,112 +14,158 @@ The PartyGameKit wire contract has two distinct layers:
 2. **application messages** owned by the consumer and treated as opaque payloads.
 
 ```text
-PartyGameKit control envelope
+PartyGameKit protocol v2 envelope
 ├── protocol compatibility
 ├── connection lifecycle
 ├── heartbeat/connectivity
 ├── neutral peer resume
-└── application message
-       └── opaque consumer payload
+└── application.message
+       └── opaque consumer-owned data
 ```
 
-## PartyGameKit control responsibilities
+## Envelope
 
-The base protocol may define:
+Every protocol-v2 message uses:
 
-- integer protocol version;
-- message type;
-- message id;
-- optional correlation id;
-- connection handshake/version validation;
-- transient connection identity;
-- optional neutral stable peer identity for resume;
-- heartbeat/connectivity metadata;
-- resume request/accept/reject;
-- connection close/error information;
-- generic routing/sequence metadata only where communication requires it;
-- opaque application-message envelope.
+- `type`;
+- integer `protocolVersion` = `2`;
+- non-empty `messageId`;
+- optional non-empty `correlationId`;
+- `payload`.
+
+Unsupported protocol versions are rejected before application payloads are used.
+
+## Control messages
+
+Protocol v2 defines neutral communication control message families:
+
+- `connection.connect.request`;
+- `connection.connect.accepted`;
+- `connection.connect.rejected`;
+- `connection.resume.request`;
+- `connection.resume.accepted`;
+- `connection.resume.rejected`;
+- `connection.heartbeat`;
+- `connection.disconnect`.
+
+These messages may carry transient `ConnectionId`, optional stable `PeerId`, resume credentials and connection-level rejection information. They do not carry player roles, lobby capacity, authority or game state.
 
 ## Consumer responsibilities
 
-The base protocol must not require:
+The base protocol does not define:
 
 - `PlayerId` or player admission;
 - `Host`, `Player`, `SharedScreen`, controller or spectator roles;
-- player capacity/room-full logic;
+- player capacity/room-full policy;
 - `AuthorityId`;
 - lobby or game-session lifecycle;
 - required state snapshot messages;
 - public/private/player projection targeting;
 - game commands, phases or state schemas.
 
-Consumers can define and independently version their own payload types above PartyGameKit.
+Consumers independently define and version those concepts above PartyGameKit.
 
 ## Identity
 
-Target communication identities:
+Communication identities are:
 
 ```text
-ConnectionId = transient connection
+ConnectionId = transient network/transport connection
 PeerId       = optional stable logical communication identity for resume
 ```
 
-A product may map its own participant/player id to `PeerId`. PartyGameKit does not interpret that mapping.
+A product may map its own participant identifier to `PeerId` at an adapter boundary. PartyGameKit does not interpret that mapping.
+
+## Connect
+
+A client begins a protocol-v2 LAN connection with `connection.connect.request`.
+
+`peerId` is optional. An anonymous client can connect without a stable logical identity when resume is unnecessary.
+
+A successful response provides a transient `connectionId`; when a stable peer is registered, it may also provide a resume token.
 
 ## Resume
 
-Resume is a control-protocol operation, not player rejoin semantics.
+Resume is a communication operation, not player rejoin semantics.
 
-A valid resume flow proves that a replacement network connection can reclaim the same neutral peer identity. The library may report success/failure and update connection binding. It does not decide what the product does with that peer's player slot, game state or authority.
+A valid `connection.resume.request` proves that a replacement network connection may reclaim the same neutral `PeerId`. The resulting `ConnectionId` is new and transient. Product state, player slots and authority policy remain consumer decisions.
 
-## Application payloads
+## Application messages
 
-PartyGameKit must be able to carry arbitrary consumer-owned payloads without understanding them.
-
-Conceptually:
+Consumer data uses `application.message`:
 
 ```json
 {
   "type": "application.message",
   "protocolVersion": 2,
-  "messageId": "...",
-  "correlationId": null,
+  "messageId": "message-42",
   "payload": {
-    "applicationType": "consumer-defined-type",
-    "data": "consumer-defined opaque content"
+    "applicationType": "consumer.command",
+    "data": {
+      "consumerOwned": true
+    }
   }
 }
 ```
 
-The exact post-refactor shape/version is finalized in `[16]`; this example shows the ownership boundary, not a frozen schema.
+`applicationType` belongs to the consumer's protocol namespace. `data` is opaque to PartyGameKit beyond valid JSON serialization/deserialization.
+
+Consumers may version their own application payload schemas without changing PartyGameKit protocol version 2, provided the PartyGameKit envelope/control contract does not change.
+
+## Heartbeat
+
+`connection.heartbeat` communicates liveness. It may reference the neutral peer when available but does not encode game presence, player-leave policy or snapshot progress.
+
+Heartbeat timeout reports communication state only. The consumer decides what a timeout means for its product/session.
 
 ## Ordering
 
-Generic sequence/deduplication metadata may exist where communication needs it. A required game snapshot sequence does not.
+`MessageSequence` / `SequenceGate` are optional local utilities and are not required fields in every protocol message.
 
-A consumer such as Państwa Miasta may put its own snapshot sequence inside its application payload and optionally reuse a neutral sequence helper.
+A consumer such as Państwa Miasta may put its own snapshot or command sequence inside application data and optionally reuse the neutral helper.
 
 ## Connection descriptors
 
-The protocol may serialize a technical connection descriptor containing transport/endpoint/version and optional routing metadata.
+`ConnectionDescriptor` serializes technical connectivity information:
 
-Product join codes, party names, game identifiers and QR presentation do not belong to the PartyGameKit base descriptor.
+- `protocolVersion`;
+- `transport`;
+- absolute `endpoint`;
+- optional technical `channelId`.
 
-## Compatibility source of truth
+The deterministic URI form uses:
 
-Canonical fixtures under `protocol/fixtures/` remain the cross-language source of truth for C#, Dart and TypeScript.
+```text
+partygamekit://connect?protocolVersion=2&transport=...&endpoint=...&channelId=...
+```
 
-After `[16]`, fixtures must cover at least:
+Product join codes, party names, game identifiers and QR presentation remain outside the base descriptor.
 
-- compatible connection handshake;
-- protocol mismatch rejection;
+## Discovery announcements
+
+LAN discovery uses `connection.discovery.announce` with a technical `ConnectionDescriptor`. Discovery metadata does not contain player lists, game phase, scores or reconnect credentials.
+
+## Canonical compatibility source
+
+The active cross-language source of truth is:
+
+```text
+protocol/fixtures/v2-*.json
+```
+
+The fixture set covers:
+
+- connect request;
+- resume request;
+- heartbeat;
 - opaque application message;
-- heartbeat/connectivity;
-- neutral resume accepted/rejected;
-- technical connection descriptor.
+- connection descriptor;
+- discovery announcement.
 
-Historical v1 room/player/session fixtures are migration inputs, not the target protocol.
+C#, Dart and TypeScript tests consume this same set directly. Historical protocol-v1 fixtures remain available through Git history / the v0.1 tag rather than coexisting as active canonical vectors.
 
 ## Versioning
 
-Breaking changes to the prerelease protocol are allowed while correcting the ownership boundary. The post-refactor protocol version must make incompatibility explicit rather than attempting to parse old session messages as the new control contract.
+Protocol v1 and v2 are deliberately incompatible. A v2 transport rejects a v1 handshake deterministically with protocol-mismatch behavior rather than attempting to reinterpret historical session messages.
+
+See [Versioning](versioning.md) for the relationship between package SemVer and wire protocol versions.

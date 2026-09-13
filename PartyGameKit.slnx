@@ -7,6 +7,9 @@
     <Project Path="src/PartyGameKit.Transport.InMemory/PartyGameKit.Transport.InMemory.csproj" />
     <Project Path="src/PartyGameKit.Transport.Lan/PartyGameKit.Transport.Lan.csproj" />
   </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PartyGameKit.Core.Tests/PartyGameKit.Core.Tests.csproj" />
     <Project Path="tests/PartyGameKit.Protocol.Tests/PartyGameKit.Protocol.Tests.csproj" />

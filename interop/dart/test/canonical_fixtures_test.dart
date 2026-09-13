@@ -4,16 +4,13 @@ import 'package:partygamekit_protocol/partygamekit_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('canonical PartyGameKit v1 fixtures', () {
-    test('all infrastructure envelopes use the supported protocol version', () {
+  group('canonical PartyGameKit v2 fixtures', () {
+    test('all communication envelopes use the supported protocol version', () {
       const envelopeFixtures = <String>[
-        'join-success.json',
-        'join-rejected.json',
-        'rejoin.json',
-        'rejoin-rejected.json',
-        'heartbeat.json',
-        'snapshot-public.json',
-        'snapshot-player.json',
+        'v2-connect-request.json',
+        'v2-resume-request.json',
+        'v2-heartbeat.json',
+        'v2-application-message.json',
       ];
 
       for (final fixtureName in envelopeFixtures) {
@@ -24,42 +21,71 @@ void main() {
       }
     });
 
-    test('join and rejoin preserve stable player identity across connections',
-        () {
-      final join = PartyGameKitEnvelope.parse(_fixture('join-success.json'));
-      final rejoin = PartyGameKitEnvelope.parse(_fixture('rejoin.json'));
+    test('connect and resume preserve neutral peer identity', () {
+      final connect =
+          PartyGameKitEnvelope.parse(_fixture('v2-connect-request.json'));
+      final resume =
+          PartyGameKitEnvelope.parse(_fixture('v2-resume-request.json'));
 
-      expect(join.type, 'session.join.accepted');
-      expect(rejoin.type, 'session.rejoin.request');
-      expect(join.payload['playerId'], 'player-001');
-      expect(rejoin.payload['playerId'], join.payload['playerId']);
-      expect(join.payload['connectionId'], 'connection-002');
-      expect(join.payload['connectionId'], isNot(join.payload['playerId']));
-      expect(join.payload['reconnectToken'], 'resume-token-001');
-      expect(rejoin.payload['reconnectToken'], 'opaque-reconnect-token');
-      expect(rejoin.payload['lastSeenSnapshotSequence'], 41);
+      expect(connect.type, 'connection.connect.request');
+      expect(resume.type, 'connection.resume.request');
+      expect(connect.payload['peerId'], 'peer-a');
+      expect(resume.payload['peerId'], connect.payload['peerId']);
+      expect(resume.payload['resumeToken'], 'resume-token');
+      expect(connect.payload.containsKey('playerId'), isFalse);
+      expect(connect.payload.containsKey('role'), isFalse);
     });
 
-    test(
-        'snapshot target stays generic and stale or equal sequences are rejected',
+    test('application message payload remains consumer owned and opaque', () {
+      final message =
+          PartyGameKitEnvelope.parse(_fixture('v2-application-message.json'));
+      expect(message.type, 'application.message');
+      expect(message.payload['applicationType'], isNotEmpty);
+      expect(message.payload.containsKey('data'), isTrue);
+    });
+
+    test('connection descriptor matches canonical JSON and deterministic URI',
         () {
-      final publicSnapshot =
-          PartyGameKitEnvelope.parse(_fixture('snapshot-public.json'));
-      final playerSnapshot =
-          PartyGameKitEnvelope.parse(_fixture('snapshot-player.json'));
+      final canonical = _fixture('v2-connection-descriptor.json');
+      final descriptor = PartyGameKitConnectionDescriptor.parseJson(canonical);
 
-      expect(publicSnapshot.type, 'state.snapshot');
-      expect(playerSnapshot.type, 'state.snapshot');
-      expect(publicSnapshot.payload['sequence'], 42);
-      expect(playerSnapshot.payload['sequence'], 42);
+      expect(descriptor.protocolVersion, 2);
+      expect(descriptor.transport, 'lan-websocket');
+      expect(descriptor.endpoint, 'ws://192.168.1.10:45678/partygamekit');
+      expect(descriptor.channelId, 'channel-a');
+      expect(descriptor.toJsonString(), canonical);
 
-      final publicTarget = publicSnapshot.payload['target'] as Map;
-      final playerTarget = playerSnapshot.payload['target'] as Map;
-      expect(publicTarget['kind'], 'public');
-      expect(playerTarget['kind'], 'player');
-      expect(playerTarget['playerId'], 'player-001');
+      const expectedUri =
+          'partygamekit://connect?protocolVersion=2&transport=lan-websocket'
+          '&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit'
+          '&channelId=channel-a';
+      expect(descriptor.toUriString(), expectedUri);
+      final fromUri = PartyGameKitConnectionDescriptor.parseUri(expectedUri);
+      expect(fromUri.toJsonString(), canonical);
+    });
 
-      final gate = PartyGameKitSnapshotSequenceGate();
+    test('descriptor parser preserves literal plus as data', () {
+      final descriptor = PartyGameKitConnectionDescriptor.parseUri(
+        'partygamekit://connect?protocolVersion=2&transport=lan-websocket'
+        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fpartygamekit'
+        '&channelId=channel%2Ba',
+      );
+      expect(descriptor.channelId, 'channel+a');
+    });
+
+    test('discovery announcement carries only technical descriptor metadata',
+        () {
+      final announcement = PartyGameKitDiscoveryAnnouncement.parse(
+        _fixture('v2-discovery-announcement.json'),
+      );
+
+      expect(announcement.descriptor.protocolVersion, 2);
+      expect(announcement.descriptor.transport, 'lan-websocket');
+      expect(announcement.descriptor.channelId, 'channel-a');
+    });
+
+    test('generic sequence gate rejects stale or equal messages', () {
+      final gate = PartyGameKitMessageSequenceGate();
       expect(gate.tryAccept(42), isTrue);
       expect(gate.tryAccept(42), isFalse);
       expect(gate.tryAccept(41), isFalse);
@@ -67,78 +93,9 @@ void main() {
       expect(gate.lastAcceptedSequence, 43);
     });
 
-    test('join descriptor matches canonical JSON and deterministic QR URI', () {
-      final canonical = _fixture('join-descriptor.json');
-      final descriptor = PartyGameKitJoinDescriptor.parseJson(canonical);
-
-      expect(descriptor.protocolVersion, 1);
-      expect(descriptor.roomId, 'room-001');
-      expect(descriptor.joinCode, 'ROOM42');
-      expect(descriptor.transport, 'lan-websocket');
-      expect(descriptor.endpoint, 'ws://192.168.1.20:5042/partygamekit');
-      expect(descriptor.toJsonString(), canonical);
-
-      const expectedUri =
-          'partygamekit://join?protocolVersion=1&roomId=room-001'
-          '&joinCode=ROOM42&transport=lan-websocket'
-          '&endpoint=ws%3A%2F%2F192.168.1.20%3A5042%2Fpartygamekit';
-      expect(descriptor.toUriString(), expectedUri);
-      final fromUri = PartyGameKitJoinDescriptor.parseUri(expectedUri);
-      expect(fromUri.toJsonString(), canonical);
-    });
-
-    test('descriptor canonicalization matches C# percent escaping', () {
-      final descriptor = PartyGameKitJoinDescriptor(
-        protocolVersion: 1,
-        roomId: ' room 001 ',
-        joinCode: ' room 42 ',
-        transport: ' LAN WebSocket ',
-        endpoint: ' ws://192.168.1.20:5042/partygamekit ',
-      );
-
-      expect(descriptor.roomId, 'room 001');
-      expect(descriptor.joinCode, 'ROOM 42');
-      expect(descriptor.transport, 'lan websocket');
-      expect(descriptor.endpoint, 'ws://192.168.1.20:5042/partygamekit');
-      expect(
-        descriptor.toUriString(),
-        'partygamekit://join?protocolVersion=1&roomId=room%20001'
-        '&joinCode=ROOM%2042&transport=lan%20websocket'
-        '&endpoint=ws%3A%2F%2F192.168.1.20%3A5042%2Fpartygamekit',
-      );
-
-      final roundTrip = PartyGameKitJoinDescriptor.parseUri(
-        descriptor.toUriString(),
-      );
-      expect(roundTrip.roomId, descriptor.roomId);
-      expect(roundTrip.joinCode, descriptor.joinCode);
-      expect(roundTrip.transport, descriptor.transport);
-      expect(roundTrip.endpoint, descriptor.endpoint);
-    });
-
-    test('URI parser preserves literal plus as data', () {
-      final descriptor = PartyGameKitJoinDescriptor.parseUri(
-        'partygamekit://join?protocolVersion=1&roomId=room%2B001'
-        '&joinCode=ROOM42&transport=lan-websocket'
-        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fpartygamekit',
-      );
-
-      expect(descriptor.roomId, 'room+001');
-    });
-
-    test('discovery announcement carries only the portable descriptor', () {
-      final announcement = PartyGameKitDiscoveryAnnouncement.parse(
-        _fixture('discovery-announcement.json'),
-      );
-
-      expect(announcement.descriptor.roomId, 'room-001');
-      expect(announcement.descriptor.joinCode, 'ROOM42');
-      expect(announcement.descriptor.transport, 'lan-websocket');
-    });
-
     test('unsupported protocol version is rejected before payload use', () {
-      final incompatible = _fixture('rejoin.json').replaceFirst(
-        '"protocolVersion":1',
+      final incompatible = _fixture('v2-resume-request.json').replaceFirst(
+        '"protocolVersion":2',
         '"protocolVersion":999',
       );
 

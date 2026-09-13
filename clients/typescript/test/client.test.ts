@@ -5,17 +5,17 @@ import { resolve } from "node:path";
 import {
   MemoryIdentityStore,
   PartyGameClient,
-  SnapshotSequenceGate,
   createMessage,
   messageTypes,
-  parseJoinDescriptorJson,
-  parseJoinDescriptorUri,
+  parseConnectionDescriptorJson,
+  parseConnectionDescriptorUri,
   parseMessage,
-  serializeJoinDescriptorJson,
-  serializeJoinDescriptorUri,
+  serializeConnectionDescriptorJson,
+  serializeConnectionDescriptorUri,
   serializeMessage,
-  type ProtocolEnvelope,
-  type StateSnapshotPayload,
+  type ApplicationMessagePayload,
+  type ConnectRequestPayload,
+  type ResumeRequestPayload,
   type WebSocketLike,
 } from "../src/index.js";
 
@@ -23,54 +23,40 @@ const fixturesDir = resolve(process.cwd(), "../../protocol/fixtures");
 const fixture = (name: string): string => readFileSync(resolve(fixturesDir, name), "utf8").trim();
 
 const canonicalMessages: Record<string, string> = {
-  "heartbeat.json": messageTypes.heartbeat,
-  "join-rejected.json": messageTypes.joinRejected,
-  "join-success.json": messageTypes.joinAccepted,
-  "rejoin-rejected.json": messageTypes.rejoinRejected,
-  "rejoin.json": messageTypes.rejoinRequest,
-  "snapshot-player.json": messageTypes.stateSnapshot,
-  "snapshot-public.json": messageTypes.stateSnapshot,
+  "v2-connect-request.json": messageTypes.connectRequest,
+  "v2-resume-request.json": messageTypes.resumeRequest,
+  "v2-heartbeat.json": messageTypes.heartbeat,
+  "v2-application-message.json": messageTypes.applicationMessage,
 };
 
-test("TypeScript protocol consumes the canonical C#/Dart message fixtures", () => {
+test("TypeScript protocol consumes the canonical neutral v2 fixtures", () => {
   for (const [name, type] of Object.entries(canonicalMessages)) {
     const message = parseMessage(fixture(name), type);
-    assert.equal(message.protocolVersion, 1, name);
+    assert.equal(message.protocolVersion, 2, name);
     assert.equal(message.type, type, name);
     assert.ok(message.messageId.length > 0, name);
   }
 });
 
-test("join descriptor JSON and URI stay canonical across languages", () => {
-  const canonical = fixture("join-descriptor.json");
-  const descriptor = parseJoinDescriptorJson(canonical);
-  assert.equal(serializeJoinDescriptorJson(descriptor), canonical);
+test("connection descriptor JSON and URI stay canonical across languages", () => {
+  const canonical = fixture("v2-connection-descriptor.json");
+  const descriptor = parseConnectionDescriptorJson(canonical);
+  assert.equal(serializeConnectionDescriptorJson(descriptor), canonical);
 
-  const uri = serializeJoinDescriptorUri(descriptor);
+  const uri = serializeConnectionDescriptorUri(descriptor);
   assert.equal(
     uri,
-    "partygamekit://join?protocolVersion=1&roomId=room-001&joinCode=ROOM42&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.20%3A5042%2Fpartygamekit",
+    "partygamekit://connect?protocolVersion=2&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit&channelId=channel-a",
   );
-  assert.deepEqual(parseJoinDescriptorUri(uri), descriptor);
+  assert.deepEqual(parseConnectionDescriptorUri(uri), descriptor);
 });
 
-test("snapshot ordering is independent per public/private projection", () => {
-  const gate = new SnapshotSequenceGate();
-  const public42 = parseMessage<StateSnapshotPayload>(fixture("snapshot-public.json"), messageTypes.stateSnapshot).payload;
-  const player42 = parseMessage<StateSnapshotPayload>(fixture("snapshot-player.json"), messageTypes.stateSnapshot).payload;
-
-  assert.equal(gate.accept(public42), true);
-  assert.equal(gate.accept(player42), true);
-  assert.equal(gate.accept(public42), false);
-  assert.equal(gate.lastSeenSequence, 42);
-});
-
-test("player joins over WebSocket and reconnects with stable player identity", async () => {
+test("generic peer connects, exchanges application messages and resumes without product roles", async (t) => {
   const sockets: FakeWebSocket[] = [];
   const identityStore = new MemoryIdentityStore();
-  const ids = ["join-1", "rejoin-1", "other-1"];
+  const ids = ["connect-1", "app-1", "resume-1", "app-2", "disconnect-1"];
   const client = new PartyGameClient({
-    role: "player",
+    peerId: "peer-a",
     identityStore,
     autoReconnect: false,
     heartbeatIntervalMs: 60_000,
@@ -81,118 +67,100 @@ test("player joins over WebSocket and reconnects with stable player identity", a
       return socket;
     },
   });
+  t.after(() => client.disconnect("test-cleanup"));
 
-  const joinPromise = client.join(parseJoinDescriptorJson(fixture("join-descriptor.json")));
+  const descriptor = parseConnectionDescriptorJson(fixture("v2-connection-descriptor.json"));
+  const connectPromise = client.connect(descriptor);
   sockets[0].open();
-  const joinRequest = parseMessage<{ playerId?: string }>(sockets[0].sent[0], messageTypes.joinRequest);
-  const playerId = joinRequest.payload.playerId;
-  assert.ok(playerId?.startsWith("player-"));
+
+  const connect = parseMessage<ConnectRequestPayload>(sockets[0].sent[0], messageTypes.connectRequest);
+  assert.equal(connect.payload.peerId, "peer-a");
+  assert.equal("role" in (connect.payload as object), false);
+  assert.equal("playerId" in (connect.payload as object), false);
 
   sockets[0].receive(serializeMessage(createMessage(
-    messageTypes.joinAccepted,
+    messageTypes.connectAccepted,
     "accepted-1",
-    {
-      roomId: "room-001",
-      connectionId: "connection-1",
-      role: "player",
-      playerId,
-      authorityId: "authority-001",
-      reconnectToken: "resume-001",
-    },
-    joinRequest.messageId,
+    { connectionId: "connection-1", peerId: "peer-a", resumeToken: "resume-001" },
+    connect.messageId,
   )));
-  const joined = await joinPromise;
-  assert.equal(joined.playerId, playerId);
-  assert.equal(client.stablePlayerId, playerId);
+  const connected = await connectPromise;
+  assert.equal(connected.connectionId, "connection-1");
+  assert.equal(connected.peerId, "peer-a");
+  assert.equal(client.stablePeerId, "peer-a");
+
+  client.send("sample.echo", { value: 42 });
+  const outgoing = parseMessage<ApplicationMessagePayload<{ value: number }>>(
+    sockets[0].sent[1],
+    messageTypes.applicationMessage,
+  );
+  assert.equal(outgoing.payload.applicationType, "sample.echo");
+  assert.deepEqual(outgoing.payload.data, { value: 42 });
+
+  const incomingPromise = new Promise<ApplicationMessagePayload>((resolveMessage) => {
+    const unsubscribe = client.on("applicationMessage", (message) => {
+      unsubscribe();
+      resolveMessage(message);
+    });
+  });
+  sockets[0].receive(serializeMessage(createMessage(
+    messageTypes.applicationMessage,
+    "server-app-1",
+    { applicationType: "sample.reply", data: { ok: true } },
+  )));
+  const incoming = await incomingPromise;
+  assert.equal(incoming.applicationType, "sample.reply");
+  assert.deepEqual(incoming.data, { ok: true });
 
   sockets[0].remoteClose(1006, "network-lost");
-  const reconnectPromise = client.reconnect();
+  const resumePromise = client.reconnect();
   sockets[1].open();
-  const rejoin = parseMessage<{
-    playerId: string;
-    reconnectToken: string;
-    lastSeenSnapshotSequence: number;
-  }>(sockets[1].sent[0], messageTypes.rejoinRequest);
-  assert.equal(rejoin.payload.playerId, playerId);
-  assert.equal(rejoin.payload.reconnectToken, "resume-001");
-  assert.equal(rejoin.payload.lastSeenSnapshotSequence, 0);
+  const resume = parseMessage<ResumeRequestPayload>(sockets[1].sent[0], messageTypes.resumeRequest);
+  assert.equal(resume.payload.peerId, "peer-a");
+  assert.equal(resume.payload.resumeToken, "resume-001");
 
-  sockets[1].receive(serializeMessage(createMessage(messageTypes.rejoinAccepted, "reaccepted-1", {
-    roomId: "room-001",
-    playerId,
-    connectionId: "connection-2",
-    authorityId: "authority-001",
-  }, rejoin.messageId)));
-  const rejoined = await reconnectPromise;
-  assert.equal(rejoined.playerId, playerId);
-  assert.equal(rejoined.connectionId, "connection-2");
-  client.leave();
+  sockets[1].receive(serializeMessage(createMessage(
+    messageTypes.resumeAccepted,
+    "resumed-1",
+    { connectionId: "connection-2", peerId: "peer-a", resumeToken: "resume-002" },
+    resume.messageId,
+  )));
+  const resumed = await resumePromise;
+  assert.equal(resumed.connectionId, "connection-2");
+  assert.equal(resumed.peerId, "peer-a");
+  assert.equal(resumed.resumeToken, "resume-002");
+
+  client.disconnect("test-complete");
 });
 
-test("shared-screen joins without player identity and only receives public projection", async () => {
+test("anonymous connection does not acquire player or role semantics", async (t) => {
   const socket = new FakeWebSocket("ws://unused");
   const client = new PartyGameClient({
-    role: "shared-screen",
+    peerId: null,
     autoReconnect: false,
     heartbeatIntervalMs: 60_000,
-    messageIdFactory: () => "screen-msg",
+    messageIdFactory: () => "connect-anonymous",
     webSocketFactory: () => socket,
   });
-  const received: StateSnapshotPayload[] = [];
-  client.on("snapshot", (snapshot) => received.push(snapshot));
+  t.after(() => client.disconnect("test-cleanup"));
 
-  const promise = client.join(parseJoinDescriptorJson(fixture("join-descriptor.json")));
+  const descriptor = parseConnectionDescriptorJson(fixture("v2-connection-descriptor.json"));
+  const promise = client.connect(descriptor);
   socket.open();
-  const request = parseMessage<Record<string, unknown>>(socket.sent[0], messageTypes.joinRequest);
-  assert.equal(request.payload.role, "shared-screen");
-  assert.equal("playerId" in request.payload, false);
+  const request = parseMessage<ConnectRequestPayload>(socket.sent[0], messageTypes.connectRequest);
+  assert.deepEqual(request.payload, {});
 
-  socket.receive(serializeMessage(createMessage(messageTypes.joinAccepted, "accepted-screen", {
-    roomId: "room-001",
-    connectionId: "screen-connection",
-    role: "shared-screen",
-    authorityId: "authority-001",
-  }, request.messageId)));
-  await promise;
-
-  socket.receive(fixture("snapshot-player.json"));
-  socket.receive(fixture("snapshot-public.json"));
-  assert.equal(received.length, 1);
-  assert.equal(received[0].target.kind, "public");
-  client.leave();
-});
-
-test("heartbeat reports newest accepted snapshot sequence", async () => {
-  const socket = new FakeWebSocket("ws://unused");
-  let id = 0;
-  const client = new PartyGameClient({
-    role: "shared-screen",
-    autoReconnect: false,
-    heartbeatIntervalMs: 5,
-    messageIdFactory: () => `msg-${++id}`,
-    webSocketFactory: () => socket,
-  });
-
-  const promise = client.join(parseJoinDescriptorJson(fixture("join-descriptor.json")));
-  socket.open();
-  const request = parseMessage(socket.sent[0], messageTypes.joinRequest);
-  socket.receive(serializeMessage(createMessage(messageTypes.joinAccepted, "accepted", {
-    roomId: "room-001",
-    connectionId: "screen-connection",
-    role: "shared-screen",
-    authorityId: "authority-001",
-  }, request.messageId)));
-  await promise;
-  socket.receive(fixture("snapshot-public.json"));
-
-  await new Promise((resolveWait) => setTimeout(resolveWait, 20));
-  const heartbeats = socket.sent
-    .slice(1)
-    .map((json) => parseMessage(json))
-    .filter((message) => message.type === messageTypes.heartbeat) as ProtocolEnvelope<{ lastSeenSnapshotSequence: number }>[];
-  assert.ok(heartbeats.length > 0);
-  assert.equal(heartbeats.at(-1)?.payload.lastSeenSnapshotSequence, 42);
-  client.leave();
+  socket.receive(serializeMessage(createMessage(
+    messageTypes.connectAccepted,
+    "accepted-anonymous",
+    { connectionId: "connection-anonymous" },
+    request.messageId,
+  )));
+  const connection = await promise;
+  assert.equal(connection.connectionId, "connection-anonymous");
+  assert.equal(connection.peerId, undefined);
+  assert.equal(client.stablePeerId, null);
+  client.disconnect();
 });
 
 class FakeWebSocket implements WebSocketLike {

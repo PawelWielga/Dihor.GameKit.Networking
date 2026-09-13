@@ -54,6 +54,13 @@ jobs:
           dotnet build PartyGameKit.slnx --configuration Release --no-restore
           dotnet test PartyGameKit.slnx --configuration Release --no-build
 
+      - name: Run neutral communication demo
+        run: >-
+          dotnet run
+          --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj
+          --configuration Release
+          --no-build
+
       - name: Pack NuGet artifacts
         run: bash eng/pack-dotnet.sh artifacts/nuget "${{ steps.version.outputs.version }}"
 
