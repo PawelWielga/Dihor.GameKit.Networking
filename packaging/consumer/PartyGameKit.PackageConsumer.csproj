@@ -9,11 +9,13 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="PartyGameKit.Core" Version="0.2.0-preview.1" />
-    <PackageReference Include="PartyGameKit.Protocol" Version="0.2.0-preview.1" />
-    <PackageReference Include="PartyGameKit.Transport.Abstractions" Version="0.2.0-preview.1" />
-    <PackageReference Include="PartyGameKit.Transport.InMemory" Version="0.2.0-preview.1" />
-    <PackageReference Include="PartyGameKit.Transport.Lan" Version="0.2.0-preview.1" />
-    <PackageReference Include="PartyGameKit.Discovery.Lan" Version="0.2.0-preview.1" />
+    <PackageReference Include="PartyGameKit.Core" Version="0.2.0-preview.2" />
+    <PackageReference Include="PartyGameKit.Protocol" Version="0.2.0-preview.2" />
+    <PackageReference Include="PartyGameKit.Transport.Abstractions" Version="0.2.0-preview.2" />
+    <PackageReference Include="PartyGameKit.Transport.InMemory" Version="0.2.0-preview.2" />
+    <PackageReference Include="PartyGameKit.Transport.Lan" Version="0.2.0-preview.2" />
+    <PackageReference Include="PartyGameKit.Transport.SignalR" Version="0.2.0-preview.2" />
+    <PackageReference Include="PartyGameKit.Transport.SignalR.Server" Version="0.2.0-preview.2" />
+    <PackageReference Include="PartyGameKit.Discovery.Lan" Version="0.2.0-preview.2" />
   </ItemGroup>
 </Project>

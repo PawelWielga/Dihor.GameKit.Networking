@@ -1,6 +1,6 @@
 {
   "name": "@partygamekit/client",
-  "version": "0.2.0-preview.1",
+  "version": "0.2.0-preview.2",
   "description": "Communication-neutral browser client for PartyGameKit transports, protocol v2, reconnect and application messages.",
   "type": "module",
   "sideEffects": false,

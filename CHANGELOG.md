@@ -2,6 +2,44 @@
 
 All notable PartyGameKit changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
+## 0.2.0-preview.2 - 2026-09-13
+
+Compatible transport expansion on the corrected communication-only protocol-v2 foundation.
+
+### SignalR relay transport
+
+- adds `PartyGameKit.Transport.SignalR` with `SignalRRelayTransport : IMessageTransport` and `SignalRRelayClient`;
+- adds `PartyGameKit.Transport.SignalR.Server` with minimal ASP.NET Core registration/mapping extensions;
+- keeps the SignalR hub and relay registry internal implementation details;
+- routes opaque bytes using technical `ChannelId` scopes and transient `ConnectionId` values only;
+- preserves the LAN lifecycle rule that a connect/resume handshake is validated before `TransportConnectionOpened` is exposed;
+- supports targeted listener-to-client delivery, broadcast, client-to-listener delivery, disconnect and cleanup;
+- keeps stable `PeerId` continuity and resume tokens above the relay backend;
+- rejects protocol-v1 handshakes before exposing a connection to the application;
+- accounts for SignalR JSON/base64 framing while retaining the configured raw PartyGameKit payload limit;
+- closes the physical SignalR connection when a client-side payload limit is violated so backend routing bindings are removed promptly.
+
+### Validation
+
+- adds in-process Kestrel/SignalR integration coverage for multiple clients, channel isolation, targeted/broadcast delivery and disconnect;
+- verifies protocol mismatch behavior over SignalR;
+- verifies a replacement SignalR connection resumes the same neutral peer without duplication;
+- verifies local payload-limit rejection cleans up the relay binding;
+- extends `samples/CommunicationDemo` so the same protocol-v2/application-message scenario runs over both LAN and SignalR;
+- package-only validation includes the SignalR client and server NuGet packages;
+- LAN remains fully usable without a backend.
+
+### Packaging and release
+
+- bumps the supported .NET, TypeScript and Dart package surfaces to `0.2.0-preview.2` while keeping wire protocol `2`;
+- CI derives artifact names from central package metadata rather than hardcoding a prerelease suffix;
+- prerelease packaging can substitute any `v0.2.0-preview.N` version into the package-only consumer.
+
+### Documentation
+
+- adds SignalR relay architecture, deployment/configuration and security assumptions;
+- updates package boundaries, networking, compatibility, sample and README documentation without introducing PartyBeam/player/game-session semantics.
+
 ## 0.2.0-preview.1 - 2026-09-13
 
 Breaking correction of the public architecture boundary. PartyGameKit is now a communication/networking library rather than a generic party/game-session runtime.

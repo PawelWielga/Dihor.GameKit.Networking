@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Optional backend-assisted SignalR relay transport for PartyGameKit.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
+    <ProjectReference Include="../PartyGameKit.Protocol/PartyGameKit.Protocol.csproj" />
+    <ProjectReference Include="../PartyGameKit.Transport.Abstractions/PartyGameKit.Transport.Abstractions.csproj" />
+  </ItemGroup>
+</Project>

@@ -24,6 +24,17 @@ jobs:
           cache: true
           cache-dependency-path: Directory.Packages.props
 
+      - name: Resolve package version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.targets | head -n 1)"
+          if [[ -z "$VERSION" ]]; then
+            echo "Unable to resolve package version from Directory.Build.targets" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Restore
         run: dotnet restore PartyGameKit.slnx
 
@@ -79,7 +90,7 @@ jobs:
       - name: Pack Dart protocol source artifact
         run: |
           mkdir -p artifacts/dart
-          tar -czf artifacts/dart/partygamekit_protocol-0.2.0-preview.1.tar.gz \
+          tar -czf "artifacts/dart/partygamekit_protocol-${{ steps.version.outputs.version }}.tar.gz" \
             -C interop/dart pubspec.yaml README.md CHANGELOG.md lib
 
       - name: Setup Node
@@ -104,6 +115,6 @@ jobs:
       - name: Upload prerelease package artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: partygamekit-0.2.0-preview.1
+          name: partygamekit-${{ steps.version.outputs.version }}
           path: artifacts/
           if-no-files-found: error

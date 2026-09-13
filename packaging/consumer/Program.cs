@@ -6,6 +6,8 @@ using PartyGameKit.Protocol;
 using PartyGameKit.Transport.Abstractions;
 using PartyGameKit.Transport.InMemory;
 using PartyGameKit.Transport.Lan;
+using PartyGameKit.Transport.SignalR;
+using PartyGameKit.Transport.SignalR.Server;
 
 var channelId = new ChannelId("package-smoke-channel");
 var descriptor = LanConnectionDescriptor.Create("127.0.0.1", 45678, channelId);
@@ -55,11 +57,20 @@ Ensure(continuity.PeerCount == 1, "Resume created a duplicate logical peer.");
 Ensure(continuity.GetPresence(peerId)?.ConnectionId == replacementConnectionId,
     "Replacement connection was not bound to the stable peer.");
 
+var relayOptions = new SignalRRelayOptions(
+    new Uri("https://relay.example.test/partygamekit-relay"),
+    channelId);
+Ensure(relayOptions.ChannelId == channelId, "Packaged SignalR relay options are unavailable.");
+var relayServerOptions = new SignalRRelayServerOptions();
+Ensure(relayServerOptions.MaxMessageBytes > 0, "Packaged SignalR relay server options are unavailable.");
+
 Console.WriteLine($"{descriptor.Transport}:{channelId.Value}:v{ProtocolVersions.Current}");
 Console.WriteLine("Package-only opaque message exchange: OK");
 Console.WriteLine("Package-only neutral peer resume: OK");
 Console.WriteLine(typeof(LanWebSocketTransport).FullName);
 Console.WriteLine(typeof(UdpLanDiscoveryAdvertiser).FullName);
+Console.WriteLine(typeof(SignalRRelayTransport).FullName);
+Console.WriteLine(typeof(SignalRRelayServerOptions).FullName);
 
 static byte[] CreateApplicationMessage(string applicationType, object data, string messageId)
 {
