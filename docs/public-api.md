@@ -1,6 +1,6 @@
 # Public API review for 0.2
 
-PartyGameKit `0.2.0-preview.1` exposes communication/networking primitives only. This document records the result of the boundary correction that began in `[15]` and was implemented across `[16]`–`[17]`.
+PartyGameKit `0.2.0-preview.2` exposes communication/networking primitives only. The corrected boundary was established in `[15]`–`[17]`; `[18]` adds SignalR as another transport without changing ownership of product/game semantics.
 
 The detailed ownership rationale is in [Communication boundary](communication-boundary.md).
 
@@ -34,6 +34,8 @@ The public protocol surface uses neutral connection language:
 
 PartyGameKit control messages and application messages are distinct. The library does not inspect the game/product meaning of `ApplicationMessagePayload.Data`.
 
+Protocol remains version `2` in `0.2.0-preview.2`.
+
 ## Transport abstractions
 
 The transport package exposes technology-neutral message transport concepts:
@@ -65,6 +67,25 @@ The supported public LAN surface includes:
 
 LAN handshake validation accepts only PartyGameKit connection control messages. Player capacity/admission and other product rules remain above the transport.
 
+### SignalR relay
+
+`PartyGameKit.Transport.SignalR` exposes:
+
+- `SignalRRelayOptions`;
+- `SignalRRelayTransport : IMessageTransport` for the listener/multi-connection side;
+- `SignalRRelayClient` for a single remote peer;
+- `SignalRRelayClientMessage` for opaque inbound data/close notification.
+
+The transport validates the same protocol-v2 connect/resume handshake boundary as LAN before publishing `TransportConnectionOpened`.
+
+`PartyGameKit.Transport.SignalR.Server` deliberately exposes only server setup/mapping extensions:
+
+- `AddPartyGameKitSignalRRelay(...)`;
+- `MapPartyGameKitSignalRRelay(...)`;
+- `SignalRRelayServerOptions` for transport-level limits.
+
+The actual Hub and routing registry remain internal. They are not an application session API.
+
 ### LAN discovery
 
 The supported discovery surface includes:
@@ -78,7 +99,7 @@ Discovery locates technical endpoints, not product lobbies or game sessions.
 
 ## TypeScript browser SDK
 
-`@partygamekit/client` `0.2.0-preview.1` exposes:
+`@partygamekit/client` `0.2.0-preview.2` exposes:
 
 - `PartyGameClient` with connect/disconnect;
 - send/receive of opaque application messages;
@@ -91,9 +112,11 @@ Discovery locates technical endpoints, not product lobbies or game sessions.
 
 The base SDK has no required player/shared-screen/host role and no public/private game-state projection model.
 
+Preview.2 does not add a browser SignalR implementation; its version is aligned with the supported PartyGameKit compatibility line while the browser API stays protocol-v2 compatible with preview.1.
+
 ## Dart interoperability package
 
-`partygamekit_protocol` implements the protocol-v2 compatibility layer in Dart:
+`partygamekit_protocol` `0.2.0-preview.2` implements the protocol-v2 compatibility layer in Dart:
 
 - envelope parsing/version admission;
 - `PartyGameKitConnectionDescriptor`;
@@ -102,7 +125,7 @@ The base SDK has no required player/shared-screen/host role and no public/privat
 - opaque application-message payload parsing;
 - generic message sequence gating.
 
-It deliberately does not duplicate a game/session engine or Dart transport runtime.
+It deliberately does not duplicate a game/session engine or Dart transport runtime. Preview.2 does not add a Dart SignalR client.
 
 ## Retired v0.1 concepts
 
@@ -124,8 +147,9 @@ If a future proposal adds one of these concepts, it must demonstrate that the ab
 The current API boundary is protected by:
 
 - reflection/public-surface guard tests in the C# test suite;
-- the neutral `CommunicationDemo` using the real LAN transport;
-- package-only consumer validation;
+- the neutral `CommunicationDemo` running the same scenario over LAN and SignalR;
+- in-process SignalR integration tests for routing isolation, targeted/broadcast delivery, protocol mismatch, resume and cleanup;
+- package-only consumer validation including both SignalR NuGet packages;
 - shared protocol-v2 fixtures consumed by C#, Dart and TypeScript;
 - cross-repository validation against PartyBeam and Państwa Miasta.
 
