@@ -119,6 +119,29 @@ test("peer departure fails an active negotiation channel", async (t) => {
   assert.ok(failures[0].message.includes("left before negotiation completed"));
 });
 
+test("peer departure before subscription fails the late negotiation channel", async (t) => {
+  const connection = new FakeHubConnection("local");
+  const client = new SignalRWebRtcSignalingClient({
+    endpoint: "https://example.test/signaling",
+    channelId: "channel-a",
+    hubConnectionFactory: () => connection,
+  });
+  t.after(() => client.dispose());
+
+  await client.connect();
+  connection.emit(peerLeftMethod, "remote");
+
+  let caught: unknown;
+  try {
+    client.createChannel("remote").subscribe(() => {});
+  } catch (error) {
+    caught = error;
+  }
+
+  assert.ok(caught instanceof Error);
+  assert.ok(caught.message.includes("left before negotiation completed"));
+});
+
 test("disposing signaling fails active negotiation channels before listeners are cleared", async () => {
   const connection = new FakeHubConnection("local");
   const client = new SignalRWebRtcSignalingClient({
