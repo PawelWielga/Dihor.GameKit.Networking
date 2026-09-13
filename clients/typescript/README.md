@@ -1,20 +1,42 @@
 # @partygamekit/client
 
-Browser-first TypeScript client for PartyGameKit protocol v1. It is intended for PartyBeam phone controllers and shared TV/browser screens, but contains no PartyBeam game logic and no React dependency.
+Browser-first TypeScript client for PartyGameKit protocol v2 and the communication-only `0.2` boundary.
+
+The SDK is intentionally neutral. It connects a generic peer to PartyGameKit transport infrastructure and does not define players, hosts, shared screens, lobbies, authority or game-state projections. PartyBeam, Państwa Miasta and other products build those concepts above this package.
 
 ## Minimal API
 
 ```ts
-import { PartyGameClient, parseJoinDescriptor } from "@partygamekit/client";
+import {
+  PartyGameClient,
+  parseConnectionDescriptor,
+} from "@partygamekit/client";
 
-const client = new PartyGameClient({ role: "player" });
-client.on("snapshot", (snapshot) => {
-  // Public snapshots and this player's private snapshots arrive here.
+const client = new PartyGameClient();
+
+client.on("applicationMessage", (message) => {
+  console.log(message.applicationType, message.data);
 });
 
-await client.join(parseJoinDescriptor(scannedQrPayload));
+await client.connect(parseConnectionDescriptor(connectionPayload));
+client.sendApplicationMessage("my-app.command", { value: 42 });
 ```
 
-Use `role: "shared-screen"` for a browser/TV that should receive only public projections. Player identity and reconnect credentials are kept in `localStorage` when it is available; reconnect uses a new WebSocket while preserving the stable player identity. `leave()` sends the protocol leave message and closes intentionally.
+The client provides:
 
-The package has no runtime dependencies. It accepts the canonical `partygamekit://join` URI or JSON join descriptor and connects to `lan-websocket` `ws://`/`wss://` endpoints. Host-to-client binary JSON frames are decoded automatically. Non-protocol frames are surfaced through the `message` event for game-specific payloads.
+- neutral connect/disconnect state;
+- optional stable `PeerId` persistence;
+- resume credentials and automatic reconnect on a replacement WebSocket;
+- protocol-v2 admission and compatibility checks;
+- `partygamekit://connect` / JSON `ConnectionDescriptor` parsing;
+- `application.message` delivery with consumer-owned data;
+- heartbeat support;
+- raw message events for frames outside PartyGameKit's protocol envelope.
+
+The package has no runtime dependencies. The built-in browser transport supports `lan-websocket` descriptors using `ws://` or `wss://` endpoints.
+
+## Ownership boundary
+
+A product may decide that a peer is a TV, controller, player, spectator, server process or something else. Those meanings are not encoded by `@partygamekit/client`.
+
+`0.1.0-preview.1` exposed `player` / `shared-screen`, join/rejoin and snapshot-projection APIs. Those preview APIs were intentionally removed for `0.2.0-preview.1`; see the repository migration guide for the compiler-level mapping.
