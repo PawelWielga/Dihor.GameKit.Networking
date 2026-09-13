@@ -115,7 +115,7 @@ import {
 
 const client = new PartyGameClient();
 await client.connect(parseConnectionDescriptor(connectionPayload));
-client.sendApplicationMessage("my-product.command", { value: 42 });
+client.send("my-product.command", { value: 42 });
 ```
 
 The browser SDK can persist a neutral peer identity and resume credential, but it does not assign a product role to that peer.
@@ -163,7 +163,7 @@ CI also packs all .NET packages and runs `packaging/consumer` from those generat
 - [Migration 0.1 → 0.2](docs/migration-0.1-to-0.2.md)
 - [Cross-repository validation](docs/cross-repo-validation.md)
 - [Package boundaries](docs/packages.md)
-- [Public API classification](docs/public-api.md)
+- [Public API review](docs/public-api.md)
 - [Protocol](docs/protocol.md)
 - [Networking](docs/networking.md)
 - [LAN WebSocket](docs/lan-websocket.md)
