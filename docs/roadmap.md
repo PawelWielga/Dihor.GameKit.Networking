@@ -81,19 +81,27 @@ Any later issue that violates these points is an architectural regression, not a
 
 ## Additional transports
 
-The next work adds connectivity choices behind the corrected boundary. It must not recreate a generic game-session runtime.
+Connectivity choices are added behind the corrected boundary. They must not recreate a generic game-session runtime.
 
-### `[18]` Optional backend-assisted SignalR transport
+### `[18]` Optional backend-assisted SignalR transport — implemented in `0.2.0-preview.2`
 
-Add SignalR/backend relay as another communication transport.
+SignalR/backend relay is available as another communication transport.
 
-Rules:
+Implemented rules and validation:
 
-- LAN remains usable without backend;
-- backend routing scopes are opaque communication identifiers;
+- LAN remains usable with no backend deployed;
+- `PartyGameKit.Transport.SignalR` provides listener/client communication over SignalR;
+- `PartyGameKit.Transport.SignalR.Server` provides a minimal ASP.NET Core relay endpoint;
+- backend routing uses opaque `ChannelId` and transient `ConnectionId` only;
 - backend does not own PartyBeam parties, players, lobbies, authority or game state;
-- the same opaque application payloads work over LAN and SignalR;
-- transport availability/failure is reported as communication state, not product policy.
+- the same protocol-v2 and opaque application payloads work over LAN and SignalR;
+- targeted delivery, broadcast, disconnect and routing-scope isolation are integration-tested;
+- protocol-v1 handshakes are rejected before an application connection is exposed;
+- replacement relay connections resume the same neutral `PeerId` through the existing continuity layer;
+- client/server cleanup and payload limits are validated;
+- `CommunicationDemo` runs the same neutral scenario over both real transports.
+
+See [SignalR relay](signalr-relay.md).
 
 ### `[19]` WebRTC DataChannel transport
 
