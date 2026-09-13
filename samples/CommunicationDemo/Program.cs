@@ -22,6 +22,9 @@ var descriptor = new ConnectionDescriptor(
     transport.CreateClientUri(IPAddress.Loopback.ToString()).AbsoluteUri,
     ProtocolVersions.Current,
     new ChannelId("communication-demo"));
+var serializedDescriptor = ConnectionDescriptorCodec.SerializeUri(descriptor);
+var directDescriptor = ConnectionDescriptorCodec.ParseUri(serializedDescriptor);
+Ensure(directDescriptor == descriptor, "Serialized connection descriptor did not round-trip.");
 
 var continuity = new ConnectionContinuityCoordinator(
     new ConnectionContinuityOptions(
@@ -32,11 +35,11 @@ var continuity = new ConnectionContinuityCoordinator(
 var receivedApplications = Channel.CreateUnbounded<ReceivedApplication>();
 var hostLoop = RunHostAsync(transport, continuity, receivedApplications.Writer, cancellationToken);
 
-await VerifyDiscoveryAsync(descriptor, cancellationToken);
+await VerifyDiscoveryAsync(directDescriptor, cancellationToken);
 
 var peerA = new PeerId("peer-a");
 var peerB = new PeerId("peer-b");
-var endpoint = new Uri(descriptor.Endpoint);
+var endpoint = new Uri(directDescriptor.Endpoint);
 
 await using var clientB = await LanWebSocketClient.ConnectAsync(
     endpoint,
@@ -118,7 +121,7 @@ var afterResume = await receivedApplications.Reader.ReadAsync(cancellationToken)
 Ensure(afterResume.ConnectionId == resumedA.Payload.ConnectionId, "Application traffic did not continue on the replacement connection.");
 
 Console.WriteLine("PartyGameKit neutral communication demo passed.");
-Console.WriteLine($"Direct descriptor: {ConnectionDescriptorCodec.SerializeUri(descriptor)}");
+Console.WriteLine($"Direct descriptor: {serializedDescriptor}");
 Console.WriteLine("Verified: LAN host, discovery, two generic peers, opaque application messages, targeted delivery, broadcast and resume.");
 
 await transport.StopAsync(cancellationToken);
