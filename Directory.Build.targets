@@ -1,14 +1,14 @@
 <Project>
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
-    <Version>0.2.0-preview.1</Version>
+    <Version>0.2.0-preview.2</Version>
     <Authors>PawelWielga</Authors>
     <Company>PartyGameKit</Company>
     <RepositoryUrl>https://github.com/PawelWielga/PartyGameKit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/PawelWielga/PartyGameKit</PackageProjectUrl>
-    <PackageTags>multiplayer;communication;networking;lan</PackageTags>
+    <PackageTags>multiplayer;communication;networking;lan;signalr;relay</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>PartyGameKit 0.2.0-preview.1 introduces the communication-only API boundary and protocol v2. See CHANGELOG.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>PartyGameKit 0.2.0-preview.2 adds optional backend-assisted SignalR relay connectivity while retaining protocol v2 and the communication-only boundary. See CHANGELOG.md.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IncludeSymbols>true</IncludeSymbols>
