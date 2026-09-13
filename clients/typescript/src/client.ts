@@ -452,7 +452,10 @@ async function normalizeMessageData(data: unknown): Promise<MessageEventData | n
 }
 
 function defaultWebSocketFactory(url: string): WebSocketLike {
-  return new WebSocket(url);
+  if (typeof globalThis.WebSocket === "undefined") {
+    throw new Error("WebSocket is not available in this runtime");
+  }
+  return new globalThis.WebSocket(url);
 }
 
 function defaultMessageIdFactory(): string {
