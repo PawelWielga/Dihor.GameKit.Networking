@@ -31,7 +31,7 @@ void main() {
       expect(resume.type, 'connection.resume.request');
       expect(connect.payload['peerId'], 'peer-a');
       expect(resume.payload['peerId'], connect.payload['peerId']);
-      expect(resume.payload['resumeToken'], 'resume-token-a');
+      expect(resume.payload['resumeToken'], 'resume-token');
       expect(connect.payload.containsKey('playerId'), isFalse);
       expect(connect.payload.containsKey('role'), isFalse);
     });
