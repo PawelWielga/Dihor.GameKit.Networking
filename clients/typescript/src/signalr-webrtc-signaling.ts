@@ -29,6 +29,7 @@ export interface SignalRHubConnectionLike {
   invoke<T = unknown>(methodName: string, ...args: unknown[]): Promise<T>;
   on(methodName: string, newMethod: (...args: unknown[]) => void): void;
   off(methodName: string): void;
+  onclose(callback: (error?: Error) => void): void;
 }
 
 export class SignalRWebRtcSignalingClient {
@@ -41,8 +42,10 @@ export class SignalRWebRtcSignalingClient {
     string,
     Set<(signal: WebRtcSignal) => void | Promise<void>>
   >();
+  private readonly failureListeners = new Map<string, Set<(reason: unknown) => void>>();
   private readonly pendingSignals = new Map<string, WebRtcSignal[]>();
   private readonly pendingSignalOverflowPeers = new Set<string>();
+  private readonly pendingSignalFailures = new Map<string, Error>();
   private started = false;
   private disposed = false;
 
@@ -72,6 +75,9 @@ export class SignalRWebRtcSignalingClient {
       ).build() as HubConnection;
     }
 
+    this.connection.onclose((error) => {
+      this.handleConnectionClosed(error);
+    });
     this.connection.on(peerJoinedMethod, (...args: unknown[]) => {
       const connectionId = requiredString(args[0], "peer connection id");
       for (const listener of this.peerJoinedListeners) {
@@ -82,14 +88,30 @@ export class SignalRWebRtcSignalingClient {
       const connectionId = requiredString(args[0], "peer connection id");
       this.pendingSignals.delete(connectionId);
       this.pendingSignalOverflowPeers.delete(connectionId);
+      this.pendingSignalFailures.delete(connectionId);
       for (const listener of this.peerLeftListeners) {
         listener(connectionId);
       }
     });
     this.connection.on(signalMethod, (...args: unknown[]) => {
-      const sourceConnectionId = requiredString(args[0], "signal source connection id");
-      const signalJson = requiredString(args[1], "WebRTC signal payload");
-      const signal = parseWebRtcSignal(signalJson);
+      let sourceConnectionId: string;
+      try {
+        sourceConnectionId = requiredString(args[0], "signal source connection id");
+      } catch {
+        // Without a valid source connection id there is no affected peer channel
+        // to fail deterministically.
+        return;
+      }
+
+      let signal: WebRtcSignal;
+      try {
+        const signalJson = requiredString(args[1], "WebRTC signal payload");
+        signal = parseWebRtcSignal(signalJson);
+      } catch (error) {
+        this.failSignalingPeer(sourceConnectionId, toError(error, "Invalid WebRTC signaling payload."));
+        return;
+      }
+
       const listeners = this.signalListeners.get(sourceConnectionId);
       if (listeners === undefined || listeners.size === 0) {
         this.bufferEarlySignal(sourceConnectionId, signal);
@@ -162,13 +184,16 @@ export class SignalRWebRtcSignalingClient {
         if (this.disposed || !this.started) {
           throw new Error("SignalR WebRTC signaling client is not connected.");
         }
-        await this.connection.invoke(
-          "SendSignal",
-          target,
-          JSON.stringify(signal),
-        );
+        await this.connection.invoke("SendSignal", target, JSON.stringify(signal));
       },
-      subscribe: (listener) => {
+      subscribe: (listener, failureHandler) => {
+        const pendingFailure = this.pendingSignalFailures.get(target);
+        if (pendingFailure !== undefined) {
+          this.pendingSignalFailures.delete(target);
+          this.pendingSignals.delete(target);
+          this.pendingSignalOverflowPeers.delete(target);
+          throw pendingFailure;
+        }
         if (this.pendingSignalOverflowPeers.delete(target)) {
           this.pendingSignals.delete(target);
           throw new Error(
@@ -182,6 +207,15 @@ export class SignalRWebRtcSignalingClient {
           this.signalListeners.set(target, listeners);
         }
         listeners.add(listener);
+
+        if (failureHandler !== undefined) {
+          let failures = this.failureListeners.get(target);
+          if (failures === undefined) {
+            failures = new Set();
+            this.failureListeners.set(target, failures);
+          }
+          failures.add(failureHandler);
+        }
 
         const pending = this.pendingSignals.get(target);
         this.pendingSignals.delete(target);
@@ -201,6 +235,14 @@ export class SignalRWebRtcSignalingClient {
           current?.delete(listener);
           if (current?.size === 0) {
             this.signalListeners.delete(target);
+          }
+
+          if (failureHandler !== undefined) {
+            const failures = this.failureListeners.get(target);
+            failures?.delete(failureHandler);
+            if (failures?.size === 0) {
+              this.failureListeners.delete(target);
+            }
           }
         };
       },
@@ -234,8 +276,10 @@ export class SignalRWebRtcSignalingClient {
 
     this.started = false;
     this.signalListeners.clear();
+    this.failureListeners.clear();
     this.pendingSignals.clear();
     this.pendingSignalOverflowPeers.clear();
+    this.pendingSignalFailures.clear();
     this.peerJoinedListeners.clear();
     this.peerLeftListeners.clear();
     this.connection.off(peerJoinedMethod);
@@ -244,8 +288,47 @@ export class SignalRWebRtcSignalingClient {
     await this.connection.stop();
   }
 
+  private handleConnectionClosed(error?: Error): void {
+    if (this.disposed) {
+      return;
+    }
+
+    this.started = false;
+    const reason = error ?? new Error("SignalR WebRTC signaling connection closed unexpectedly.");
+    const failures = [...this.failureListeners.values()].flatMap((listeners) => [...listeners]);
+
+    this.pendingSignals.clear();
+    this.pendingSignalOverflowPeers.clear();
+    this.pendingSignalFailures.clear();
+
+    for (const failure of failures) {
+      failure(reason);
+    }
+
+    this.signalListeners.clear();
+    this.failureListeners.clear();
+  }
+
+  private failSignalingPeer(sourceConnectionId: string, reason: Error): void {
+    this.pendingSignals.delete(sourceConnectionId);
+    this.pendingSignalOverflowPeers.delete(sourceConnectionId);
+
+    const failures = this.failureListeners.get(sourceConnectionId);
+    if (failures === undefined || failures.size === 0) {
+      this.pendingSignalFailures.set(sourceConnectionId, reason);
+      return;
+    }
+
+    for (const failure of [...failures]) {
+      failure(reason);
+    }
+  }
+
   private bufferEarlySignal(sourceConnectionId: string, signal: WebRtcSignal): void {
-    if (this.pendingSignalOverflowPeers.has(sourceConnectionId)) {
+    if (
+      this.pendingSignalOverflowPeers.has(sourceConnectionId) ||
+      this.pendingSignalFailures.has(sourceConnectionId)
+    ) {
       return;
     }
 
@@ -344,6 +427,10 @@ function requiredString(value: unknown, name: string): string {
     throw new Error(`${name} must be a non-empty string.`);
   }
   return value;
+}
+
+function toError(reason: unknown, fallbackMessage: string): Error {
+  return reason instanceof Error ? reason : new Error(fallbackMessage);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
