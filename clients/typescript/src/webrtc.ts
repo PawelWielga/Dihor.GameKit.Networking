@@ -139,8 +139,9 @@ export class WebRtcPeer {
         kind: "candidate",
         candidate: event.candidate?.toJSON() ?? null,
       }).catch(() => {
-        // sendSignal already transitions the peer to failed. The browser event
-        // callback has no await surface, so consume the rejection here.
+        // During negotiation sendSignal transitions the peer to failed before
+        // rejecting. Once the DataChannel is open, signaling send failures are
+        // intentionally non-terminal and are simply consumed here.
       });
     });
     this.connection.addEventListener("connectionstatechange", () => {
@@ -360,6 +361,7 @@ export class WebRtcPeer {
       if (!this.disposed && this.state !== "failed" && this.state !== "closed") {
         this.setState("closed");
         this.rejectOpen(new Error("WebRTC DataChannel closed before it opened."));
+        this.cleanupRtcResources();
       }
     });
     channel.addEventListener("error", () => {
@@ -381,7 +383,7 @@ export class WebRtcPeer {
   }
 
   private handleConnectionState(): void {
-    if (this.disposed || this.state === "failed") {
+    if (this.disposed || this.state === "failed" || this.state === "closed") {
       return;
     }
 
@@ -398,6 +400,7 @@ export class WebRtcPeer {
       case "closed":
         this.setState("closed");
         this.rejectOpen(new Error("WebRTC peer connection closed before the DataChannel opened."));
+        this.cleanupRtcResources();
         break;
       case "disconnected":
         if (this.state === "open") {
@@ -423,6 +426,9 @@ export class WebRtcPeer {
     try {
       await this.signaling.send(signal);
     } catch (error) {
+      if (this.state === "open") {
+        return;
+      }
       this.fail(error);
       throw error;
     }
