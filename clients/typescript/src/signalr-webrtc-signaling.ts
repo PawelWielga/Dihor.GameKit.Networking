@@ -51,11 +51,17 @@ export class SignalRWebRtcSignalingClient {
     }
 
     this.channelId = options.channelId.trim();
-    this.connection =
-      options.hubConnectionFactory?.() ??
-      (new HubConnectionBuilder()
-        .withUrl(options.endpoint, options.connectionOptions)
-        .build() as HubConnection);
+    const suppliedConnection = options.hubConnectionFactory?.();
+    if (suppliedConnection !== undefined) {
+      this.connection = suppliedConnection;
+    } else {
+      const builder = new HubConnectionBuilder();
+      this.connection = (
+        options.connectionOptions === undefined
+          ? builder.withUrl(options.endpoint)
+          : builder.withUrl(options.endpoint, options.connectionOptions)
+      ).build() as HubConnection;
+    }
 
     this.connection.on(peerJoinedMethod, (...args: unknown[]) => {
       const connectionId = requiredString(args[0], "peer connection id");
