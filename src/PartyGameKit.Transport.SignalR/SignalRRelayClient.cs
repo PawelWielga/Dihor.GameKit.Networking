@@ -166,6 +166,7 @@ public sealed class SignalRRelayClient : IAsyncDisposable
         if (payload.Length > _options.MaxMessageBytes)
         {
             HandleDisconnected("message-too-large");
+            _ = CloseAfterLocalPolicyViolationAsync();
             return;
         }
 
@@ -194,6 +195,25 @@ public sealed class SignalRRelayClient : IAsyncDisposable
         HandleDisconnected(reason);
         _messages.Writer.TryComplete();
         return Task.CompletedTask;
+    }
+
+    private async Task CloseAfterLocalPolicyViolationAsync()
+    {
+        if (_connection.State == HubConnectionState.Disconnected)
+        {
+            return;
+        }
+
+        try
+        {
+            await _connection.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // The local close notification has already been published. The relay
+            // connection may have disappeared concurrently, so there is nothing
+            // further the client can safely do here.
+        }
     }
 
     private async Task DisposeConnectionAfterFailedStartAsync()
