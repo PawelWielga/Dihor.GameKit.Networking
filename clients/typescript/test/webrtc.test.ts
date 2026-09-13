@@ -32,15 +32,16 @@ test("reliable WebRTC peer rejects sends above the configured buffer limit", asy
   await connected;
   connection.channel.bufferedAmount = 90;
 
-  assert.throws(
-    () => peer.send(new Uint8Array(20)),
-    (error: unknown) => {
-      assert.ok(error instanceof WebRtcBackpressureError);
-      assert.equal(error.bufferedAmount, 110);
-      assert.equal(error.maxBufferedAmount, 100);
-      return true;
-    },
-  );
+  let caught: unknown;
+  try {
+    peer.send(new Uint8Array(20));
+  } catch (error) {
+    caught = error;
+  }
+
+  assert.ok(caught instanceof WebRtcBackpressureError);
+  assert.equal(caught.bufferedAmount, 110);
+  assert.equal(caught.maxBufferedAmount, 100);
   assert.equal(connection.channel.sent.length, 0);
   assert.equal(peer.droppedMessageCount, 0);
 });
@@ -187,7 +188,9 @@ class FakePeerConnection {
   async addIceCandidate(_candidate?: RTCIceCandidateInit | null): Promise<void> {}
 
   async getStats(): Promise<RTCStatsReport> {
-    const report = {
+    const report: RTCStats = {
+      id: "candidate-pair",
+      timestamp: 0,
       type: "candidate-pair",
       state: "succeeded",
       nominated: true,
@@ -195,7 +198,7 @@ class FakePeerConnection {
     };
     return {
       forEach(callback: (value: RTCStats, key: string, parent: RTCStatsReport) => void) {
-        callback(report as RTCStats, "candidate-pair", this as unknown as RTCStatsReport);
+        callback(report, "candidate-pair", this as unknown as RTCStatsReport);
       },
     } as RTCStatsReport;
   }
