@@ -12,86 +12,76 @@ The first implementation cycle successfully proved:
 - UDP LAN discovery and direct descriptor fallback;
 - heartbeat/reconnect mechanics;
 - browser and Dart interoperability;
-- shared-screen and dungeon-style consumer samples;
+- game-oriented validation samples;
 - reproducible prerelease packaging.
 
 It also overreached architecturally by promoting player/session/authority/snapshot semantics into PartyGameKit base APIs.
 
-Those historical issues remain closed implementation history. They are not the target architecture going forward.
+Those issues remain useful implementation history, but the v0.1 product/session surface is not the architecture going forward.
 
-## Boundary correction
+## Corrected communication foundation: `[15]`–`[17]`
 
-### `[15]` Re-establish PartyGameKit as a reusable communication library
+The boundary-correction phase establishes PartyGameKit `0.2` as communication infrastructure only.
 
-Status: architecture/documentation phase.
+### `[15]` Boundary decision
 
-Decide and document:
+The architecture decision established that:
 
 - PartyGameKit owns communication/networking, not PartyBeam/game runtime semantics;
-- transient `ConnectionId` remains;
-- stable reconnect identity becomes neutral `PeerId`/logical client identity;
-- `RoomId` survives only if justified as a neutral routing scope;
-- `PlayerId`, `ClientRole`, `AuthorityId`, player capacity/admission and `RoomSession` move out/generalize;
-- reconnect remains only as neutral communication continuity;
-- game snapshot/public/private projection semantics move out;
-- generic ordering/dedupe may remain as an optional utility;
-- connection descriptors and discovery become technical rather than product/session concepts;
-- TypeScript/Dart base APIs must become communication-neutral;
-- breaking prerelease changes are acceptable.
+- `ConnectionId` is transient transport identity;
+- optional stable reconnect identity is neutral `PeerId`;
+- optional routing isolation is technical `ChannelId`;
+- player, role, room-session, authority and game-state semantics belong to consumers;
+- connection descriptors and discovery describe technical connectivity;
+- application/game payloads remain opaque to PartyGameKit.
 
 Source of truth: [Communication boundary](communication-boundary.md).
 
-### `[16]` Refactor Core and protocol to remove product/session semantics
+### `[16]` Production API correction
 
-Implement `[15]` in production code.
+The .NET foundation implements that decision:
 
-Required outcomes:
+- neutral `ConnectionId`, `PeerId`, `ChannelId` and `ConnectionDescriptor`;
+- `ConnectionContinuityCoordinator` for neutral resume/reconnect;
+- `IMessageTransport` and neutral transport lifecycle/events;
+- protocol v2 connect/resume/heartbeat/disconnect control messages;
+- opaque `application.message` data;
+- direct LAN WebSocket transport with neutral handshake;
+- UDP endpoint discovery;
+- optional generic message ordering/deduplication utilities;
+- removed player/host/shared-screen/authority/room-session/snapshot-projection APIs.
 
-- neutral communication identities;
-- transport abstractions no longer depend on game/session Core semantics;
-- `IGameTransport` and related game-specific vocabulary are generalized;
-- neutral connection handshake and resume control protocol;
-- opaque application messages;
-- player/host/shared-screen/authority/room-session APIs removed from base packages;
-- session continuity split into neutral health/resume components;
-- game snapshot/projection APIs removed from base packages;
-- LAN discovery and connection descriptors neutralized;
-- tests prove generic peers can connect, exchange opaque messages and resume without product semantics;
-- protocol fixtures updated;
-- migration notes/package version updated.
+### `[17]` Consumer-facing alignment
 
-Do not add SignalR/WebRTC/fallback yet.
+The consumer-facing surfaces are aligned to the corrected boundary:
 
-### `[17]` Align SDKs, samples, docs and interoperability
+- `@partygamekit/client` uses protocol v2 and neutral peer/connection vocabulary;
+- Dart validates the same protocol-v2 fixture set;
+- C#, Dart and TypeScript consume one canonical `v2-*` contract;
+- `samples/CommunicationDemo` verifies real LAN communication with generic peers, discovery, targeted/broadcast delivery and resume;
+- package-only NuGet validation exercises opaque messages and neutral resume;
+- migration documentation covers the deliberate v0.1 → v0.2 break;
+- cross-repository validation confirms PartyBeam and Państwa Miasta keep product/game semantics above PartyGameKit;
+- v0.1 game-oriented samples and fixture vectors were retired from the active v0.2 tree and remain available through Git history/tags.
 
-Finish the breaking correction across all consumer-facing surfaces:
+## Corrected foundation invariant
 
-- TypeScript browser SDK uses connect/send/receive/resume vocabulary;
-- Dart package implements the same neutral communication protocol;
-- canonical fixtures pass in C#, Dart and TypeScript;
-- add/convert a neutral end-to-end communication sample;
-- retain game-oriented samples only as consumers that own their own Player/TV/Authority/GameState types;
-- validate mapping from Państwa Miasta networking behavior to the corrected primitives;
-- validate PartyBeam can own TV/pilot/controller/player/party/authority semantics entirely above PartyGameKit;
-- produce the next prerelease artifacts and migration guide.
+After the boundary correction, PartyGameKit must continue to satisfy all of these:
 
-## Corrected foundation completion criteria
-
-After `[17]`:
-
-- PartyGameKit has a tested language-neutral communication contract;
-- direct LAN connect/send/receive/disconnect/reconnect works without cloud backend;
-- LAN discovery and direct descriptor connection remain available;
-- C#, Dart and TypeScript interoperability is validated;
-- application payloads remain opaque and consumer-owned;
+- direct LAN connect/send/receive/disconnect/resume works without a cloud backend;
+- LAN discovery and direct descriptor connection are independent;
+- C#, Dart and TypeScript share the language-neutral communication contract;
+- application payloads are opaque and consumer-owned;
 - a consumer with **no concept of players** can use the library;
-- PartyBeam defines product roles/party/authority behavior above PartyGameKit;
-- Państwa Miasta keeps its game engine/player/session/snapshot semantics above PartyGameKit;
+- PartyBeam owns TV/controller/player/party/authority/game behavior;
+- Państwa Miasta owns its player/game/session/snapshot behavior;
 - no base API requires player, host, shared-screen, scoring, lobby or game-session semantics.
+
+Any later issue that violates these points is an architectural regression, not an extension.
 
 ## Additional transports
 
-Only after `[15]`–`[17]` are complete.
+The next work adds connectivity choices behind the corrected boundary. It must not recreate a generic game-session runtime.
 
 ### `[18]` Optional backend-assisted SignalR transport
 
@@ -102,7 +92,8 @@ Rules:
 - LAN remains usable without backend;
 - backend routing scopes are opaque communication identifiers;
 - backend does not own PartyBeam parties, players, lobbies, authority or game state;
-- the same opaque application payloads work over LAN and SignalR.
+- the same opaque application payloads work over LAN and SignalR;
+- transport availability/failure is reported as communication state, not product policy.
 
 ### `[19]` WebRTC DataChannel transport
 
@@ -113,17 +104,18 @@ Rules:
 - signaling is infrastructure only;
 - PartyGameKit does not assume peers are phones, players, TV or authority;
 - validate 30–60 Hz opaque message streams;
-- bound buffering/backpressure and expose latency/jitter diagnostics.
+- bound buffering/backpressure and expose latency/jitter diagnostics;
+- product state/roles remain opaque.
 
 ### `[20]` Automatic transport selection and fallback
 
 Add deterministic communication-path selection after LAN, SignalR and WebRTC are independently reliable.
 
-A reasonable strategy may prefer LAN, then WebRTC, then backend relay, but the decision is based on connectivity/capabilities, not product roles.
+A strategy may prefer LAN, then WebRTC, then backend relay, but the decision is based on connectivity/capabilities, not product roles.
 
 Automatic mode only answers: **which transport should carry messages now?** It must not decide whether a game pauses, whether a participant keeps a slot or who becomes authority.
 
-## Explicitly deferred or consumer-owned
+## Explicitly consumer-owned
 
 Do not move these into PartyGameKit base packages without a new communication-level justification:
 
@@ -131,7 +123,7 @@ Do not move these into PartyGameKit base packages without a new communication-le
 - TV/pilot/controller/player/spectator roles;
 - player capacity/admission rules;
 - game authority/host policy;
-- automatic game-host migration;
+- automatic game-host migration policy;
 - game start/pause/end policy;
 - public/private/player game-state projections;
 - game snapshot ownership/restoration;
