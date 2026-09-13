@@ -42,7 +42,7 @@ public static class SignalRRelayServiceCollectionExtensions
     }
 }
 
-public sealed class SignalRRelayHub(
+internal sealed class SignalRRelayHub(
     SignalRRelayRegistry registry,
     SignalRRelayServerOptions options) : Hub
 {
