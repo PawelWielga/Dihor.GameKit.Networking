@@ -1,72 +1,72 @@
 import { requiredString } from "./protocol.js";
 
-export interface ReconnectCredential {
-  roomId: string;
-  playerId: string;
-  reconnectToken: string;
+export interface ResumeCredential {
+  scope: string;
+  peerId: string;
+  resumeToken: string;
 }
 
-export interface ClientIdentityStore {
-  getPlayerId(): string | null;
-  setPlayerId(playerId: string): void;
-  getReconnectCredential(roomId: string): ReconnectCredential | null;
-  setReconnectCredential(credential: ReconnectCredential): void;
-  clearReconnectCredential(roomId: string): void;
+export interface PeerIdentityStore {
+  getPeerId(): string | null;
+  setPeerId(peerId: string): void;
+  getResumeCredential(scope: string): ResumeCredential | null;
+  setResumeCredential(credential: ResumeCredential): void;
+  clearResumeCredential(scope: string): void;
 }
 
-export class MemoryIdentityStore implements ClientIdentityStore {
-  private playerId: string | null = null;
-  private readonly reconnect = new Map<string, ReconnectCredential>();
+export class MemoryIdentityStore implements PeerIdentityStore {
+  private peerId: string | null = null;
+  private readonly resume = new Map<string, ResumeCredential>();
 
-  public getPlayerId(): string | null {
-    return this.playerId;
+  public getPeerId(): string | null {
+    return this.peerId;
   }
 
-  public setPlayerId(playerId: string): void {
-    this.playerId = requiredString(playerId, "playerId");
+  public setPeerId(peerId: string): void {
+    this.peerId = requiredString(peerId, "peerId");
   }
 
-  public getReconnectCredential(roomId: string): ReconnectCredential | null {
-    return this.reconnect.get(requiredString(roomId, "roomId")) ?? null;
+  public getResumeCredential(scope: string): ResumeCredential | null {
+    return this.resume.get(requiredString(scope, "scope")) ?? null;
   }
 
-  public setReconnectCredential(credential: ReconnectCredential): void {
-    const roomId = requiredString(credential.roomId, "roomId");
-    this.reconnect.set(roomId, {
-      roomId,
-      playerId: requiredString(credential.playerId, "playerId"),
-      reconnectToken: requiredString(credential.reconnectToken, "reconnectToken"),
+  public setResumeCredential(credential: ResumeCredential): void {
+    const scope = requiredString(credential.scope, "scope");
+    this.resume.set(scope, {
+      scope,
+      peerId: requiredString(credential.peerId, "peerId"),
+      resumeToken: requiredString(credential.resumeToken, "resumeToken"),
     });
   }
 
-  public clearReconnectCredential(roomId: string): void {
-    this.reconnect.delete(requiredString(roomId, "roomId"));
+  public clearResumeCredential(scope: string): void {
+    this.resume.delete(requiredString(scope, "scope"));
   }
 }
 
-export class LocalStorageIdentityStore implements ClientIdentityStore {
+export class LocalStorageIdentityStore implements PeerIdentityStore {
   public constructor(
     private readonly storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
     private readonly prefix = "partygamekit.client",
   ) {}
 
-  public getPlayerId(): string | null {
-    return this.storage.getItem(`${this.prefix}.playerId`);
+  public getPeerId(): string | null {
+    return this.storage.getItem(`${this.prefix}.peerId`);
   }
 
-  public setPlayerId(playerId: string): void {
-    this.storage.setItem(`${this.prefix}.playerId`, requiredString(playerId, "playerId"));
+  public setPeerId(peerId: string): void {
+    this.storage.setItem(`${this.prefix}.peerId`, requiredString(peerId, "peerId"));
   }
 
-  public getReconnectCredential(roomId: string): ReconnectCredential | null {
-    const normalizedRoomId = requiredString(roomId, "roomId");
-    const raw = this.storage.getItem(`${this.prefix}.reconnect.${normalizedRoomId}`);
+  public getResumeCredential(scope: string): ResumeCredential | null {
+    const normalizedScope = requiredString(scope, "scope");
+    const raw = this.storage.getItem(`${this.prefix}.resume.${encodeURIComponent(normalizedScope)}`);
     if (raw === null) return null;
     try {
-      const value = JSON.parse(raw) as ReconnectCredential;
-      if (value.roomId !== normalizedRoomId ||
-          typeof value.playerId !== "string" || value.playerId.trim().length === 0 ||
-          typeof value.reconnectToken !== "string" || value.reconnectToken.trim().length === 0) {
+      const value = JSON.parse(raw) as ResumeCredential;
+      if (value.scope !== normalizedScope ||
+          typeof value.peerId !== "string" || value.peerId.trim().length === 0 ||
+          typeof value.resumeToken !== "string" || value.resumeToken.trim().length === 0) {
         return null;
       }
       return value;
@@ -75,21 +75,25 @@ export class LocalStorageIdentityStore implements ClientIdentityStore {
     }
   }
 
-  public setReconnectCredential(credential: ReconnectCredential): void {
-    const normalized: ReconnectCredential = {
-      roomId: requiredString(credential.roomId, "roomId"),
-      playerId: requiredString(credential.playerId, "playerId"),
-      reconnectToken: requiredString(credential.reconnectToken, "reconnectToken"),
+  public setResumeCredential(credential: ResumeCredential): void {
+    const normalized: ResumeCredential = {
+      scope: requiredString(credential.scope, "scope"),
+      peerId: requiredString(credential.peerId, "peerId"),
+      resumeToken: requiredString(credential.resumeToken, "resumeToken"),
     };
-    this.storage.setItem(`${this.prefix}.reconnect.${normalized.roomId}`, JSON.stringify(normalized));
+    this.storage.setItem(
+      `${this.prefix}.resume.${encodeURIComponent(normalized.scope)}`,
+      JSON.stringify(normalized),
+    );
   }
 
-  public clearReconnectCredential(roomId: string): void {
-    this.storage.removeItem(`${this.prefix}.reconnect.${requiredString(roomId, "roomId")}`);
+  public clearResumeCredential(scope: string): void {
+    const normalizedScope = requiredString(scope, "scope");
+    this.storage.removeItem(`${this.prefix}.resume.${encodeURIComponent(normalizedScope)}`);
   }
 }
 
-export function createDefaultIdentityStore(): ClientIdentityStore {
+export function createDefaultIdentityStore(): PeerIdentityStore {
   try {
     if (typeof globalThis.localStorage !== "undefined") {
       return new LocalStorageIdentityStore(globalThis.localStorage);
