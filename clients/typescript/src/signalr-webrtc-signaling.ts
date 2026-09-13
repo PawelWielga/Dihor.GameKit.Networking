@@ -86,9 +86,21 @@ export class SignalRWebRtcSignalingClient {
     });
     this.connection.on(peerLeftMethod, (...args: unknown[]) => {
       const connectionId = requiredString(args[0], "peer connection id");
+      const reason = new Error(
+        `WebRTC signaling peer ${connectionId} left before negotiation completed.`,
+      );
+      const failures = [...(this.failureListeners.get(connectionId) ?? [])];
+
       this.pendingSignals.delete(connectionId);
       this.pendingSignalOverflowPeers.delete(connectionId);
       this.pendingSignalFailures.delete(connectionId);
+
+      for (const failure of failures) {
+        failure(reason);
+      }
+
+      this.signalListeners.delete(connectionId);
+      this.failureListeners.delete(connectionId);
       for (const listener of this.peerLeftListeners) {
         listener(connectionId);
       }
@@ -263,6 +275,13 @@ export class SignalRWebRtcSignalingClient {
     if (this.disposed) {
       return;
     }
+
+    const reason = new Error("SignalR WebRTC signaling client was disposed.");
+    const failures = [...this.failureListeners.values()].flatMap((listeners) => [...listeners]);
+    for (const failure of failures) {
+      failure(reason);
+    }
+
     this.disposed = true;
 
     if (this.started) {
