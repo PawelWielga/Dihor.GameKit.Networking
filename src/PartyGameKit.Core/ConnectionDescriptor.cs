@@ -18,9 +18,9 @@ public sealed record ConnectionDescriptor
                 "Protocol version must be positive.");
         }
 
-        if (!Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var endpointUri))
+        if (!Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var endpointUri) || endpointUri.IsFile)
         {
-            throw new ArgumentException("Connection endpoint must be an absolute URI.", nameof(endpoint));
+            throw new ArgumentException("Connection endpoint must be an absolute non-file URI.", nameof(endpoint));
         }
 
         Transport = transport.Trim();
