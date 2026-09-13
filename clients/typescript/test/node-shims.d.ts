@@ -1,7 +1,11 @@
 declare const process: { cwd(): string };
 
 declare module "node:test" {
-  type TestBody = () => void | Promise<void>;
+  interface TestContext {
+    after(fn: () => void | Promise<void>): void;
+  }
+
+  type TestBody = (t: TestContext) => void | Promise<void>;
   export default function test(name: string, body: TestBody): void;
 }
 
