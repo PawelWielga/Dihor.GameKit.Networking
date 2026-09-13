@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0-preview.2 - 2026-09-13
+
+- Aligns the browser package version with the PartyGameKit preview.2 release line.
+- Keeps protocol v2 and the preview.1 browser API unchanged.
+- The new SignalR relay transport is provided by the .NET transport packages; this release does not claim a browser SignalR transport implementation.
+
 ## 0.2.0-preview.1 - 2026-09-13
 
 - Moves the browser SDK to PartyGameKit protocol v2.
