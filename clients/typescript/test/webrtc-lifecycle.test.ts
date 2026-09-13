@@ -21,6 +21,10 @@ test("WebRTC connection failure rejects connect and exposes failed state", async
   assert.equal(caught.message, "WebRTC peer connection failed.");
   assert.equal(peer.currentState, "failed");
   assert.ok(connection.closeCount >= 1);
+
+  const reconnect = await captureRejection(peer.connect());
+  assert.equal(reconnect, caught);
+  assert.equal(peer.currentState, "failed");
 });
 
 test("closing before DataChannel open rejects connect instead of leaving it pending", async () => {
@@ -102,6 +106,26 @@ test("signaling failure after DataChannel open does not tear down direct peer tr
   await connecting;
 
   signaling.fail(new Error("signaling backend unavailable"));
+
+  assert.equal(peer.currentState, "open");
+  assert.equal(connection.closeCount, 0);
+  assert.equal(peer.send(new Uint8Array([1])).sent, true);
+});
+
+test("transient disconnected state keeps an established DataChannel open", async (t) => {
+  const connection = new LifecyclePeerConnection();
+  const peer = new WebRtcPeer(new IdleSignalingChannel(), {
+    initiator: true,
+    peerConnectionFactory: () => connection.asRtcPeerConnection(),
+  });
+  t.after(() => peer.close());
+
+  const connecting = peer.connect();
+  connection.channel.openEvenIfClosed();
+  connection.connected();
+  await connecting;
+
+  connection.disconnected();
 
   assert.equal(peer.currentState, "open");
   assert.equal(connection.closeCount, 0);
@@ -284,6 +308,11 @@ class LifecyclePeerConnection {
 
   connected(): void {
     this.connectionState = "connected";
+    this.emit("connectionstatechange");
+  }
+
+  disconnected(): void {
+    this.connectionState = "disconnected";
     this.emit("connectionstatechange");
   }
 
