@@ -143,13 +143,16 @@ export class AutomaticTransportSelector<TContext, TConnection> {
       const controller = new AbortController();
       const removeAbortForwarder = forwardAbort(signal, controller);
       const timeoutMs = candidate.attemptTimeoutMs ?? this.attemptTimeoutMs;
+      let abandoned = false;
       let timedOut = false;
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      let removeCancellationListener = () => {};
 
       try {
         const connectPromise = candidate.connect(context, controller.signal);
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutHandle = setTimeout(() => {
+            abandoned = true;
             timedOut = true;
             controller.abort();
             reject(new CandidateTimeoutError(timeoutMs));
@@ -158,22 +161,29 @@ export class AutomaticTransportSelector<TContext, TConnection> {
         const cancellationPromise = signal === undefined
           ? new Promise<never>(() => {})
           : new Promise<never>((_, reject) => {
-              if (signal.aborted) {
+              const handler = () => {
+                abandoned = true;
+                controller.abort();
                 reject(abortError());
+              };
+              if (signal.aborted) {
+                handler();
                 return;
               }
-              signal.addEventListener("abort", () => reject(abortError()), { once: true });
+              signal.addEventListener("abort", handler, { once: true });
+              removeCancellationListener = () => signal.removeEventListener("abort", handler);
             });
 
         connectPromise.then(
           (lateConnection) => {
-            if (timedOut) void disposeLate(candidate, lateConnection);
+            if (abandoned) void disposeLate(candidate, lateConnection);
           },
           () => {},
         );
 
         const connection = await Promise.race([connectPromise, timeoutPromise, cancellationPromise]);
         if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+        removeCancellationListener();
         removeAbortForwarder();
         const durationMs = performanceNow() - startedAt;
         attempts.push({ transportId: candidate.transportId, outcome: "selected", durationMs });
@@ -191,16 +201,21 @@ export class AutomaticTransportSelector<TContext, TConnection> {
         };
       } catch (error) {
         if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+        removeCancellationListener();
         removeAbortForwarder();
-        if (signal?.aborted === true) throw abortError();
+        if (signal?.aborted === true) {
+          abandoned = true;
+          controller.abort();
+          throw abortError();
+        }
 
         const durationMs = performanceNow() - startedAt;
         lastError = error;
         attempts.push({
           transportId: candidate.transportId,
-          outcome: error instanceof CandidateTimeoutError ? "timed-out" : "failed",
+          outcome: timedOut || error instanceof CandidateTimeoutError ? "timed-out" : "failed",
           durationMs,
-          error: error instanceof Error ? error.message : String(error),
+          error: timedOut ? `Connection attempt exceeded ${timeoutMs} ms.` : error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -271,8 +286,8 @@ async function disposeLate<TContext, TConnection>(
   try {
     await candidate.disposeLateConnection?.(connection);
   } catch {
-    // The timed-out candidate no longer owns the selected path. Disposal errors
-    // must not interfere with the deterministic fallback result.
+    // An abandoned candidate no longer owns the selected path. Disposal errors
+    // must not interfere with timeout/cancellation/fallback behavior.
   }
 }
 
