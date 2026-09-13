@@ -38,7 +38,7 @@ Protocol v2 and the base APIs use communication-neutral concepts:
 - optional backend-assisted SignalR relay transport;
 - browser-native WebRTC DataChannels for direct low-latency peer communication.
 
-The migration from v0.1 is intentionally breaking. See [Migration 0.1 → 0.2](docs/migration-0.1-to-v0.2.md).
+The migration from v0.1 is intentionally breaking. See [Migration 0.1 → 0.2](docs/migration-0.1-to-0.2.md).
 
 ## What PartyGameKit does not own
 
@@ -216,7 +216,7 @@ CI also packs all .NET packages and runs `packaging/consumer` from those generat
 
 - [Communication boundary](docs/communication-boundary.md)
 - [Architecture](docs/architecture.md)
-- [Migration 0.1 → 0.2](docs/migration-0.1-to-v0.2.md)
+- [Migration 0.1 → 0.2](docs/migration-0.1-to-0.2.md)
 - [Cross-repository validation](docs/cross-repo-validation.md)
 - [Package boundaries](docs/packages.md)
 - [Public API review](docs/public-api.md)
