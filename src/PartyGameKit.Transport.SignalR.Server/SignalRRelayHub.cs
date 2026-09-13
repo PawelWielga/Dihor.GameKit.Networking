@@ -447,7 +447,7 @@ internal sealed class SignalRRelayRegistry
         }
     }
 
-    private IReadOnlyList<RelayClientBinding> RemoveListenerCore(
+    private RelayClientBinding[] RemoveListenerCore(
         string listenerSignalRConnectionId,
         ChannelId channelId)
     {
