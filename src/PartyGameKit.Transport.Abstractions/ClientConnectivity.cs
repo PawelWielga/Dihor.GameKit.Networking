@@ -171,7 +171,7 @@ public sealed class SelectedTransportClient : IMessageTransportClient
 
 public sealed class AutomaticTransportSelector
 {
-    private readonly IReadOnlyDictionary<string, TransportClientCandidate> _candidates;
+    private readonly Dictionary<string, TransportClientCandidate> _candidates;
     private readonly ConnectivitySelectionOptions _options;
     private readonly object _gate = new();
     private string? _lastSuccessfulTransport;
@@ -327,7 +327,7 @@ public sealed class AutomaticTransportSelector
             lastError);
     }
 
-    private IReadOnlyList<string> BuildAttemptOrder(
+    private List<string> BuildAttemptOrder(
         ConnectivityMode mode,
         string? preferredTransport)
     {
