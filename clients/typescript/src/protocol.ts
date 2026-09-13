@@ -1,21 +1,18 @@
-export const protocolVersion = 1 as const;
+export const protocolVersion = 2 as const;
 
 export const messageTypes = {
-  joinRequest: "session.join.request",
-  joinAccepted: "session.join.accepted",
-  joinRejected: "session.join.rejected",
-  leave: "session.leave",
-  disconnected: "session.disconnected",
-  heartbeat: "session.heartbeat",
-  rejoinRequest: "session.rejoin.request",
-  rejoinAccepted: "session.rejoin.accepted",
-  rejoinRejected: "session.rejoin.rejected",
-  stateSnapshot: "state.snapshot",
+  connectRequest: "connection.connect.request",
+  connectAccepted: "connection.connect.accepted",
+  connectRejected: "connection.connect.rejected",
+  resumeRequest: "connection.resume.request",
+  resumeAccepted: "connection.resume.accepted",
+  resumeRejected: "connection.resume.rejected",
+  heartbeat: "connection.heartbeat",
+  disconnect: "connection.disconnect",
+  applicationMessage: "application.message",
 } as const;
 
 export type ProtocolMessageType = (typeof messageTypes)[keyof typeof messageTypes];
-export type ClientRole = "host" | "player" | "shared-screen";
-export type BrowserClientRole = Exclude<ClientRole, "host">;
 
 export interface ProtocolEnvelope<TPayload = unknown> {
   type: string;
@@ -25,83 +22,58 @@ export interface ProtocolEnvelope<TPayload = unknown> {
   payload: TPayload;
 }
 
-export interface JoinRequestPayload {
-  roomId: string;
-  joinCode: string;
-  role: ClientRole;
-  playerId?: string;
+export interface ConnectRequestPayload {
+  peerId?: string;
 }
 
-export interface JoinAcceptedPayload {
-  roomId: string;
+export interface ConnectAcceptedPayload {
   connectionId: string;
-  role: ClientRole;
-  playerId?: string;
-  authorityId: string;
-  reconnectToken?: string;
+  peerId?: string;
+  resumeToken?: string;
 }
 
-export type JoinRejectionCode =
-  | "room-not-found"
-  | "room-closed"
-  | "room-full"
-  | "protocol-mismatch"
-  | "resume-rejected";
+export type ConnectionRejectionCode =
+  | "protocolMismatch"
+  | "invalidRequest"
+  | "unknownPeer"
+  | "invalidResumeCredential"
+  | "reconnectWindowExpired"
+  | "peerAlreadyConnected"
+  | "connectionAlreadyBound";
 
-export interface JoinRejectedPayload {
-  joinCode: string;
-  code: JoinRejectionCode;
+export interface ConnectRejectedPayload {
+  code: ConnectionRejectionCode | string;
   reason?: string;
 }
 
-export interface LeavePayload {
-  roomId: string;
-  connectionId: string;
-  playerId?: string;
+export interface ResumeRequestPayload {
+  peerId: string;
+  resumeToken: string;
 }
 
-export interface DisconnectedPayload {
-  roomId: string;
+export interface ResumeAcceptedPayload {
   connectionId: string;
-  playerId?: string;
+  peerId: string;
+  resumeToken?: string;
+}
+
+export interface ResumeRejectedPayload {
+  peerId: string;
+  code: ConnectionRejectionCode | string;
   reason?: string;
 }
 
 export interface HeartbeatPayload {
-  roomId: string;
-  lastSeenSnapshotSequence: number;
+  peerId?: string;
 }
 
-export interface RejoinRequestPayload {
-  roomId: string;
-  playerId: string;
-  reconnectToken: string;
-  lastSeenSnapshotSequence: number;
-}
-
-export interface RejoinAcceptedPayload {
-  roomId: string;
-  playerId: string;
-  connectionId: string;
-  authorityId: string;
-}
-
-export interface RejoinRejectedPayload {
-  roomId: string;
-  code: string;
+export interface DisconnectPayload {
   reason?: string;
 }
 
-export type SnapshotTarget =
-  | { kind: "public" }
-  | { kind: "player"; playerId: string };
-
-export interface StateSnapshotPayload<TState = unknown> {
-  roomId: string;
-  authorityId: string;
-  sequence: number;
-  target: SnapshotTarget;
-  state: TState;
+export interface ApplicationMessagePayload<TData = unknown> {
+  applicationType: string;
+  data: TData;
 }
 
 export function createMessage<TPayload>(
@@ -191,36 +163,11 @@ export class ProtocolError extends Error {
   }
 }
 
-export function isStateSnapshotPayload(value: unknown): value is StateSnapshotPayload {
-  if (!isRecord(value) ||
-      typeof value.roomId !== "string" ||
-      typeof value.authorityId !== "string" ||
-      typeof value.sequence !== "number" ||
-      !Number.isSafeInteger(value.sequence) ||
-      value.sequence <= 0 ||
-      !isRecord(value.target) ||
-      typeof value.target.kind !== "string") {
-    return false;
-  }
-
-  if (value.target.kind === "public") {
-    return value.target.playerId === undefined;
-  }
-
-  return value.target.kind === "player" &&
-    typeof value.target.playerId === "string" &&
-    value.target.playerId.trim().length > 0;
-}
-
-function validateEnvelope(message: ProtocolEnvelope): void {
-  requiredString(message.type, "type");
-  requiredString(message.messageId, "messageId");
-  if (message.protocolVersion !== protocolVersion) {
-    throw new ProtocolError("protocol-version-mismatch", "Only protocol v1 can be serialized");
-  }
-  if (message.correlationId !== undefined && message.correlationId.trim().length === 0) {
-    throw new ProtocolError("invalid-contract", "correlationId cannot be blank");
-  }
+export function isApplicationMessagePayload(value: unknown): value is ApplicationMessagePayload {
+  return isRecord(value) &&
+    typeof value.applicationType === "string" &&
+    value.applicationType.trim().length > 0 &&
+    "data" in value;
 }
 
 export function requiredString(value: string, name: string): string {
@@ -229,6 +176,17 @@ export function requiredString(value: string, name: string): string {
     throw new Error(`${name} cannot be empty`);
   }
   return normalized;
+}
+
+function validateEnvelope(message: ProtocolEnvelope): void {
+  requiredString(message.type, "type");
+  requiredString(message.messageId, "messageId");
+  if (message.protocolVersion !== protocolVersion) {
+    throw new ProtocolError("protocol-version-mismatch", "Only protocol v2 can be serialized");
+  }
+  if (message.correlationId !== undefined && message.correlationId.trim().length === 0) {
+    throw new ProtocolError("invalid-contract", "correlationId cannot be blank");
+  }
 }
 
 function toUint8Array(value: ArrayBuffer | ArrayBufferView): Uint8Array {
