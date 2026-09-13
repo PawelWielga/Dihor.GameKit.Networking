@@ -176,7 +176,8 @@ static async Task HandleHostMessageAsync(
         case ProtocolMessageTypes.ConnectRequest:
         {
             var request = RequireMessage<ConnectRequestPayload>(json, ProtocolMessageTypes.ConnectRequest);
-            Ensure(request.Payload.PeerId is { } peerId, "Communication demo requires a stable peer ID for resume verification.");
+            var peerId = request.Payload.PeerId
+                ?? throw new InvalidOperationException("Communication demo requires a stable peer ID for resume verification.");
             var registration = continuity.Register(peerId, received.ConnectionId);
             Ensure(registration.IsConnected, $"Unable to register {peerId}: {registration.Status}.");
             var accepted = PartyGameKitMessages.Create(
