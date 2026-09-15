@@ -2,14 +2,18 @@ name: Prerelease
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v0.2.0-preview.*'
+    paths:
+      - 'release/prerelease.json'
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Prerelease tag, for example v0.2.0-preview.3
+        description: Prerelease tag, for example v0.2.0-preview.5
         required: true
-        default: v0.2.0-preview.3
+        default: v0.2.0-preview.5
 
 permissions:
   contents: write
@@ -26,22 +30,48 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve release version
+      - name: Resolve and validate release version
         id: version
         shell: bash
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             TAG="${{ github.event.inputs.release_tag }}"
-          else
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="$(jq -r '.tag' release/prerelease.json)"
           fi
+
           if [[ ! "$TAG" =~ ^v0\.2\.0-preview\.[0-9]+$ ]]; then
             echo "Unsupported prerelease tag: $TAG" >&2
             exit 1
           fi
+
           VERSION="${TAG#v}"
+          CENTRAL_VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.targets | head -n 1)"
+          MANIFEST_VERSION="$(jq -r '.version' release/prerelease.json)"
+          MANIFEST_TAG="$(jq -r '.tag' release/prerelease.json)"
+          TYPESCRIPT_VERSION="$(jq -r '.version' clients/typescript/package.json)"
+          DART_VERSION="$(sed -n 's/^version: //p' interop/dart/pubspec.yaml | head -n 1)"
+
+          for ACTUAL in "$CENTRAL_VERSION" "$MANIFEST_VERSION" "$TYPESCRIPT_VERSION" "$DART_VERSION"; do
+            if [[ "$ACTUAL" != "$VERSION" ]]; then
+              echo "Release version mismatch: expected $VERSION, found $ACTUAL" >&2
+              exit 1
+            fi
+          done
+          if [[ "$MANIFEST_TAG" != "$TAG" ]]; then
+            echo "Release tag mismatch: expected $TAG, manifest has $MANIFEST_TAG" >&2
+            exit 1
+          fi
+          if [[ "$(jq -r '.license' release/prerelease.json)" != "MIT" ]]; then
+            echo "Release manifest must declare MIT license." >&2
+            exit 1
+          fi
+
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "feed_asset=$(jq -r '.nugetFeedAsset' release/prerelease.json)" >> "$GITHUB_OUTPUT"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -61,18 +91,69 @@ jobs:
           --configuration Release
           --no-build
 
+      - name: Run automatic connectivity demo
+        run: >-
+          dotnet run
+          --project samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj
+          --configuration Release
+          --no-build
+
       - name: Pack NuGet artifacts
         run: bash eng/pack-dotnet.sh artifacts/nuget "${{ steps.version.outputs.version }}"
+
+      - name: Validate package license metadata
+        shell: bash
+        run: |
+          shopt -s nullglob
+          PACKAGES=(artifacts/nuget/*.nupkg)
+          if [[ ${#PACKAGES[@]} -eq 0 ]]; then
+            echo "No NuGet packages were produced." >&2
+            exit 1
+          fi
+          for PACKAGE in "${PACKAGES[@]}"; do
+            NUSPEC="$(unzip -Z1 "$PACKAGE" | grep -E '\.nuspec$' | head -n 1)"
+            if [[ -z "$NUSPEC" ]] || ! unzip -p "$PACKAGE" "$NUSPEC" | grep -q '<license type="expression">MIT</license>'; then
+              echo "NuGet package does not declare MIT license: $PACKAGE" >&2
+              exit 1
+            fi
+          done
+          if [[ "$(jq -r '.license' clients/typescript/package.json)" != "MIT" ]]; then
+            echo "TypeScript package does not declare MIT license." >&2
+            exit 1
+          fi
+          test -f LICENSE
+          test -f clients/typescript/LICENSE
+          test -f interop/dart/LICENSE
 
       - name: Verify NuGet packages as a fresh consumer
         shell: bash
         run: |
           sed -E -i "s/Version=\"0\.2\.0-preview\.[0-9]+\"/Version=\"${{ steps.version.outputs.version }}\"/g" \
             packaging/consumer/PartyGameKit.PackageConsumer.csproj
-          dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj \
-            --source "$PWD/artifacts/nuget"
+          NUGET_PACKAGES="$PWD/artifacts/consumer-packages" \
+            dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj \
+            --no-cache \
+            --source "$PWD/artifacts/nuget" \
+            --source "https://api.nuget.org/v3/index.json"
           dotnet build packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-restore
           dotnet run --project packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-build
+
+      - name: Build durable NuGet release feed
+        shell: bash
+        run: |
+          FEED_ROOT="$PWD/artifacts/release-feed"
+          mkdir -p "$FEED_ROOT/packages"
+          cp artifacts/nuget/*.nupkg "$FEED_ROOT/packages/"
+          cp release/NuGet.Config "$FEED_ROOT/NuGet.Config"
+          while IFS= read -r PACKAGE_ID; do
+            EXPECTED="$FEED_ROOT/packages/${PACKAGE_ID}.${{ steps.version.outputs.version }}.nupkg"
+            if [[ ! -f "$EXPECTED" ]]; then
+              echo "Missing required release package: $EXPECTED" >&2
+              exit 1
+            fi
+          done < <(jq -r '.nugetPackages[]' release/prerelease.json)
+          (cd "$FEED_ROOT" && zip -q -r "../${{ steps.version.outputs.feed_asset }}" .)
+          rm -rf "$FEED_ROOT"
 
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
@@ -93,7 +174,7 @@ jobs:
           sed -i "s/^version: .*/version: ${{ steps.version.outputs.version }}/" interop/dart/pubspec.yaml
           mkdir -p artifacts/dart
           tar -czf "artifacts/dart/partygamekit_protocol-${{ steps.version.outputs.version }}.tar.gz" \
-            -C interop/dart pubspec.yaml README.md CHANGELOG.md lib
+            -C interop/dart pubspec.yaml README.md CHANGELOG.md LICENSE lib
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -123,6 +204,15 @@ jobs:
           mkdir -p ../../artifacts/npm
           npm pack --pack-destination ../../artifacts/npm
 
+      - name: Create checksums
+        shell: bash
+        run: |
+          (
+            cd artifacts
+            find nuget npm dart -type f -print0 | sort -z | xargs -0 sha256sum
+            sha256sum "${{ steps.version.outputs.feed_asset }}"
+          ) > artifacts/SHA256SUMS.txt
+
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -134,12 +224,39 @@ jobs:
         shell: bash
         run: |
           TAG="${{ steps.version.outputs.tag }}"
+          RELEASE_ASSETS=(artifacts/nuget/* artifacts/npm/* artifacts/dart/* "artifacts/${{ steps.version.outputs.feed_asset }}" artifacts/SHA256SUMS.txt)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" artifacts/nuget/* artifacts/npm/* artifacts/dart/* --clobber
+            gh release upload "$TAG" "${RELEASE_ASSETS[@]}" --clobber
+          elif git rev-parse "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" "${RELEASE_ASSETS[@]}" \
+              --prerelease \
+              --generate-notes \
+              --title "PartyGameKit ${{ steps.version.outputs.version }}"
           else
-            gh release create "$TAG" \
-              artifacts/nuget/* artifacts/npm/* artifacts/dart/* \
+            gh release create "$TAG" "${RELEASE_ASSETS[@]}" \
+              --target "$GITHUB_SHA" \
               --prerelease \
               --generate-notes \
               --title "PartyGameKit ${{ steps.version.outputs.version }}"
           fi
+
+      - name: Verify durable GitHub Release NuGet feed
+        shell: bash
+        run: |
+          VERIFY_ROOT="$PWD/artifacts/release-verify"
+          mkdir -p "$VERIFY_ROOT"
+          gh release download "${{ steps.version.outputs.tag }}" \
+            --pattern "${{ steps.version.outputs.feed_asset }}" \
+            --dir "$VERIFY_ROOT"
+          unzip -q "$VERIFY_ROOT/${{ steps.version.outputs.feed_asset }}" -d "$VERIFY_ROOT/feed"
+          while IFS= read -r PACKAGE_ID; do
+            test -f "$VERIFY_ROOT/feed/packages/${PACKAGE_ID}.${{ steps.version.outputs.version }}.nupkg"
+          done < <(jq -r '.nugetPackages[]' release/prerelease.json)
+          rm -rf "$VERIFY_ROOT/global-packages"
+          NUGET_PACKAGES="$VERIFY_ROOT/global-packages" \
+            dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj \
+            --force \
+            --no-cache \
+            --configfile "$VERIFY_ROOT/feed/NuGet.Config"
+          dotnet build packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-restore
+          dotnet run --project packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-build

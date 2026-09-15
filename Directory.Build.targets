@@ -8,6 +8,7 @@
     <PackageProjectUrl>https://github.com/PawelWielga/PartyGameKit</PackageProjectUrl>
     <PackageTags>multiplayer;communication;networking;lan;signalr;relay;webrtc;datachannel;timing;latency</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReleaseNotes>PartyGameKit 0.2.0-preview.5 adds transport-neutral monotonic clock synchronization, RTT/jitter and uncertainty metrics plus timestamp normalization while retaining protocol v2 and the communication-only boundary. See CHANGELOG.md.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

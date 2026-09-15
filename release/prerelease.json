@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0-preview.5",
+  "tag": "v0.2.0-preview.5",
+  "protocolVersion": 2,
+  "license": "MIT",
+  "nugetFeedAsset": "partygamekit-nuget-feed-0.2.0-preview.5.zip",
+  "nugetPackages": [
+    "PartyGameKit.Core",
+    "PartyGameKit.Protocol",
+    "PartyGameKit.Transport.Abstractions",
+    "PartyGameKit.Transport.InMemory",
+    "PartyGameKit.Transport.Lan",
+    "PartyGameKit.Transport.SignalR",
+    "PartyGameKit.Transport.SignalR.Server",
+    "PartyGameKit.Discovery.Lan"
+  ]
+}
