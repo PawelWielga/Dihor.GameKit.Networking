@@ -1,9 +1,9 @@
 {
-  "version": "0.2.0-preview.5",
-  "tag": "v0.2.0-preview.5",
+  "version": "0.2.0-preview.6",
+  "tag": "v0.2.0-preview.6",
   "protocolVersion": 2,
   "license": "MIT",
-  "nugetFeedAsset": "partygamekit-nuget-feed-0.2.0-preview.5.zip",
+  "nugetFeedAsset": "partygamekit-nuget-feed-0.2.0-preview.6.zip",
   "nugetPackages": [
     "PartyGameKit.Core",
     "PartyGameKit.Protocol",

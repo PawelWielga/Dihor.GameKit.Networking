@@ -12,7 +12,7 @@ permissions:
 jobs:
   build-test-package:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,6 +60,26 @@ jobs:
 
       - name: Pack NuGet prerelease artifacts
         run: bash eng/pack-dotnet.sh artifacts/nuget
+
+      - name: Install .NET Android workload
+        run: dotnet workload install android
+
+      - name: Restore and build Android package consumers
+        shell: bash
+        run: |
+          sed -E -i "s/Version=\"0\.2\.0-preview\.[0-9]+\"/Version=\"${{ steps.version.outputs.version }}\"/g" \
+            packaging/android-client/PartyGameKit.AndroidClient.PackageConsumer.csproj \
+            packaging/android-host/PartyGameKit.AndroidHost.PackageConsumer.csproj
+          for PROJECT in \
+            packaging/android-client/PartyGameKit.AndroidClient.PackageConsumer.csproj \
+            packaging/android-host/PartyGameKit.AndroidHost.PackageConsumer.csproj; do
+            NUGET_PACKAGES="$PWD/artifacts/android-packages" \
+              dotnet restore "$PROJECT" \
+              --no-cache \
+              --source "$PWD/artifacts/nuget" \
+              --source "https://api.nuget.org/v3/index.json"
+            dotnet build "$PROJECT" --configuration Release --no-restore
+          done
 
       - name: Restore packaged consumer from local NuGet feed
         run: >-
