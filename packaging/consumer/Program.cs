@@ -57,6 +57,17 @@ Ensure(continuity.PeerCount == 1, "Resume created a duplicate logical peer.");
 Ensure(continuity.GetPresence(peerId)?.ConnectionId == replacementConnectionId,
     "Replacement connection was not bound to the stable peer.");
 
+var timing = new MonotonicTimingSynchronizer();
+var timingProbe = timing.CreateProbe(1_000, "package-timing-probe");
+var timingObservation = timing.ObserveReply(
+    new TimingProbeReply(timingProbe.ProbeId, 1_110, 1_112),
+    1_022);
+var normalizedTimestamp = timing.NormalizePeerTimestamp(1_150, 1_060);
+Ensure(timingObservation.IsAccepted && timingObservation.Model?.OffsetMilliseconds == 100d,
+    "Packaged monotonic timing offset estimation failed.");
+Ensure(normalizedTimestamp.IsAccepted && normalizedTimestamp.ReferenceTimestampMilliseconds == 1_050d,
+    "Packaged peer timestamp normalization failed.");
+
 var relayOptions = new SignalRRelayOptions(
     new Uri("https://relay.example.test/partygamekit-relay"),
     channelId);
@@ -67,6 +78,7 @@ Ensure(relayServerOptions.MaxMessageBytes > 0, "Packaged SignalR relay server op
 Console.WriteLine($"{descriptor.Transport}:{channelId.Value}:v{ProtocolVersions.Current}");
 Console.WriteLine("Package-only opaque message exchange: OK");
 Console.WriteLine("Package-only neutral peer resume: OK");
+Console.WriteLine("Package-only monotonic timing normalization: OK");
 Console.WriteLine(typeof(LanWebSocketTransport).FullName);
 Console.WriteLine(typeof(UdpLanDiscoveryAdvertiser).FullName);
 Console.WriteLine(typeof(SignalRRelayTransport).FullName);

@@ -158,6 +158,7 @@ export class MonotonicTimingSynchronizer {
       return this.reject("unknown-probe", `Timing probe '${probeId}' is not pending.`);
     }
     this.pendingProbes.delete(probeId);
+    this.compactPendingOrderIfNeeded();
 
     if (!isValidTimestamp(reply.peerReceiveMs) ||
         !isValidTimestamp(reply.peerSendMs) ||
@@ -260,6 +261,13 @@ export class MonotonicTimingSynchronizer {
     this.rejectedSamples += 1;
     this.lastRejectedSampleStatus = status;
     return { status, reason, ...(this.currentModel === undefined ? {} : { model: this.currentModel }) };
+  }
+
+  private compactPendingOrderIfNeeded(): void {
+    if (this.pendingOrder.length <= this.options.pendingProbeCapacity) return;
+    const stillPending = this.pendingOrder.filter((probeId) => this.pendingProbes.has(probeId));
+    this.pendingOrder.length = 0;
+    this.pendingOrder.push(...stillPending);
   }
 }
 

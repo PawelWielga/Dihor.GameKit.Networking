@@ -215,6 +215,7 @@ public sealed class MonotonicTimingSynchronizer
                 TimingSampleStatus.UnknownProbe,
                 $"Timing probe '{probeId}' is not pending.");
         }
+        CompactPendingProbeOrderIfNeeded();
 
         if (!IsValidTimestamp(reply.PeerReceiveMilliseconds) ||
             !IsValidTimestamp(reply.PeerSendMilliseconds) ||
@@ -435,6 +436,23 @@ public sealed class MonotonicTimingSynchronizer
         {
             var oldestProbeId = _pendingProbeOrder.Dequeue();
             _pendingProbes.Remove(oldestProbeId);
+        }
+    }
+
+    private void CompactPendingProbeOrderIfNeeded()
+    {
+        if (_pendingProbeOrder.Count <= _options.PendingProbeCapacity)
+        {
+            return;
+        }
+
+        var pendingIds = _pendingProbeOrder
+            .Where(_pendingProbes.ContainsKey)
+            .ToArray();
+        _pendingProbeOrder.Clear();
+        foreach (var pendingId in pendingIds)
+        {
+            _pendingProbeOrder.Enqueue(pendingId);
         }
     }
 
