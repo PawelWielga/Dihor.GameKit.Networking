@@ -1,6 +1,6 @@
 # Package boundaries
 
-PartyGameKit `0.2.0-preview.4` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
+PartyGameKit `0.2.0-preview.5` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
 
 The authoritative ownership decision is [Communication boundary](communication-boundary.md).
 
@@ -19,9 +19,12 @@ Contains small communication-neutral primitives:
 - optional technical `ChannelId`;
 - `ConnectionDescriptor`;
 - `ConnectionContinuityCoordinator` and peer-presence state;
-- `MessageSequence` / `SequenceGate` generic ordering helpers.
+- `MessageSequence` / `SequenceGate` generic ordering helpers;
+- `MonotonicClock` and `MonotonicTimingSynchronizer` for bounded peer/reference clock-offset, RTT, jitter, uncertainty and timestamp normalization.
 
-It does not contain player membership, room lifecycle, product roles, authority or game snapshots.
+The timing API reports communication evidence only. It does not choose reaction winners, scoring or acceptable quality thresholds.
+
+It does not contain player membership, room lifecycle, product roles, authority policy or game snapshots.
 
 ### `PartyGameKit.Protocol`
 
@@ -33,6 +36,8 @@ Owns the language-neutral protocol-v2 communication contract:
 - protocol compatibility validation;
 - `ConnectionDescriptor` JSON/URI codecs;
 - LAN discovery announcement codec.
+
+Synchronized timing does not add a protocol-v2 control message. Probe/reply data remains caller/adapter-owned payload data.
 
 ### `PartyGameKit.Transport.Abstractions`
 
@@ -87,7 +92,7 @@ The public setup surface includes:
 
 The hubs and registries remain implementation details. Relay routing uses technical `ChannelId` and transient `ConnectionId`; WebRTC signaling uses technical `ChannelId` plus transient SignalR connection IDs. Neither endpoint models players, parties, lobbies, authority or game state.
 
-See [SignalR relay](signalr-relay.md), [WebRTC DataChannel](webrtc-datachannel.md) and [Automatic connectivity](automatic-connectivity.md).
+See [SignalR relay](signalr-relay.md), [WebRTC DataChannel](webrtc-datachannel.md), [Automatic connectivity](automatic-connectivity.md) and [Synchronized monotonic timing](monotonic-timing.md).
 
 ### `PartyGameKit.Discovery.Lan`
 
@@ -97,7 +102,7 @@ Optional UDP discovery for technical `ConnectionDescriptor` endpoints. Discovery
 
 ### `@partygamekit/client`
 
-The `0.2.0-preview.4` browser client exposes protocol-v2 WebSocket, native WebRTC and generic transport-selection capabilities.
+The `0.2.0-preview.5` browser client exposes protocol-v2 WebSocket, native WebRTC, generic transport-selection and monotonic-timing capabilities.
 
 Protocol-v2 WebSocket capabilities:
 
@@ -130,11 +135,20 @@ Automatic selection capabilities:
 - structured attempt diagnostics;
 - abort and late-success cleanup hooks.
 
-The TypeScript selector does not pretend all browser candidates share one concrete connection class. Runtime-specific adapters stay explicit at the composition root while selection policy remains communication-only.
+Monotonic timing capabilities:
+
+- `monotonicNowMs()` backed by `performance.now()`;
+- `MonotonicTimingSynchronizer` using the same bounded sample/filter policy as .NET;
+- current offset, RTT, jitter and uncertainty diagnostics;
+- peer-event normalization into the reference clock domain;
+- rejection of invalid/stale/non-monotonic timestamp evidence;
+- explicit reset/reacquisition after reconnect or transport replacement.
+
+The TypeScript selector and timing utility do not pretend all browser transports share one connection model or that timing quality determines product/game policy.
 
 WebRTC application data does not flow through SignalR after negotiation. The SDK does not require `player`, `host`, `controller` or `shared-screen` roles and does not implement game-state projection policy.
 
-The npm runtime dependency added for `[19]` is MIT-licensed `@microsoft/signalr`; WebRTC itself is provided by the browser runtime. Playwright is a dev-only Apache-2.0 dependency for real-browser CI validation. `[20]` adds no new external dependency.
+The npm runtime dependency added for `[19]` is MIT-licensed `@microsoft/signalr`; WebRTC itself is provided by the browser runtime. Playwright is a dev-only Apache-2.0 dependency for real-browser CI validation. `[20]` and `[21]` add no new external dependency.
 
 ## Dart package
 
@@ -142,13 +156,15 @@ The npm runtime dependency added for `[19]` is MIT-licensed `@microsoft/signalr`
 
 The Dart package is a thin implementation of the PartyGameKit v2 protocol and connection-descriptor contract.
 
-`0.2.0-preview.4` keeps the same protocol-v2 wire contract. It deliberately does not claim a Dart LAN, SignalR, WebRTC or automatic transport runtime and does not contain a game/session engine. Państwa Miasta keeps its player model, host-authoritative game engine, snapshots and lifecycle policy above the adapter boundary.
+`0.2.0-preview.5` keeps the same protocol-v2 wire contract. It deliberately does not claim a Dart LAN, SignalR, WebRTC, automatic transport or synchronized timing runtime and does not contain a game/session engine. Państwa Miasta keeps its player model, host-authoritative game engine, snapshots and lifecycle policy above the adapter boundary.
 
 ## Reference validation
 
 `samples/CommunicationDemo` remains the listener-side .NET v0.2 reference sample. It runs the same neutral communication scenario over direct LAN WebSocket and backend-assisted SignalR, covering two generic peers, opaque messages, targeted/broadcast delivery and resume on a replacement connection. LAN additionally validates UDP endpoint discovery and a serialized direct connection descriptor.
 
 `samples/AutoConnectivityDemo` validates the client-side automatic orchestration boundary. The scenario asks for `ConnectivityMode.Auto`, receives only `IMessageTransportClient`, preserves a stable `PeerId` and verifies byte-for-byte opaque payload delivery. The concrete LAN client appears only where the candidate is registered.
+
+Monotonic timing is validated with deterministic .NET and TypeScript tests covering known offsets, RTT variation, uncertainty, stale/non-monotonic/implausible evidence, reconnect reset, bounded storage and normalized ordering that differs from packet arrival.
 
 WebRTC is validated separately in the browser package through unit tests and a real Chromium integration test that establishes peer-to-peer DataChannels and exercises an approximately 60 Hz opaque stream without routing application traffic through signaling.
 
@@ -172,7 +188,7 @@ WebRTC is validated separately in the browser package through unit tests and a r
         └────────────────┴──── optional discovery   backend      SDP/ICE signaling
                                            │
                                   automatic selector
-                           (registered client candidates only)
+                         timing stays transport-neutral
 ```
 
 No base package may depend upward on PartyBeam or concrete game semantics.
@@ -186,9 +202,11 @@ The combined gate verifies:
 - opaque `application.message` exchange;
 - neutral connection events;
 - stable `PeerId` resume on a replacement `ConnectionId`;
+- package-only monotonic timing offset/normalization through `PartyGameKit.Core`;
 - SignalR client/server package availability from the generated NuGet feed;
 - bounded/deterministic automatic transport selection and cancellation cleanup;
 - neutral Auto sample behavior;
+- deterministic .NET/TypeScript timing tests and bounded timing storage;
 - WebRTC signaling isolation;
 - real browser DataChannel establishment and high-frequency bounded messaging;
 - absence of source-project dependencies in the NuGet consumer.

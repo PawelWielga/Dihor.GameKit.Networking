@@ -10,7 +10,8 @@ Compatible transport/capability expansions on that corrected boundary use later 
 
 - `0.2.0-preview.2` adds optional SignalR relay connectivity;
 - `0.2.0-preview.3` adds browser-native WebRTC DataChannels plus optional SignalR SDP/ICE signaling;
-- `0.2.0-preview.4` adds bounded automatic transport selection/fallback and reconnect preference across registered communication paths.
+- `0.2.0-preview.4` adds bounded automatic transport selection/fallback and reconnect preference across registered communication paths;
+- `0.2.0-preview.5` adds transport-neutral synchronized monotonic timing, RTT/jitter/uncertainty metrics and peer timestamp normalization.
 
 For preview releases:
 
@@ -29,7 +30,8 @@ Package version and protocol version are independent:
 - `0.2.0-preview.1` uses wire protocol `2` with neutral connection/resume/application-message semantics;
 - `0.2.0-preview.2` also uses wire protocol `2`; adding SignalR relay does not change the communication envelope;
 - `0.2.0-preview.3` also uses wire protocol `2`; adding browser WebRTC and signaling does not change the protocol-v2 control/application envelope;
-- `0.2.0-preview.4` also uses wire protocol `2`; automatic transport selection changes connection orchestration only and carries the same opaque protocol/application data.
+- `0.2.0-preview.4` also uses wire protocol `2`; automatic transport selection changes connection orchestration only and carries the same opaque protocol/application data;
+- `0.2.0-preview.5` also uses wire protocol `2`; synchronized timing is an optional transport-neutral utility whose probe/reply data can travel inside existing consumer-owned payloads without changing the base envelope.
 
 A wire-incompatible change requires a new protocol version even while package versions are pre-1.0. Clients must reject unsupported protocol versions before using payload data.
 
@@ -49,6 +51,12 @@ If a consumer chooses to carry PartyGameKit protocol envelopes over a DataChanne
 
 Changing from LAN to WebRTC or SignalR may create a new transient `ConnectionId`, while stable logical continuity remains governed by protocol-v2 `PeerId`/resume semantics. The selector treats that handshake data as opaque input rather than adding product/session meaning.
 
+## Monotonic timing and protocol versioning
+
+`MonotonicTimingSynchronizer` consumes probe/reply timestamp evidence supplied by the caller. It does not reserve a new protocol-v2 control message or inspect transport payloads.
+
+Consumers can carry timing probe identifiers and peer timestamps through their existing opaque application payloads or transport-specific adapter envelopes. A reconnect or transport replacement invalidates the timing model explicitly through `Reset(...)`, but does not change the protocol-v2 connection contract.
+
 ## Canonical fixtures
 
 The active canonical fixture set is `protocol/fixtures/v2-*.json`.
@@ -59,15 +67,15 @@ SignalR relay integration tests prove the same v2 connect/resume/application-mes
 
 ## Runtime capability differences
 
-Matching package versions do not imply every language/runtime implements every transport.
+Matching package versions do not imply every language/runtime implements every transport or optional utility.
 
-For `0.2.0-preview.4`:
+For `0.2.0-preview.5`:
 
-- .NET provides LAN WebSocket, SignalR relay, the transport-neutral automatic client selector and optional WebRTC signaling hosting;
-- TypeScript/browser provides protocol-v2 WebSocket connectivity, native WebRTC DataChannels and the generic automatic selector used to orchestrate runtime-specific candidates;
-- Dart provides protocol-v2 interoperability only and does not claim a LAN/SignalR/WebRTC transport runtime or automatic transport implementation.
+- .NET provides LAN WebSocket, SignalR relay, the transport-neutral automatic client selector, optional WebRTC signaling hosting and `MonotonicTimingSynchronizer` in `PartyGameKit.Core`;
+- TypeScript/browser provides protocol-v2 WebSocket connectivity, native WebRTC DataChannels, the generic automatic selector and an equivalent `MonotonicTimingSynchronizer`/`monotonicNowMs()` timing surface;
+- Dart provides protocol-v2 interoperability only and does not claim a LAN/SignalR/WebRTC transport runtime, automatic transport implementation or synchronized timing implementation.
 
-These differences must be explicit in compatibility/package documentation rather than hidden by pretending all runtimes have identical transport features.
+These differences must be explicit in compatibility/package documentation rather than hidden by pretending all runtimes have identical capabilities.
 
 ## Compatibility promise
 

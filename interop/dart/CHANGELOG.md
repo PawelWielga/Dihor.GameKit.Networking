@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-preview.5
+
+- Aligns the Dart protocol package version with the PartyGameKit preview.5 release line.
+- Keeps the protocol-v2 envelope, connection descriptor and canonical fixture contract unchanged.
+- Synchronized monotonic timing is implemented in the .NET Core and TypeScript/browser surfaces; this Dart package remains protocol-only.
+- The package does not claim a Dart LAN, SignalR, WebRTC, automatic transport or synchronized timing runtime.
+
 ## 0.2.0-preview.4
 
 - Aligns the Dart protocol package version with the PartyGameKit preview.4 release line.
