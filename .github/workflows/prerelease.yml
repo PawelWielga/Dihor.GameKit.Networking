@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Prerelease tag, for example v0.2.0-preview.5
+        description: Prerelease tag, for example v0.2.0-preview.6
         required: true
-        default: v0.2.0-preview.5
+        default: v0.2.0-preview.6
 
 permissions:
   contents: write
@@ -21,7 +21,7 @@ permissions:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -100,6 +100,26 @@ jobs:
 
       - name: Pack NuGet artifacts
         run: bash eng/pack-dotnet.sh artifacts/nuget "${{ steps.version.outputs.version }}"
+
+      - name: Install .NET Android workload
+        run: dotnet workload install android
+
+      - name: Verify Android client and host packages
+        shell: bash
+        run: |
+          sed -E -i "s/Version=\"0\.2\.0-preview\.[0-9]+\"/Version=\"${{ steps.version.outputs.version }}\"/g" \
+            packaging/android-client/PartyGameKit.AndroidClient.PackageConsumer.csproj \
+            packaging/android-host/PartyGameKit.AndroidHost.PackageConsumer.csproj
+          for PROJECT in \
+            packaging/android-client/PartyGameKit.AndroidClient.PackageConsumer.csproj \
+            packaging/android-host/PartyGameKit.AndroidHost.PackageConsumer.csproj; do
+            NUGET_PACKAGES="$PWD/artifacts/android-packages" \
+              dotnet restore "$PROJECT" \
+              --no-cache \
+              --source "$PWD/artifacts/nuget" \
+              --source "https://api.nuget.org/v3/index.json"
+            dotnet build "$PROJECT" --configuration Release --no-restore
+          done
 
       - name: Validate package license metadata
         shell: bash
