@@ -2,6 +2,40 @@
 
 All notable PartyGameKit changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
+## 0.2.0-preview.5 - 2026-09-15
+
+Transport-neutral synchronized monotonic timing on the existing protocol-v2 communication foundation.
+
+### Timing model
+
+- adds `MonotonicClock.TimestampMilliseconds` backed by `Stopwatch.GetTimestamp()` for .NET monotonic measurements;
+- adds `MonotonicTimingSynchronizer` with bounded outstanding probes and bounded rolling sample history;
+- estimates peer-minus-reference clock offset with four-timestamp NTP-style sampling;
+- reports representative RTT, RTT jitter, offset spread and a conservative uncertainty metric;
+- normalizes peer-local event timestamps into the reference monotonic clock domain without treating raw client timestamps as authoritative;
+- uses the best half of bounded RTT samples and median-based filtering to reduce sensitivity to slower path outliers.
+
+### Evidence validation and reconnect
+
+- rejects unknown probes, invalid/non-finite timestamps, negative peer-processing intervals and excessive RTT samples;
+- rejects timestamp evidence when synchronization is absent/stale, peer evidence is non-monotonic, or normalized events are too old/implausibly future;
+- adds explicit `Reset(TimingResetReason)` with reconnect/transport-change reasons so a changed path must reacquire timing state;
+- exposes generation, sample/probe counts, accepted/rejected counters, last rejection/reset and current model through structured diagnostics;
+- fixes pending-probe ordering bookkeeping so internal tracking remains bounded even after many completed probes.
+
+### TypeScript and validation
+
+- adds equivalent browser `MonotonicTimingSynchronizer` and `monotonicNowMs()` based on `performance.now()`;
+- adds deterministic .NET and TypeScript tests for known offsets, RTT/jitter variation, uncertainty, timestamp validation, reconnect invalidation, bounded storage and normalized ordering that differs from packet-arrival order;
+- package-only NuGet validation exercises timing offset estimation and timestamp normalization through `PartyGameKit.Core`;
+- existing LAN, SignalR, Auto, Dart and real Chromium WebRTC gates remain green;
+- adds no external runtime dependency and keeps wire protocol `2` unchanged.
+
+### Boundary
+
+- PartyGameKit reports timing facts and uncertainty only; consumers decide whether timing quality is sufficient and what normalized event order means for a game/product;
+- no player, controller, TV, winner, scoring or PartySession semantics are introduced.
+
 ## 0.2.0-preview.4 - 2026-09-13
 
 Deterministic communication-path orchestration on the existing protocol-v2 and communication-only foundation.
@@ -157,7 +191,7 @@ Breaking correction of the public architecture boundary. PartyGameKit is now a c
 - added `samples/CommunicationDemo`, a game-agnostic real-LAN reference sample covering UDP discovery, direct descriptor connection, two generic peers, opaque application messages, targeted delivery, broadcast and resume on a replacement connection;
 - the neutral communication demo runs in CI and prerelease validation;
 - `packaging/consumer` now restores generated NuGet packages only and verifies opaque message exchange plus neutral peer resume instead of merely checking that package types load;
-- retired the v0.1 `SharedCounter` and `DungeonPrototype` source/tests from the active tree rather than keeping non-compiling examples tied to removed session APIs; they remain available in Git history and the v0.1 tag.
+- retired the v0.1 `SharedCounter` and `DungeonPrototype` source/tests from the active v0.2 tree rather than keeping non-compiling examples tied to removed session APIs; they remain available in Git history and the v0.1 tag.
 
 ### Cross-repository validation
 

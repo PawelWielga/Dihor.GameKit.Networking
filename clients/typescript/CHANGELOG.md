@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0-preview.5 - 2026-09-15
+
+- Adds `MonotonicTimingSynchronizer` for bounded peer/reference monotonic clock-offset estimation.
+- Adds RTT, RTT-jitter and uncertainty metrics using the same deterministic filter policy as .NET.
+- Adds peer-local timestamp normalization into the reference clock domain.
+- Rejects unknown probes, invalid/stale/non-monotonic evidence, old events and implausibly future timestamps.
+- Adds explicit reconnect/transport-change reset so stale timing models are not silently reused.
+- Adds `monotonicNowMs()` backed by `performance.now()` rather than wall-clock time.
+- Keeps timing transport-neutral and protocol v2 unchanged; consumers decide how probe/reply data is carried.
+- Adds no new runtime dependency.
+
 ## 0.2.0-preview.4 - 2026-09-13
 
 - Adds generic `AutomaticTransportSelector` with `auto`, forced LAN, forced WebRTC and forced SignalR modes.
