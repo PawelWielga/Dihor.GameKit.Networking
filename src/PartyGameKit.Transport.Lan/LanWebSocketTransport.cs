@@ -1,18 +1,12 @@
 using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using PartyGameKit.Core;
 using PartyGameKit.Protocol;
 using PartyGameKit.Transport.Abstractions;
@@ -23,10 +17,14 @@ public sealed class LanWebSocketTransport : IMessageTransport
 {
     private const string ProtocolMismatchReason = "protocol-version-mismatch";
     private const string InvalidHandshakeReason = "invalid-handshake";
+    private const int MaxHttpHeaderBytes = 16 * 1024;
+    private const string WebSocketMagic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
     private readonly LanWebSocketHostOptions _options;
     private readonly Func<string> _connectionIdFactory;
     private readonly ConcurrentDictionary<ConnectionId, LanConnection> _connections = new();
     private readonly ConcurrentQueue<LanConnection> _connectionOrder = new();
+    private readonly ConcurrentDictionary<long, Task> _clientTasks = new();
     private readonly Channel<TransportEvent> _events = Channel.CreateUnbounded<TransportEvent>(
         new UnboundedChannelOptions
         {
@@ -36,8 +34,10 @@ public sealed class LanWebSocketTransport : IMessageTransport
         });
     private readonly CancellationTokenSource _stopSource = new();
     private readonly object _stopGate = new();
-    private WebApplication? _application;
+    private TcpListener? _listener;
+    private Task? _acceptLoopTask;
     private Task? _stopTask;
+    private long _clientTaskSequence;
     private int _stopped;
     private int _disposed;
 
@@ -77,12 +77,21 @@ public sealed class LanWebSocketTransport : IMessageTransport
     public Uri CreateClientUri(string host)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
-        if (BoundPort == 0)
-        {
-            throw new InvalidOperationException("LAN transport has not started.");
-        }
-
+        EnsureStarted();
         return new UriBuilder("ws", host.Trim(), BoundPort, _options.Path).Uri;
+    }
+
+    public ConnectionDescriptor CreateConnectionDescriptor(
+        string advertisedHost,
+        ChannelId? channelId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(advertisedHost);
+        EnsureStarted();
+        return LanConnectionDescriptor.Create(
+            advertisedHost,
+            BoundPort,
+            channelId,
+            _options.Path);
     }
 
     public async IAsyncEnumerable<TransportEvent> ReadEventsAsync(
@@ -182,119 +191,142 @@ public sealed class LanWebSocketTransport : IMessageTransport
         }
     }
 
-    private async Task StartCoreAsync(CancellationToken cancellationToken)
+    private Task StartCoreAsync(CancellationToken cancellationToken)
     {
-        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
-        {
-            ApplicationName = typeof(LanWebSocketTransport).Assembly.FullName,
-            EnvironmentName = Environments.Production,
-        });
-        builder.Logging.ClearProviders();
-        builder.WebHost.ConfigureKestrel(serverOptions =>
-        {
-            serverOptions.Listen(_options.BindAddress, _options.Port, listenOptions =>
-            {
-                listenOptions.Protocols = HttpProtocols.Http1;
-            });
-        });
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var application = builder.Build();
-        application.UseWebSockets(new WebSocketOptions
-        {
-            KeepAliveInterval = _options.KeepAliveInterval,
-        });
-        application.Run(HandleRequestAsync);
-
+        var listener = new TcpListener(_options.BindAddress, _options.Port);
         try
         {
-            await application.StartAsync(cancellationToken).ConfigureAwait(false);
-            var server = application.Services.GetRequiredService<IServer>();
-            var addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
-            var boundAddress = addresses?.FirstOrDefault();
-            if (boundAddress is null ||
-                !Uri.TryCreate(boundAddress, UriKind.Absolute, out var uri) ||
-                uri.Port <= 0)
+            listener.Start();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (listener.LocalEndpoint is not IPEndPoint endpoint || endpoint.Port <= 0)
             {
-                throw new InvalidOperationException("Kestrel did not report a bound LAN endpoint.");
+                throw new InvalidOperationException("TCP listener did not report a bound LAN endpoint.");
             }
 
-            BoundPort = uri.Port;
-            _application = application;
+            BoundPort = endpoint.Port;
+            _listener = listener;
+            _acceptLoopTask = AcceptLoopAsync(listener, _stopSource.Token);
+            return Task.CompletedTask;
         }
         catch
         {
-            await application.DisposeAsync().ConfigureAwait(false);
+            listener.Stop();
             throw;
         }
     }
 
-    private async Task StopCoreAsync()
+    private async Task AcceptLoopAsync(TcpListener listener, CancellationToken cancellationToken)
     {
-        Interlocked.Exchange(ref _stopped, 1);
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            foreach (var connection in _connectionOrder.ToArray())
+            TcpClient client;
+            try
             {
-                if (!RemoveConnection(connection, TransportCloseReason.TransportStopped))
-                {
-                    continue;
-                }
-
-                await CloseSocketAsync(
-                    connection.Socket,
-                    WebSocketCloseStatus.NormalClosure,
-                    "transport-stopped",
-                    CancellationToken.None).ConfigureAwait(false);
+                client = await listener.AcceptTcpClientAsync(cancellationToken).ConfigureAwait(false);
             }
-        }
-        finally
-        {
-            _stopSource.Cancel();
-            var application = _application;
-            if (application is not null)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                try
-                {
-                    await application.StopAsync(CancellationToken.None).ConfigureAwait(false);
-                }
-                finally
-                {
-                    await application.DisposeAsync().ConfigureAwait(false);
-                    _application = null;
-                }
+                break;
+            }
+            catch (SocketException) when (cancellationToken.IsCancellationRequested || Volatile.Read(ref _stopped) != 0)
+            {
+                break;
+            }
+            catch (ObjectDisposedException) when (Volatile.Read(ref _stopped) != 0)
+            {
+                break;
+            }
+            catch (SocketException exception)
+            {
+                _events.Writer.TryWrite(new TransportFaulted(
+                    new TransportError(TransportErrorCode.DeliveryFailed, exception.Message)));
+                break;
             }
 
-            _events.Writer.TryComplete();
+            client.NoDelay = true;
+            var sequence = Interlocked.Increment(ref _clientTaskSequence);
+            var task = RunClientAsync(sequence, client, cancellationToken);
+            _clientTasks.TryAdd(sequence, task);
         }
     }
 
-    private async Task HandleRequestAsync(HttpContext context)
+    private async Task RunClientAsync(
+        long sequence,
+        TcpClient client,
+        CancellationToken cancellationToken)
     {
-        if (Volatile.Read(ref _stopped) != 0)
-        {
-            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            return;
-        }
-
-        if (context.Request.Path != _options.Path)
-        {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return;
-        }
-
-        if (!context.WebSockets.IsWebSocketRequest)
-        {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            return;
-        }
-
-        using var socket = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
         try
         {
-            using var handshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(
-                context.RequestAborted,
+            await HandleClientAsync(client, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            client.Dispose();
+            _clientTasks.TryRemove(sequence, out _);
+        }
+    }
+
+    private async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
+    {
+        var stream = client.GetStream();
+        try
+        {
+            using var httpTimeout = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
                 _stopSource.Token);
-            handshakeTimeout.CancelAfter(_options.HandshakeTimeout);
+            httpTimeout.CancelAfter(_options.HandshakeTimeout);
+
+            var request = await ReadHttpUpgradeRequestAsync(stream, httpTimeout.Token).ConfigureAwait(false);
+            if (Volatile.Read(ref _stopped) != 0)
+            {
+                await WriteHttpErrorAsync(stream, 503, "Service Unavailable", CancellationToken.None)
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            if (!string.Equals(request.Method, "GET", StringComparison.Ordinal))
+            {
+                await WriteHttpErrorAsync(stream, 405, "Method Not Allowed", httpTimeout.Token)
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            if (!string.Equals(request.Target, _options.Path, StringComparison.Ordinal))
+            {
+                await WriteHttpErrorAsync(stream, 404, "Not Found", httpTimeout.Token)
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            if (!IsValidWebSocketUpgrade(request))
+            {
+                await WriteHttpErrorAsync(stream, 400, "Bad Request", httpTimeout.Token)
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            var acceptKey = CreateWebSocketAcceptKey(request.Headers["Sec-WebSocket-Key"]);
+            var upgradeResponse = Encoding.ASCII.GetBytes(
+                "HTTP/1.1 101 Switching Protocols\r\n" +
+                "Upgrade: websocket\r\n" +
+                "Connection: Upgrade\r\n" +
+                $"Sec-WebSocket-Accept: {acceptKey}\r\n\r\n");
+            await stream.WriteAsync(upgradeResponse, httpTimeout.Token).ConfigureAwait(false);
+            await stream.FlushAsync(httpTimeout.Token).ConfigureAwait(false);
+
+            using var socket = WebSocket.CreateFromStream(
+                stream,
+                isServer: true,
+                subProtocol: null,
+                keepAliveInterval: _options.KeepAliveInterval);
+
+            using var protocolHandshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                _stopSource.Token);
+            protocolHandshakeTimeout.CancelAfter(_options.HandshakeTimeout);
 
             LanWebSocketFrame handshake;
             try
@@ -302,7 +334,7 @@ public sealed class LanWebSocketTransport : IMessageTransport
                 handshake = await LanWebSocketMessageReader.ReadAsync(
                     socket,
                     _options.MaxMessageBytes,
-                    handshakeTimeout.Token).ConfigureAwait(false);
+                    protocolHandshakeTimeout.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!_stopSource.IsCancellationRequested)
             {
@@ -350,26 +382,95 @@ public sealed class LanWebSocketTransport : IMessageTransport
                 connection.ConnectionId,
                 new ReadOnlyMemory<byte>(handshake.Payload.ToArray())));
 
-            await ReceiveLoopAsync(connection, context.RequestAborted).ConfigureAwait(false);
+            await ReceiveLoopAsync(connection, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (
-            _stopSource.IsCancellationRequested || context.RequestAborted.IsCancellationRequested)
+            _stopSource.IsCancellationRequested || cancellationToken.IsCancellationRequested)
         {
+        }
+        catch (HttpHeaderTooLargeException exception)
+        {
+            _events.Writer.TryWrite(new TransportFaulted(
+                new TransportError(TransportErrorCode.DeliveryFailed, exception.Message)));
+            await WriteHttpErrorAsync(stream, 431, "Request Header Fields Too Large", CancellationToken.None)
+                .ConfigureAwait(false);
+        }
+        catch (InvalidDataException)
+        {
+            await WriteHttpErrorAsync(stream, 400, "Bad Request", CancellationToken.None)
+                .ConfigureAwait(false);
         }
         catch (LanMessageTooLargeException exception)
         {
             _events.Writer.TryWrite(new TransportFaulted(
                 new TransportError(TransportErrorCode.DeliveryFailed, exception.Message)));
-            await CloseSocketAsync(
-                socket,
-                WebSocketCloseStatus.MessageTooBig,
-                "message-too-large",
-                CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (WebSocketException) when (_stopSource.IsCancellationRequested)
+        {
         }
         catch (WebSocketException exception)
         {
             _events.Writer.TryWrite(new TransportFaulted(
                 new TransportError(TransportErrorCode.DeliveryFailed, exception.Message)));
+        }
+        catch (IOException) when (_stopSource.IsCancellationRequested)
+        {
+        }
+        catch (IOException exception)
+        {
+            _events.Writer.TryWrite(new TransportFaulted(
+                new TransportError(TransportErrorCode.DeliveryFailed, exception.Message)));
+        }
+        catch (SocketException) when (_stopSource.IsCancellationRequested)
+        {
+        }
+        catch (SocketException exception)
+        {
+            _events.Writer.TryWrite(new TransportFaulted(
+                new TransportError(TransportErrorCode.DeliveryFailed, exception.Message)));
+        }
+    }
+
+    private async Task StopCoreAsync()
+    {
+        Interlocked.Exchange(ref _stopped, 1);
+        _stopSource.Cancel();
+
+        var listener = Interlocked.Exchange(ref _listener, null);
+        listener?.Stop();
+
+        try
+        {
+            foreach (var connection in _connectionOrder.ToArray())
+            {
+                if (!RemoveConnection(connection, TransportCloseReason.TransportStopped))
+                {
+                    continue;
+                }
+
+                await CloseSocketAsync(
+                    connection.Socket,
+                    WebSocketCloseStatus.NormalClosure,
+                    "transport-stopped",
+                    CancellationToken.None).ConfigureAwait(false);
+                connection.Socket.Abort();
+            }
+
+            var acceptLoopTask = _acceptLoopTask;
+            if (acceptLoopTask is not null)
+            {
+                await acceptLoopTask.ConfigureAwait(false);
+            }
+
+            var clientTasks = _clientTasks.Values.ToArray();
+            if (clientTasks.Length > 0)
+            {
+                await Task.WhenAll(clientTasks).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _events.Writer.TryComplete();
         }
     }
 
@@ -428,6 +529,10 @@ public sealed class LanWebSocketTransport : IMessageTransport
                 WebSocketCloseStatus.MessageTooBig,
                 "message-too-large",
                 CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (WebSocketException) when (_stopSource.IsCancellationRequested)
+        {
+            closeReason = TransportCloseReason.TransportStopped;
         }
         catch (WebSocketException exception)
         {
@@ -529,6 +634,136 @@ public sealed class LanWebSocketTransport : IMessageTransport
         }
     }
 
+    private static async Task<HttpUpgradeRequest> ReadHttpUpgradeRequestAsync(
+        NetworkStream stream,
+        CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream();
+        var singleByte = new byte[1];
+        var delimiterState = 0;
+
+        while (buffer.Length < MaxHttpHeaderBytes)
+        {
+            var read = await stream.ReadAsync(singleByte.AsMemory(0, 1), cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+            {
+                throw new InvalidDataException("Connection closed before the HTTP upgrade request completed.");
+            }
+
+            var value = singleByte[0];
+            buffer.WriteByte(value);
+            delimiterState = (delimiterState, value) switch
+            {
+                (0, (byte)'\r') => 1,
+                (1, (byte)'\n') => 2,
+                (2, (byte)'\r') => 3,
+                (3, (byte)'\n') => 4,
+                (_, (byte)'\r') => 1,
+                _ => 0,
+            };
+
+            if (delimiterState == 4)
+            {
+                return ParseHttpUpgradeRequest(Encoding.ASCII.GetString(buffer.ToArray()));
+            }
+        }
+
+        throw new HttpHeaderTooLargeException(MaxHttpHeaderBytes);
+    }
+
+    private static HttpUpgradeRequest ParseHttpUpgradeRequest(string rawRequest)
+    {
+        var lines = rawRequest.Split("\r\n", StringSplitOptions.None);
+        if (lines.Length < 2)
+        {
+            throw new InvalidDataException("Invalid HTTP upgrade request.");
+        }
+
+        var requestLine = lines[0].Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+        if (requestLine.Length != 3 || !requestLine[2].StartsWith("HTTP/1.", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("Invalid HTTP request line.");
+        }
+
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in lines.Skip(1))
+        {
+            if (line.Length == 0)
+            {
+                break;
+            }
+
+            var separator = line.IndexOf(':');
+            if (separator <= 0)
+            {
+                throw new InvalidDataException("Invalid HTTP header.");
+            }
+
+            var name = line[..separator].Trim();
+            var value = line[(separator + 1)..].Trim();
+            if (headers.TryGetValue(name, out var existing))
+            {
+                headers[name] = $"{existing},{value}";
+            }
+            else
+            {
+                headers.Add(name, value);
+            }
+        }
+
+        return new HttpUpgradeRequest(requestLine[0], requestLine[1], headers);
+    }
+
+    private static bool IsValidWebSocketUpgrade(HttpUpgradeRequest request)
+    {
+        return request.Headers.TryGetValue("Upgrade", out var upgrade) &&
+               string.Equals(upgrade, "websocket", StringComparison.OrdinalIgnoreCase) &&
+               request.Headers.TryGetValue("Connection", out var connection) &&
+               HeaderContainsToken(connection, "Upgrade") &&
+               request.Headers.TryGetValue("Sec-WebSocket-Version", out var version) &&
+               string.Equals(version, "13", StringComparison.Ordinal) &&
+               request.Headers.TryGetValue("Sec-WebSocket-Key", out var key) &&
+               !string.IsNullOrWhiteSpace(key);
+    }
+
+    private static bool HeaderContainsToken(string headerValue, string token) =>
+        headerValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(value => string.Equals(value, token, StringComparison.OrdinalIgnoreCase));
+
+    private static string CreateWebSocketAcceptKey(string clientKey)
+    {
+#pragma warning disable CA5350 // RFC 6455 requires SHA-1 for Sec-WebSocket-Accept.
+        var hash = SHA1.HashData(Encoding.ASCII.GetBytes(clientKey.Trim() + WebSocketMagic));
+#pragma warning restore CA5350
+        return Convert.ToBase64String(hash);
+    }
+
+    private static async Task WriteHttpErrorAsync(
+        NetworkStream stream,
+        int statusCode,
+        string reasonPhrase,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = Encoding.ASCII.GetBytes(
+                $"HTTP/1.1 {statusCode} {reasonPhrase}\r\n" +
+                "Connection: close\r\n" +
+                "Content-Length: 0\r\n\r\n");
+            await stream.WriteAsync(response, cancellationToken).ConfigureAwait(false);
+            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (IOException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
     private void ThrowIfTooLarge(ReadOnlyMemory<byte> payload)
     {
         if (payload.Length > _options.MaxMessageBytes)
@@ -536,6 +771,14 @@ public sealed class LanWebSocketTransport : IMessageTransport
             throw new TransportException(new TransportError(
                 TransportErrorCode.DeliveryFailed,
                 $"Message exceeds the configured limit of {_options.MaxMessageBytes} bytes."));
+        }
+    }
+
+    private void EnsureStarted()
+    {
+        if (BoundPort == 0)
+        {
+            throw new InvalidOperationException("LAN transport has not started.");
         }
     }
 
@@ -651,6 +894,14 @@ public sealed class LanWebSocketTransport : IMessageTransport
     }
 
     private sealed record HandshakeValidation(bool Accepted, string Reason);
+
+    private sealed record HttpUpgradeRequest(
+        string Method,
+        string Target,
+        IReadOnlyDictionary<string, string> Headers);
+
+    private sealed class HttpHeaderTooLargeException(int maxHeaderBytes)
+        : Exception($"HTTP WebSocket upgrade headers exceed the configured limit of {maxHeaderBytes} bytes.");
 }
 
 internal static class LanWebSocketFrameExtensions
