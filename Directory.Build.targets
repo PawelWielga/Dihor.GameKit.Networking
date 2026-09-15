@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
-    <Version>0.2.0-preview.5</Version>
+    <Version>0.2.0-preview.6</Version>
     <Authors>PawelWielga</Authors>
     <Company>PartyGameKit</Company>
     <RepositoryUrl>https://github.com/PawelWielga/PartyGameKit</RepositoryUrl>
@@ -9,7 +9,7 @@
     <PackageTags>multiplayer;communication;networking;lan;signalr;relay;webrtc;datachannel;timing;latency</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>PartyGameKit 0.2.0-preview.5 adds transport-neutral monotonic clock synchronization, RTT/jitter and uncertainty metrics plus timestamp normalization while retaining protocol v2 and the communication-only boundary. See CHANGELOG.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>PartyGameKit 0.2.0-preview.6 makes the direct LAN WebSocket client, host and discovery path consumable from net10.0-android API 28+ by removing the ASP.NET Core/Kestrel runtime dependency and adding package-only Android compatibility validation while retaining protocol v2. See docs/android-lan.md.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IncludeSymbols>true</IncludeSymbols>
