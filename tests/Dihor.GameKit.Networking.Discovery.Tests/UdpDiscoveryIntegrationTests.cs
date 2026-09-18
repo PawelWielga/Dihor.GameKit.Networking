@@ -1,9 +1,9 @@
 using System.Net;
-using PartyGameKit.Core;
-using PartyGameKit.Discovery.Lan;
-using PartyGameKit.Protocol;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Discovery.Lan;
+using Dihor.GameKit.Networking.Protocol;
 
-namespace PartyGameKit.Discovery.Tests;
+namespace Dihor.GameKit.Networking.Discovery.Tests;
 
 public sealed class UdpDiscoveryIntegrationTests
 {
