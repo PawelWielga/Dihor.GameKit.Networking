@@ -28,7 +28,7 @@ public sealed class ReconnectIntegrationTests
             .ReadEventsAsync(TestContext.Current.CancellationToken)
             .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
-        var connectHandshake = ProtocolJson.Serialize(Dihor.GameKit.NetworkingMessages.Create(
+        var connectHandshake = ProtocolJson.Serialize(GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
             "connect-1",
             new ConnectRequestPayload(peerId)));
@@ -47,7 +47,7 @@ public sealed class ReconnectIntegrationTests
         Assert.Equal(DisconnectPeerStatus.Disconnected, continuity.MarkDisconnected(firstClosed.ConnectionId).Status);
 
         now = now.AddSeconds(5);
-        var resumeHandshake = ProtocolJson.Serialize(Dihor.GameKit.NetworkingMessages.Create(
+        var resumeHandshake = ProtocolJson.Serialize(GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ResumeRequest,
             "resume-1",
             new ResumeRequestPayload(peerId, registered.ResumeToken!)));
