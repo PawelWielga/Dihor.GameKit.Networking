@@ -7,7 +7,7 @@ public sealed class LanWebSocketHostOptions
     public LanWebSocketHostOptions(
         IPAddress bindAddress,
         int port = 0,
-        string path = "/dihor-gamekit-networking",
+        string path = "/partygamekit",
         int maxMessageBytes = 256 * 1024,
         TimeSpan? handshakeTimeout = null,
         TimeSpan? keepAliveInterval = null)
