@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
-using PartyGameKit.Core;
+using Dihor.GameKit.Networking.Core;
 
-namespace PartyGameKit.Transport.SignalR.Server;
+namespace Dihor.GameKit.Networking.Transport.SignalR.Server;
 
 public sealed class WebRtcSignalingServerOptions
 {
@@ -25,7 +25,7 @@ public sealed class WebRtcSignalingServerOptions
 
 public static class WebRtcSignalingServiceCollectionExtensions
 {
-    public static IServiceCollection AddPartyGameKitWebRtcSignaling(
+    public static IServiceCollection AddDihorGameKitNetworkingWebRtcSignaling(
         this IServiceCollection services,
         Action<WebRtcSignalingServerOptions>? configure = null)
     {
@@ -49,9 +49,9 @@ public static class WebRtcSignalingServiceCollectionExtensions
 
 public static class WebRtcSignalingEndpointRouteBuilderExtensions
 {
-    public static HubEndpointConventionBuilder MapPartyGameKitWebRtcSignaling(
+    public static HubEndpointConventionBuilder MapDihorGameKitNetworkingWebRtcSignaling(
         this IEndpointRouteBuilder endpoints,
-        string pattern = "/partygamekit-webrtc-signaling")
+        string pattern = "/dihor-gamekit-networking-webrtc-signaling")
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         ArgumentException.ThrowIfNullOrWhiteSpace(pattern);
@@ -63,9 +63,9 @@ internal sealed class WebRtcSignalingHub(
     WebRtcSignalingRegistry registry,
     WebRtcSignalingServerOptions options) : Hub
 {
-    private const string PeerJoinedMethod = "PartyGameKit.WebRtcPeerJoined";
-    private const string PeerLeftMethod = "PartyGameKit.WebRtcPeerLeft";
-    private const string SignalMethod = "PartyGameKit.WebRtcSignal";
+    private const string PeerJoinedMethod = "Dihor.GameKit.Networking.WebRtcPeerJoined";
+    private const string PeerLeftMethod = "Dihor.GameKit.Networking.WebRtcPeerLeft";
+    private const string SignalMethod = "Dihor.GameKit.Networking.WebRtcSignal";
 
     public async Task<IReadOnlyList<string>> JoinChannel(string channelId)
     {

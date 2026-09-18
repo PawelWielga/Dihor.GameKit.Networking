@@ -1,7 +1,7 @@
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
 
-namespace PartyGameKit.Transport.Lan;
+namespace Dihor.GameKit.Networking.Transport.Lan;
 
 public static class LanConnectionDescriptor
 {
@@ -11,7 +11,7 @@ public static class LanConnectionDescriptor
         string host,
         int port,
         ChannelId? channelId = null,
-        string path = "/partygamekit",
+        string path = "/dihor-gamekit-networking",
         bool secure = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(host);

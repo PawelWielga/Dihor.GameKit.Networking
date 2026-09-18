@@ -1,13 +1,13 @@
 using System.Net;
 
-namespace PartyGameKit.Transport.Lan;
+namespace Dihor.GameKit.Networking.Transport.Lan;
 
 public sealed class LanWebSocketHostOptions
 {
     public LanWebSocketHostOptions(
         IPAddress bindAddress,
         int port = 0,
-        string path = "/partygamekit",
+        string path = "/dihor-gamekit-networking",
         int maxMessageBytes = 256 * 1024,
         TimeSpan? handshakeTimeout = null,
         TimeSpan? keepAliveInterval = null)

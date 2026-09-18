@@ -7,11 +7,11 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
 
-namespace PartyGameKit.Transport.Lan;
+namespace Dihor.GameKit.Networking.Transport.Lan;
 
 public sealed class LanWebSocketTransport : IMessageTransport
 {

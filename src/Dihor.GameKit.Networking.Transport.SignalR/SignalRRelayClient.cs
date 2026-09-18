@@ -1,10 +1,10 @@
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.SignalR.Client;
-using PartyGameKit.Core;
-using PartyGameKit.Transport.Abstractions;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Transport.Abstractions;
 
-namespace PartyGameKit.Transport.SignalR;
+namespace Dihor.GameKit.Networking.Transport.SignalR;
 
 public sealed record SignalRRelayClientMessage(
     ReadOnlyMemory<byte> Payload,

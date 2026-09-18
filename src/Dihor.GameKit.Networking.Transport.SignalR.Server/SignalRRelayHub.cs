@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
-using PartyGameKit.Core;
+using Dihor.GameKit.Networking.Core;
 
-namespace PartyGameKit.Transport.SignalR.Server;
+namespace Dihor.GameKit.Networking.Transport.SignalR.Server;
 
 public sealed class SignalRRelayServerOptions
 {
@@ -22,7 +22,7 @@ public sealed class SignalRRelayServerOptions
 
 public static class SignalRRelayServiceCollectionExtensions
 {
-    public static IServiceCollection AddPartyGameKitSignalRRelay(
+    public static IServiceCollection AddDihorGameKitNetworkingSignalRRelay(
         this IServiceCollection services,
         Action<SignalRRelayServerOptions>? configure = null)
     {
@@ -38,7 +38,7 @@ public static class SignalRRelayServiceCollectionExtensions
             .AddHubOptions<SignalRRelayHub>(hubOptions =>
             {
                 // The default JSON SignalR protocol represents byte[] as base64. Keep the
-                // PartyGameKit payload limit authoritative while allowing enough framing
+                // Dihor.GameKit.Networking payload limit authoritative while allowing enough framing
                 // overhead for a payload at that limit to reach this hub for validation.
                 var base64Bytes = (((long)options.MaxMessageBytes + 2L) / 3L) * 4L;
                 hubOptions.MaximumReceiveMessageSize = checked(base64Bytes + 16_384L);
@@ -51,11 +51,11 @@ internal sealed class SignalRRelayHub(
     SignalRRelayRegistry registry,
     SignalRRelayServerOptions options) : Hub
 {
-    private const string PeerConnectedMethod = "PartyGameKit.PeerConnected";
-    private const string PeerMessageMethod = "PartyGameKit.PeerMessage";
-    private const string PeerDisconnectedMethod = "PartyGameKit.PeerDisconnected";
-    private const string ClientMessageMethod = "PartyGameKit.Message";
-    private const string ClientDisconnectedMethod = "PartyGameKit.Disconnected";
+    private const string PeerConnectedMethod = "Dihor.GameKit.Networking.PeerConnected";
+    private const string PeerMessageMethod = "Dihor.GameKit.Networking.PeerMessage";
+    private const string PeerDisconnectedMethod = "Dihor.GameKit.Networking.PeerDisconnected";
+    private const string ClientMessageMethod = "Dihor.GameKit.Networking.Message";
+    private const string ClientDisconnectedMethod = "Dihor.GameKit.Networking.Disconnected";
 
     public Task RegisterListener(string channelId)
     {
