@@ -60,6 +60,7 @@ export class LatestValueReplayBuffer<TMessage> {
       generation: ++this.nextGeneration,
       sender,
       abortController: new AbortController(),
+      sendTail: Promise.resolve(),
     };
     this.binding = binding;
     previous?.abortController.abort();
@@ -137,13 +138,27 @@ export class LatestValueReplayBuffer<TMessage> {
     let lastSentVersion = 0;
 
     while (true) {
-      if (!this.isCurrentBinding(binding)) return lastSentVersion;
-
-      const buffered = this.latest.get(key);
-      if (buffered === undefined) return lastSentVersion;
+      let buffered: BufferedMessage<TMessage> | undefined;
 
       try {
-        await binding.sender.send(buffered.message, binding.abortController.signal);
+        buffered = await this.withSenderGate(binding, async () => {
+          if (!this.isCurrentBinding(binding)) return undefined;
+
+          const current = this.latest.get(key);
+          if (current === undefined) return undefined;
+
+          // No await occurs between this recheck and invoking sender.send().
+          // In JavaScript that makes clear/invalidate atomic with respect to
+          // send start. A synchronous callback triggered by send() can clear
+          // state, but at that point the send has already started.
+          await binding.sender.send(
+            current.message,
+            binding.abortController.signal,
+          );
+          return current;
+        });
+
+        if (buffered === undefined) return lastSentVersion;
         lastSentVersion = buffered.version;
       } catch (error) {
         if (binding.abortController.signal.aborted) return lastSentVersion;
@@ -171,6 +186,24 @@ export class LatestValueReplayBuffer<TMessage> {
     }
   }
 
+  private async withSenderGate<T>(
+    binding: SenderBinding<TMessage>,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const previous = binding.sendTail;
+    let release!: () => void;
+    binding.sendTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    await previous;
+    try {
+      return await action();
+    } finally {
+      release();
+    }
+  }
+
   private isCurrentBinding(binding: SenderBinding<TMessage>): boolean {
     return this.binding?.generation === binding.generation;
   }
@@ -186,6 +219,7 @@ interface SenderBinding<TMessage> {
   generation: number;
   sender: ReplaySender<TMessage>;
   abortController: AbortController;
+  sendTail: Promise<void>;
 }
 
 function requiredToken(value: string, name: string): string {
