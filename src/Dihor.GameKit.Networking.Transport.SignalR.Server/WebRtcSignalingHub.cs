@@ -63,9 +63,9 @@ internal sealed class WebRtcSignalingHub(
     WebRtcSignalingRegistry registry,
     WebRtcSignalingServerOptions options) : Hub
 {
-    private const string PeerJoinedMethod = "Dihor.GameKit.Networking.WebRtcPeerJoined";
-    private const string PeerLeftMethod = "Dihor.GameKit.Networking.WebRtcPeerLeft";
-    private const string SignalMethod = "Dihor.GameKit.Networking.WebRtcSignal";
+    private const string PeerJoinedMethod = "PartyGameKit.WebRtcPeerJoined";
+    private const string PeerLeftMethod = "PartyGameKit.WebRtcPeerLeft";
+    private const string SignalMethod = "PartyGameKit.WebRtcSignal";
 
     public async Task<IReadOnlyList<string>> JoinChannel(string channelId)
     {
