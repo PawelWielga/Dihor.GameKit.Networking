@@ -1,7 +1,7 @@
 using System.Text.Json;
-using PartyGameKit.Protocol;
+using Dihor.GameKit.Networking.Protocol;
 
-namespace PartyGameKit.Protocol.Tests;
+namespace Dihor.GameKit.Networking.Protocol.Tests;
 
 public sealed class CanonicalProtocolV2FixtureTests
 {
