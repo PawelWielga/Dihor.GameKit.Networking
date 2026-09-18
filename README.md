@@ -182,7 +182,7 @@ import {
 } from "@dihor/gamekit-networking";
 
 const signaling = new SignalRWebRtcSignalingClient({
-  endpoint: "https://example.test/dihor-gamekit-networking-webrtc-signaling",
+  endpoint: "https://example.test/partygamekit-webrtc-signaling",
   channelId: "scope-a",
 });
 
