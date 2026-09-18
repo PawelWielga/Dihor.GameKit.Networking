@@ -53,7 +53,7 @@ builder.Services.AddDihorGameKitNetworkingSignalRRelay(options =>
 
 var app = builder.Build();
 
-app.MapDihorGameKitNetworkingSignalRRelay("/dihor-gamekit-networking-relay");
+app.MapDihorGameKitNetworkingSignalRRelay("/partygamekit-relay");
 
 app.Run();
 ```
@@ -68,7 +68,7 @@ A consumer that owns the communication-listener side creates an ordinary `IMessa
 
 ```csharp
 var options = new SignalRRelayOptions(
-    new Uri("https://relay.example.com/dihor-gamekit-networking-relay"),
+    new Uri("https://relay.example.com/partygamekit-relay"),
     new ChannelId("opaque-routing-scope"));
 
 await using IMessageTransport transport =
@@ -92,7 +92,7 @@ A single peer connects with the same protocol-v2 connect or resume handshake it 
 
 ```csharp
 var options = new SignalRRelayOptions(
-    new Uri("https://relay.example.com/dihor-gamekit-networking-relay"),
+    new Uri("https://relay.example.com/partygamekit-relay"),
     new ChannelId("opaque-routing-scope"));
 
 await using var client = await SignalRRelayClient.ConnectAsync(
