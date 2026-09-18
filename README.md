@@ -1,6 +1,6 @@
-# PartyGameKit
+# Dihor.GameKit.Networking
 
-PartyGameKit is a reusable **multiplayer communication/networking library** extracted from networking behavior proven in [Państwa Miasta](https://github.com/PawelWielga/panstwa-miasta).
+Dihor.GameKit.Networking is a reusable **multiplayer communication/networking library** extracted from networking behavior proven in [Państwa Miasta](https://github.com/PawelWielga/panstwa-miasta).
 
 It is infrastructure below [PartyBeam](https://github.com/PawelWielga/PartyBeam), Państwa Miasta and future multiplayer products. It does not require consumers to adopt a player/host/shared-screen model.
 
@@ -10,7 +10,7 @@ PartyBeam / Państwa Miasta / future multiplayer products
                 │ players, roles, parties, game sessions,
                 │ authority policy, state and game rules
                 ▼
-          PartyGameKit
+          Dihor.GameKit.Networking
       communication/networking
                 │
         transports + discovery
@@ -42,9 +42,9 @@ Protocol v2 and the base APIs use communication-neutral concepts:
 
 The migration from v0.1 is intentionally breaking. See [Migration 0.1 → 0.2](docs/migration-0.1-to-0.2.md).
 
-## What PartyGameKit does not own
+## What Dihor.GameKit.Networking does not own
 
-PartyGameKit does **not** decide:
+Dihor.GameKit.Networking does **not** decide:
 
 - who is a player;
 - host, TV, controller, spectator or other product roles;
@@ -63,16 +63,16 @@ A consumer with no concept of players can use the library successfully.
 
 The .NET prerelease is split by communication responsibility:
 
-- `PartyGameKit.Core` — neutral identity, connection continuity, ordering and monotonic timing primitives;
-- `PartyGameKit.Protocol` — protocol v2 envelopes, connection descriptors and codecs;
-- `PartyGameKit.Transport.Abstractions` — transport-neutral host and client message contracts plus automatic connectivity orchestration;
-- `PartyGameKit.Transport.InMemory` — deterministic reference/test transport;
-- `PartyGameKit.Transport.Lan` — direct LAN WebSocket transport;
-- `PartyGameKit.Transport.SignalR` — optional backend-assisted SignalR relay client/listener transport;
-- `PartyGameKit.Transport.SignalR.Server` — ASP.NET Core endpoints for opaque SignalR relay traffic and optional WebRTC SDP/ICE signaling;
-- `PartyGameKit.Discovery.Lan` — optional UDP LAN discovery.
+- `Dihor.GameKit.Networking.Core` — neutral identity, connection continuity, ordering and monotonic timing primitives;
+- `Dihor.GameKit.Networking.Protocol` — protocol v2 envelopes, connection descriptors and codecs;
+- `Dihor.GameKit.Networking.Transport.Abstractions` — transport-neutral host and client message contracts plus automatic connectivity orchestration;
+- `Dihor.GameKit.Networking.Transport.InMemory` — deterministic reference/test transport;
+- `Dihor.GameKit.Networking.Transport.Lan` — direct LAN WebSocket transport;
+- `Dihor.GameKit.Networking.Transport.SignalR` — optional backend-assisted SignalR relay client/listener transport;
+- `Dihor.GameKit.Networking.Transport.SignalR.Server` — ASP.NET Core endpoints for opaque SignalR relay traffic and optional WebRTC SDP/ICE signaling;
+- `Dihor.GameKit.Networking.Discovery.Lan` — optional UDP LAN discovery.
 
-Browser consumers use `@partygamekit/client`, which includes protocol-v2 WebSocket connectivity, native browser WebRTC DataChannels, generic automatic transport selection and synchronized monotonic timing helpers. Flutter/Dart consumers can use the small `interop/dart` protocol package when they need canonical protocol compatibility without a duplicated game/session engine.
+Browser consumers use `@dihor/gamekit-networking`, which includes protocol-v2 WebSocket connectivity, native browser WebRTC DataChannels, generic automatic transport selection and synchronized monotonic timing helpers. Flutter/Dart consumers can use the small `interop/dart` protocol package when they need canonical protocol compatibility without a duplicated game/session engine.
 
 ## Cross-language contract
 
@@ -86,7 +86,7 @@ protocol/fixtures/v2-*.json
    C#    Dart   TypeScript
 ```
 
-PartyGameKit control messages are distinct from `application.message`; the library carries application data without understanding its game/product meaning.
+Dihor.GameKit.Networking control messages are distinct from `application.message`; the library carries application data without understanding its game/product meaning.
 
 ## LAN, backend relay and WebRTC
 
@@ -94,11 +94,11 @@ Direct LAN WebSocket transport works without Internet or a cloud backend. UDP di
 
 A serialized `ConnectionDescriptor` can be passed directly through any product-owned invitation flow, including QR, deep links, manual codes or another backend.
 
-When peers cannot communicate through the direct LAN listener path, `PartyGameKit.Transport.SignalR` can route the same protocol-v2 and application payloads through an optional backend relay. The relay owns only transient connections and opaque `ChannelId` routing scopes.
+When peers cannot communicate through the direct LAN listener path, `Dihor.GameKit.Networking.Transport.SignalR` can route the same protocol-v2 and application payloads through an optional backend relay. The relay owns only transient connections and opaque `ChannelId` routing scopes.
 
-For latency-sensitive browser-to-browser traffic, `@partygamekit/client` provides native WebRTC DataChannels. SignalR may be used to exchange SDP/ICE negotiation data, but once the DataChannel is established, application payloads travel directly peer-to-peer rather than through the backend.
+For latency-sensitive browser-to-browser traffic, `@dihor/gamekit-networking` provides native WebRTC DataChannels. SignalR may be used to exchange SDP/ICE negotiation data, but once the DataChannel is established, application payloads travel directly peer-to-peer rather than through the backend.
 
-WebRTC supports explicit `reliable` and `low-latency` profiles plus bounded buffering/backpressure and communication diagnostics. PartyGameKit does not decide whether those peers are TVs, controllers, players or anything else.
+WebRTC supports explicit `reliable` and `low-latency` profiles plus bounded buffering/backpressure and communication diagnostics. Dihor.GameKit.Networking does not decide whether those peers are TVs, controllers, players or anything else.
 
 See [SignalR relay](docs/signalr-relay.md) and [WebRTC DataChannel](docs/webrtc-datachannel.md). LAN mode remains fully usable without a SignalR server deployed.
 
@@ -114,7 +114,7 @@ Selection is deterministic and bounded. Every candidate is attempted at most onc
 
 Reconnect in `Auto` mode first retries the previously successful transport. If it no longer works, fallback continues through the configured order. Callers can still force LAN, WebRTC or SignalR for tests and product requirements.
 
-Automatic fallback applies to connection establishment/reconnect only. PartyGameKit does not silently interpret application-level failures as a reason to change transport. Connect/resume handshakes, stable `PeerId` continuity and application payload bytes stay outside the selector's interpretation.
+Automatic fallback applies to connection establishment/reconnect only. Dihor.GameKit.Networking does not silently interpret application-level failures as a reason to change transport. Connect/resume handshakes, stable `PeerId` continuity and application payload bytes stay outside the selector's interpretation.
 
 See [Automatic connectivity](docs/automatic-connectivity.md) for policy, diagnostics, cancellation behavior and .NET/TypeScript examples.
 
@@ -143,7 +143,7 @@ See [Synchronized monotonic timing](docs/monotonic-timing.md) for formulas, guar
 Run both paths from the repository root:
 
 ```bash
-dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj
+dotnet run --project samples/CommunicationDemo/Dihor.GameKit.Networking.Sample.CommunicationDemo.csproj
 ```
 
 Run a single path with `-- lan` or `-- signalr`.
@@ -151,7 +151,7 @@ Run a single path with `-- lan` or `-- signalr`.
 `samples/AutoConnectivityDemo` validates the high-level client path. Scenario code requests `ConnectivityMode.Auto`, receives only `IMessageTransportClient`, verifies stable peer identity and exchanges the same opaque application bytes without depending on a concrete client class:
 
 ```bash
-dotnet run --project samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj
+dotnet run --project samples/AutoConnectivityDemo/Dihor.GameKit.Networking.Sample.AutoConnectivityDemo.csproj
 ```
 
 Real WebRTC validation runs separately in Chromium from `clients/typescript/test/browser-webrtc.mjs`. It establishes direct reliable and low-latency DataChannels and sends an approximately 60 Hz opaque stream while verifying that application traffic does not continue through signaling.
@@ -164,11 +164,11 @@ Protocol-v2 WebSocket path:
 
 ```ts
 import {
-  PartyGameClient,
+  GameKitNetworkingClient,
   parseConnectionDescriptor,
-} from "@partygamekit/client";
+} from "@dihor/gamekit-networking";
 
-const client = new PartyGameClient();
+const client = new GameKitNetworkingClient();
 await client.connect(parseConnectionDescriptor(connectionPayload));
 client.send("my-product.command", { value: 42 });
 ```
@@ -179,10 +179,10 @@ WebRTC path:
 import {
   SignalRWebRtcSignalingClient,
   WebRtcPeer,
-} from "@partygamekit/client";
+} from "@dihor/gamekit-networking";
 
 const signaling = new SignalRWebRtcSignalingClient({
-  endpoint: "https://example.test/partygamekit-webrtc-signaling",
+  endpoint: "https://example.test/dihor-gamekit-networking-webrtc-signaling",
   channelId: "scope-a",
 });
 
@@ -206,7 +206,7 @@ The browser SDK can persist neutral peer identity for protocol-v2 reconnect, but
 
 ## Dependency policy
 
-External dependencies must permit free commercial use. PartyGameKit does not adopt dependencies that require a paid commercial license, runtime royalty, subscription or per-seat fee. Standard permissive open-source licenses such as MIT, Apache-2.0 and BSD are preferred.
+External dependencies must permit free commercial use. Dihor.GameKit.Networking does not adopt dependencies that require a paid commercial license, runtime royalty, subscription or per-seat fee. Standard permissive open-source licenses such as MIT, Apache-2.0 and BSD are preferred.
 
 The WebRTC implementation intentionally uses native browser APIs instead of adding a native WebRTC runtime with unsuitable licensing or maintenance characteristics. `@microsoft/signalr` is used for optional browser signaling; Playwright is dev-only real-browser test tooling. Monotonic timing adds no external runtime dependency.
 
@@ -222,11 +222,11 @@ Requirements:
 Build/test the repository and run the neutral demos:
 
 ```bash
-dotnet restore PartyGameKit.slnx
-dotnet build PartyGameKit.slnx --configuration Release --no-restore
-dotnet test PartyGameKit.slnx --configuration Release --no-build
-dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj --configuration Release --no-build
-dotnet run --project samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj --configuration Release --no-build
+dotnet restore Dihor.GameKit.Networking.slnx
+dotnet build Dihor.GameKit.Networking.slnx --configuration Release --no-restore
+dotnet test Dihor.GameKit.Networking.slnx --configuration Release --no-build
+dotnet run --project samples/CommunicationDemo/Dihor.GameKit.Networking.Sample.CommunicationDemo.csproj --configuration Release --no-build
+dotnet run --project samples/AutoConnectivityDemo/Dihor.GameKit.Networking.Sample.AutoConnectivityDemo.csproj --configuration Release --no-build
 ```
 
 TypeScript and real browser WebRTC:
@@ -275,4 +275,4 @@ CI also packs all .NET packages and runs `packaging/consumer` from those generat
 
 ## Design invariant
 
-Future transports may change **how** messages move. They must not change **what a player, host, TV, party or game means**, because those concepts belong to the consumer, not PartyGameKit.
+Future transports may change **how** messages move. They must not change **what a player, host, TV, party or game means**, because those concepts belong to the consumer, not Dihor.GameKit.Networking.

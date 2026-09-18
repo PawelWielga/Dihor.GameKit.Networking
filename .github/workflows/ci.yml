@@ -36,25 +36,25 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Restore
-        run: dotnet restore PartyGameKit.slnx
+        run: dotnet restore Dihor.GameKit.Networking.slnx
 
       - name: Build
-        run: dotnet build PartyGameKit.slnx --configuration Release --no-restore
+        run: dotnet build Dihor.GameKit.Networking.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test PartyGameKit.slnx --configuration Release --no-build
+        run: dotnet test Dihor.GameKit.Networking.slnx --configuration Release --no-build
 
       - name: Run neutral communication demo
         run: >-
           dotnet run
-          --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj
+          --project samples/CommunicationDemo/Dihor.GameKit.Networking.Sample.CommunicationDemo.csproj
           --configuration Release
           --no-build
 
       - name: Run automatic connectivity demo
         run: >-
           dotnet run
-          --project samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj
+          --project samples/AutoConnectivityDemo/Dihor.GameKit.Networking.Sample.AutoConnectivityDemo.csproj
           --configuration Release
           --no-build
 
@@ -68,11 +68,11 @@ jobs:
         shell: bash
         run: |
           sed -E -i "s/Version=\"0\.2\.0-preview\.[0-9]+\"/Version=\"${{ steps.version.outputs.version }}\"/g" \
-            packaging/android-client/PartyGameKit.AndroidClient.PackageConsumer.csproj \
-            packaging/android-host/PartyGameKit.AndroidHost.PackageConsumer.csproj
+            packaging/android-client/Dihor.GameKit.Networking.AndroidClient.PackageConsumer.csproj \
+            packaging/android-host/Dihor.GameKit.Networking.AndroidHost.PackageConsumer.csproj
           for PROJECT in \
-            packaging/android-client/PartyGameKit.AndroidClient.PackageConsumer.csproj \
-            packaging/android-host/PartyGameKit.AndroidHost.PackageConsumer.csproj; do
+            packaging/android-client/Dihor.GameKit.Networking.AndroidClient.PackageConsumer.csproj \
+            packaging/android-host/Dihor.GameKit.Networking.AndroidHost.PackageConsumer.csproj; do
             NUGET_PACKAGES="$PWD/artifacts/android-packages" \
               dotnet restore "$PROJECT" \
               --no-cache \
@@ -83,13 +83,13 @@ jobs:
 
       - name: Restore packaged consumer from local NuGet feed
         run: >-
-          dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj
+          dotnet restore packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj
           --source "$PWD/artifacts/nuget"
 
       - name: Build and run packaged consumer
         run: |
-          dotnet build packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-restore
-          dotnet run --project packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-build
+          dotnet build packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj --configuration Release --no-restore
+          dotnet run --project packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj --configuration Release --no-build
 
       - name: Setup Dart
         uses: dart-lang/setup-dart@v1
@@ -117,7 +117,7 @@ jobs:
       - name: Pack Dart protocol source artifact
         run: |
           mkdir -p artifacts/dart
-          tar -czf "artifacts/dart/partygamekit_protocol-${{ steps.version.outputs.version }}.tar.gz" \
+          tar -czf "artifacts/dart/dihor_gamekit_networking_protocol-${{ steps.version.outputs.version }}.tar.gz" \
             -C interop/dart pubspec.yaml README.md CHANGELOG.md lib
 
       - name: Setup Node
@@ -150,6 +150,6 @@ jobs:
       - name: Upload prerelease package artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: partygamekit-${{ steps.version.outputs.version }}
+          name: dihor-gamekit-networking-${{ steps.version.outputs.version }}
           path: artifacts/
           if-no-files-found: error
