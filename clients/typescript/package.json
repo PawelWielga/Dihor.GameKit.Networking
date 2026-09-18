@@ -1,7 +1,7 @@
 {
-  "name": "@partygamekit/client",
+  "name": "@dihor/gamekit-networking",
   "version": "0.2.0-preview.6",
-  "description": "Communication-neutral browser client for PartyGameKit protocol v2, WebRTC, automatic transport selection and synchronized monotonic timing.",
+  "description": "Communication-neutral browser client for Dihor.GameKit.Networking protocol v2, WebRTC, automatic transport selection and synchronized monotonic timing.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -26,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/PawelWielga/PartyGameKit.git",
+    "url": "git+https://github.com/PawelWielga/Dihor.GameKit.Networking.git",
     "directory": "clients/typescript"
   },
   "keywords": [

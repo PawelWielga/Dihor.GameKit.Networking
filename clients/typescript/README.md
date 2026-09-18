@@ -1,6 +1,6 @@
-# @partygamekit/client
+# @dihor/gamekit-networking
 
-Browser-first TypeScript client for PartyGameKit protocol v2 and the communication-only `0.2` boundary.
+Browser-first TypeScript client for Dihor.GameKit.Networking protocol v2 and the communication-only `0.2` boundary.
 
 The SDK is intentionally neutral. It connects generic peers and does not define players, hosts, shared screens, lobbies, authority or game-state projections. PartyBeam, Państwa Miasta and other products build those concepts above this package.
 
@@ -10,7 +10,7 @@ The SDK is intentionally neutral. It connects generic peers and does not define 
 import {
   PartyGameClient,
   parseConnectionDescriptor,
-} from "@partygamekit/client";
+} from "@dihor/gamekit-networking";
 
 const client = new PartyGameClient();
 
@@ -28,10 +28,10 @@ The protocol-v2 client provides:
 - optional stable `PeerId` persistence;
 - resume credentials and automatic reconnect on a replacement WebSocket;
 - protocol-v2 admission and compatibility checks;
-- `partygamekit://connect` / JSON `ConnectionDescriptor` parsing;
+- `dihor-gamekit-networking://connect` / JSON `ConnectionDescriptor` parsing;
 - `application.message` delivery with consumer-owned data;
 - heartbeat support;
-- raw message events for frames outside PartyGameKit's protocol envelope.
+- raw message events for frames outside Dihor.GameKit.Networking's protocol envelope.
 
 The built-in WebSocket path supports `lan-websocket` descriptors using `ws://` or `wss://` endpoints.
 
@@ -45,10 +45,10 @@ The DataChannel carries opaque binary data directly between browser peers. Signa
 import {
   SignalRWebRtcSignalingClient,
   WebRtcPeer,
-} from "@partygamekit/client";
+} from "@dihor/gamekit-networking";
 
 const signaling = new SignalRWebRtcSignalingClient({
-  endpoint: "https://example.test/partygamekit-webrtc-signaling",
+  endpoint: "https://example.test/dihor-gamekit-networking-webrtc-signaling",
   channelId: "technical-scope-a",
 });
 
@@ -69,11 +69,11 @@ for (const remoteConnectionId of registration.existingConnectionIds) {
 }
 ```
 
-A peer already present in the technical signaling channel can initiate toward a newly joined connection using `onPeerJoined(...)`. The product decides which transient connections should negotiate with each other; PartyGameKit does not impose a host/player/controller topology.
+A peer already present in the technical signaling channel can initiate toward a newly joined connection using `onPeerJoined(...)`. The product decides which transient connections should negotiate with each other; Dihor.GameKit.Networking does not impose a host/player/controller topology.
 
 ### Profiles
 
-`reliable` creates an ordered reliable DataChannel. When the configured `bufferedAmount` limit would be exceeded, `send(...)` throws `WebRtcBackpressureError` rather than creating an unbounded PartyGameKit queue.
+`reliable` creates an ordered reliable DataChannel. When the configured `bufferedAmount` limit would be exceeded, `send(...)` throws `WebRtcBackpressureError` rather than creating an unbounded Dihor.GameKit.Networking queue.
 
 `low-latency` creates an unordered DataChannel with `maxRetransmits: 0`. Its default overflow policy drops the newest payload and increments `droppedMessageCount`, which is useful for high-frequency data where stale queued messages are worse than a dropped update.
 
@@ -105,7 +105,7 @@ The selector is generic because the concrete browser connection objects are inte
 import {
   AutomaticTransportSelector,
   connectivityTransportIds,
-} from "@partygamekit/client";
+} from "@dihor/gamekit-networking";
 
 const selector = new AutomaticTransportSelector([
   {
@@ -139,13 +139,13 @@ The selector does not turn application-level errors into transport fallback and 
 
 ## SignalR signaling
 
-The optional `SignalRWebRtcSignalingClient` uses the MIT-licensed `@microsoft/signalr` package. A compatible ASP.NET Core endpoint is provided by `PartyGameKit.Transport.SignalR.Server`:
+The optional `SignalRWebRtcSignalingClient` uses the MIT-licensed `@microsoft/signalr` package. A compatible ASP.NET Core endpoint is provided by `Dihor.GameKit.Networking.Transport.SignalR.Server`:
 
 ```csharp
-builder.Services.AddPartyGameKitWebRtcSignaling();
+builder.Services.AddDihorGameKitNetworkingWebRtcSignaling();
 
 var app = builder.Build();
-app.MapPartyGameKitWebRtcSignaling();
+app.MapDihorGameKitNetworkingWebRtcSignaling();
 ```
 
 The signaling service stores only ephemeral technical channel membership and routes target SDP/ICE JSON. Normal WebRTC application payloads do **not** pass through SignalR.
@@ -154,6 +154,6 @@ For public deployments, use ordinary ASP.NET Core/SignalR authentication and TLS
 
 ## Ownership boundary
 
-A product may decide that a peer is a TV, controller, player, spectator, server process or something else. Those meanings are not encoded by `@partygamekit/client`.
+A product may decide that a peer is a TV, controller, player, spectator, server process or something else. Those meanings are not encoded by `@dihor/gamekit-networking`.
 
 `0.1.0-preview.1` exposed `player` / `shared-screen`, join/rejoin and snapshot-projection APIs. Those preview APIs were intentionally removed for `0.2`; see the repository migration guide for the compiler-level mapping.

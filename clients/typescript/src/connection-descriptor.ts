@@ -58,9 +58,9 @@ export function serializeConnectionDescriptorJson(descriptor: ConnectionDescript
 
 export function parseConnectionDescriptorUri(input: string): ConnectionDescriptor {
   const value = requiredString(input, "connection URI");
-  const match = /^partygamekit:\/\/connect\?(.+)$/i.exec(value);
+  const match = /^dihor-gamekit-networking:\/\/connect\?(.+)$/i.exec(value);
   if (match === null) {
-    throw new Error("Invalid PartyGameKit connection URI");
+    throw new Error("Invalid Dihor.GameKit.Networking connection URI");
   }
 
   const fields = new Map<string, string>();
@@ -91,7 +91,7 @@ export function parseConnectionDescriptorUri(input: string): ConnectionDescripto
 
 export function serializeConnectionDescriptorUri(descriptor: ConnectionDescriptor): string {
   const normalized = createConnectionDescriptor(descriptor);
-  return "partygamekit://connect" +
+  return "dihor-gamekit-networking://connect" +
     `?protocolVersion=${normalized.protocolVersion}` +
     `&transport=${encodeURIComponent(normalized.transport)}` +
     `&endpoint=${encodeURIComponent(normalized.endpoint)}` +
