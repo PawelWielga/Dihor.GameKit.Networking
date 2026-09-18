@@ -152,7 +152,7 @@ The browser API changed at the same boundary.
 | --- | --- |
 | `new GameKitNetworkingClient({ role: "player" })` | `new GameKitNetworkingClient()` |
 | `join(...)` | `connect(...)` |
-| `JoinDescriptor` / `dihor-gamekit-networking://join` | `ConnectionDescriptor` / `dihor-gamekit-networking://connect` |
+| `JoinDescriptor` / `partygamekit://join` | `ConnectionDescriptor` / `partygamekit://connect` |
 | `stablePlayerId` | neutral peer identity managed by `PeerIdentityStore` |
 | join/rejoin messages | connect/resume messages |
 | `snapshot` event | `applicationMessage` event |
