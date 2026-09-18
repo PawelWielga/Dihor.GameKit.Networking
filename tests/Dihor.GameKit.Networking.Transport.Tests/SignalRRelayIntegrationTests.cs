@@ -7,13 +7,13 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.SignalR;
-using PartyGameKit.Transport.SignalR.Server;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.SignalR;
+using Dihor.GameKit.Networking.Transport.SignalR.Server;
 
-namespace PartyGameKit.Transport.Tests;
+namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class SignalRRelayIntegrationTests
 {
@@ -153,7 +153,7 @@ public sealed class SignalRRelayIntegrationTests
             Assert.True(registration.IsConnected);
             resumeToken = Assert.IsType<string>(registration.ResumeToken);
 
-            var accepted = PartyGameKitMessages.Create(
+            var accepted = DihorGameKitNetworkingMessages.Create(
                 ProtocolMessageTypes.ConnectAccepted,
                 "accepted-1",
                 new ConnectAcceptedPayload(firstConnection, peerId, resumeToken),
@@ -183,7 +183,7 @@ public sealed class SignalRRelayIntegrationTests
         Assert.Equal(1, continuity.PeerCount);
         Assert.Equal(secondConnection, continuity.GetPresence(peerId)?.ConnectionId);
 
-        var resumeAccepted = PartyGameKitMessages.Create(
+        var resumeAccepted = DihorGameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ResumeAccepted,
             "resume-accepted-1",
             new ResumeAcceptedPayload(secondConnection, peerId, resume.ResumeToken),
@@ -223,7 +223,7 @@ public sealed class SignalRRelayIntegrationTests
     }
 
     private static string CreateConnectHandshake(PeerId peerId, string messageId) =>
-        ProtocolJson.Serialize(PartyGameKitMessages.Create(
+        ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
             messageId,
             new ConnectRequestPayload(peerId)));
@@ -232,7 +232,7 @@ public sealed class SignalRRelayIntegrationTests
         PeerId peerId,
         string resumeToken,
         string messageId) =>
-        ProtocolJson.Serialize(PartyGameKitMessages.Create(
+        ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ResumeRequest,
             messageId,
             new ResumeRequestPayload(peerId, resumeToken)));
@@ -242,7 +242,7 @@ public sealed class SignalRRelayIntegrationTests
         var payload = new ApplicationMessagePayload(
             applicationType,
             JsonSerializer.SerializeToElement(data));
-        return Utf8(ProtocolJson.Serialize(PartyGameKitMessages.Create(
+        return Utf8(ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ApplicationMessage,
             messageId,
             payload)));
@@ -284,10 +284,10 @@ public sealed class SignalRRelayIntegrationTests
             {
                 options.Listen(IPAddress.Loopback, 0);
             });
-            builder.Services.AddPartyGameKitSignalRRelay();
+            builder.Services.AddDihorGameKitNetworkingSignalRRelay();
 
             var application = builder.Build();
-            application.MapPartyGameKitSignalRRelay();
+            application.MapDihorGameKitNetworkingSignalRRelay();
             await application.StartAsync(cancellationToken);
 
             var server = application.Services.GetRequiredService<IServer>();

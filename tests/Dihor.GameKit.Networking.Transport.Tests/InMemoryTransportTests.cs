@@ -1,9 +1,9 @@
 using System.Text;
-using PartyGameKit.Core;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.InMemory;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.InMemory;
 
-namespace PartyGameKit.Transport.Tests;
+namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class InMemoryTransportTests
 {

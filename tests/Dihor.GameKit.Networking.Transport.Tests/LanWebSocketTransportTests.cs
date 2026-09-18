@@ -1,12 +1,12 @@
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.Lan;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.Lan;
 
-namespace PartyGameKit.Transport.Tests;
+namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class LanWebSocketTransportTests
 {
@@ -156,7 +156,7 @@ public sealed class LanWebSocketTransportTests
     }
 
     private static string ConnectHandshake(string peerId) =>
-        ProtocolJson.Serialize(PartyGameKitMessages.Create(
+        ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
             $"connect-{peerId}",
             new ConnectRequestPayload(new PeerId(peerId))));

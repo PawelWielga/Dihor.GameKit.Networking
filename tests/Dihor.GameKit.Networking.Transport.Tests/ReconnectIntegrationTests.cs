@@ -1,10 +1,10 @@
 using System.Net;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.Lan;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.Lan;
 
-namespace PartyGameKit.Transport.Tests;
+namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class ReconnectIntegrationTests
 {
@@ -28,7 +28,7 @@ public sealed class ReconnectIntegrationTests
             .ReadEventsAsync(TestContext.Current.CancellationToken)
             .GetAsyncEnumerator(TestContext.Current.CancellationToken);
 
-        var connectHandshake = ProtocolJson.Serialize(PartyGameKitMessages.Create(
+        var connectHandshake = ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
             "connect-1",
             new ConnectRequestPayload(peerId)));
@@ -47,7 +47,7 @@ public sealed class ReconnectIntegrationTests
         Assert.Equal(DisconnectPeerStatus.Disconnected, continuity.MarkDisconnected(firstClosed.ConnectionId).Status);
 
         now = now.AddSeconds(5);
-        var resumeHandshake = ProtocolJson.Serialize(PartyGameKitMessages.Create(
+        var resumeHandshake = ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ResumeRequest,
             "resume-1",
             new ResumeRequestPayload(peerId, registered.ResumeToken!)));

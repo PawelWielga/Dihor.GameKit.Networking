@@ -1,12 +1,12 @@
 using System.Reflection;
-using PartyGameKit.Core;
-using PartyGameKit.Discovery.Lan;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.InMemory;
-using PartyGameKit.Transport.Lan;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Discovery.Lan;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.InMemory;
+using Dihor.GameKit.Networking.Transport.Lan;
 
-namespace PartyGameKit.Transport.Tests;
+namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class PublicApiBoundaryTests
 {

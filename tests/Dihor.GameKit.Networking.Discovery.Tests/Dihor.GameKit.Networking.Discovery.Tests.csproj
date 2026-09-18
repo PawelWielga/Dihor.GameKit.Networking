@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Core/Dihor.GameKit.Networking.Core.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Protocol/Dihor.GameKit.Networking.Protocol.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Discovery.Lan/Dihor.GameKit.Networking.Discovery.Lan.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Transport.Abstractions/Dihor.GameKit.Networking.Transport.Abstractions.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Transport.Lan/Dihor.GameKit.Networking.Transport.Lan.csproj" />
+  </ItemGroup>
+</Project>
