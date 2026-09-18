@@ -156,7 +156,7 @@ public sealed class LanWebSocketTransportTests
     }
 
     private static string ConnectHandshake(string peerId) =>
-        ProtocolJson.Serialize(Dihor.GameKit.NetworkingMessages.Create(
+        ProtocolJson.Serialize(GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
             $"connect-{peerId}",
             new ConnectRequestPayload(new PeerId(peerId))));
