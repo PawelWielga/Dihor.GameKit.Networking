@@ -121,8 +121,9 @@ final class DihorGameKitNetworkingDiscoveryAnnouncement {
     if (version != dihorGameKitNetworkingProtocolVersion)
       throw FormatException(
           'Unsupported Dihor.GameKit.Networking protocol version: $version.');
-    final descriptor = DihorGameKitNetworkingConnectionDescriptor.fromJsonObject(
-        _jsonObject(json['descriptor'], 'descriptor'));
+    final descriptor =
+        DihorGameKitNetworkingConnectionDescriptor.fromJsonObject(
+            _jsonObject(json['descriptor'], 'descriptor'));
     if (descriptor.protocolVersion != version)
       throw const FormatException(
           'Discovery and descriptor protocol versions must match.');
