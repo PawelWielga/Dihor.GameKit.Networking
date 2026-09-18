@@ -1,13 +1,13 @@
 using System.Text;
 using System.Text.Json;
-using PartyGameKit.Core;
-using PartyGameKit.Discovery.Lan;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.InMemory;
-using PartyGameKit.Transport.Lan;
-using PartyGameKit.Transport.SignalR;
-using PartyGameKit.Transport.SignalR.Server;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Discovery.Lan;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.InMemory;
+using Dihor.GameKit.Networking.Transport.Lan;
+using Dihor.GameKit.Networking.Transport.SignalR;
+using Dihor.GameKit.Networking.Transport.SignalR.Server;
 
 var channelId = new ChannelId("package-smoke-channel");
 var descriptor = LanConnectionDescriptor.Create("127.0.0.1", 45678, channelId);
@@ -69,7 +69,7 @@ Ensure(normalizedTimestamp.IsAccepted && normalizedTimestamp.ReferenceTimestampM
     "Packaged peer timestamp normalization failed.");
 
 var relayOptions = new SignalRRelayOptions(
-    new Uri("https://relay.example.test/partygamekit-relay"),
+    new Uri("https://relay.example.test/dihor-gamekit-networking-relay"),
     channelId);
 Ensure(relayOptions.ChannelId == channelId, "Packaged SignalR relay options are unavailable.");
 var relayServerOptions = new SignalRRelayServerOptions();
@@ -90,7 +90,7 @@ static byte[] CreateApplicationMessage(string applicationType, object data, stri
         applicationType,
         JsonSerializer.SerializeToElement(data));
     return Encoding.UTF8.GetBytes(ProtocolJson.Serialize(
-        PartyGameKitMessages.Create(
+        GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ApplicationMessage,
             messageId,
             payload)));

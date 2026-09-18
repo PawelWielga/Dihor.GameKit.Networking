@@ -1,10 +1,10 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.Lan;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.Lan;
 
 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 var cancellationToken = timeout.Token;
@@ -28,7 +28,7 @@ var selector = new AutomaticTransportSelector(
     ]);
 
 var peerId = new PeerId("auto-demo-peer");
-var handshake = ProtocolJson.Serialize(PartyGameKitMessages.Create(
+var handshake = ProtocolJson.Serialize(GameKitNetworkingMessages.Create(
     ProtocolMessageTypes.ConnectRequest,
     "auto-connect-1",
     new ConnectRequestPayload(peerId)));
@@ -47,7 +47,7 @@ await using (var client = await selector.ConnectAsync(handshake, ConnectivityMod
         accepted.IsSuccess && accepted.Message?.Payload.PeerId == peerId,
         "Auto sample did not preserve the stable peer identity.");
 
-    var application = PartyGameKitMessages.Create(
+    var application = GameKitNetworkingMessages.Create(
         ProtocolMessageTypes.ApplicationMessage,
         "auto-message-1",
         new ApplicationMessagePayload(
@@ -72,7 +72,7 @@ await using (var client = await selector.ConnectAsync(handshake, ConnectivityMod
 
 await transport.StopAsync(cancellationToken);
 await hostLoop;
-Console.WriteLine("PartyGameKit automatic connectivity demo passed.");
+Console.WriteLine("Dihor.GameKit.Networking automatic connectivity demo passed.");
 
 static async Task RunHostAsync(
     IMessageTransport transport,
@@ -95,7 +95,7 @@ static async Task RunHostAsync(
             Ensure(request.IsSuccess && request.Message is not null, "Invalid connect request in Auto sample.");
             var peerId = request.Message!.Payload.PeerId
                 ?? throw new InvalidOperationException("Auto sample requires a stable peer ID.");
-            var accepted = PartyGameKitMessages.Create(
+            var accepted = GameKitNetworkingMessages.Create(
                 ProtocolMessageTypes.ConnectAccepted,
                 $"accepted-{received.ConnectionId.Value}",
                 new ConnectAcceptedPayload(received.ConnectionId, peerId, "auto-demo-resume-token"),
