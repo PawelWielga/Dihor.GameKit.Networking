@@ -136,7 +136,7 @@ A consumer such as Państwa Miasta may put its own snapshot or command sequence 
 The deterministic URI form uses:
 
 ```text
-dihor-gamekit-networking://connect?protocolVersion=2&transport=...&endpoint=...&channelId=...
+partygamekit://connect?protocolVersion=2&transport=...&endpoint=...&channelId=...
 ```
 
 Product join codes, party names, game identifiers and QR presentation remain outside the base descriptor.
