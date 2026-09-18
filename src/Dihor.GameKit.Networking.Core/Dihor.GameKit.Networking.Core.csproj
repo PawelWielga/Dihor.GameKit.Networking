@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Communication identities, connection continuity and ordering primitives for Dihor.GameKit.Networking.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+</Project>

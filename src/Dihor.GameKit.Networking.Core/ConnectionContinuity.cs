@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace PartyGameKit.Core;
+namespace Dihor.GameKit.Networking.Core;
 
 public sealed class ConnectionContinuityOptions
 {
