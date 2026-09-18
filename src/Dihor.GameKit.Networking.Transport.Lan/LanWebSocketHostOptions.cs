@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace PartyGameKit.Transport.Lan;
+namespace Dihor.GameKit.Networking.Transport.Lan;
 
 public sealed class LanWebSocketHostOptions
 {

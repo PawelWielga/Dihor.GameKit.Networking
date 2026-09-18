@@ -1,8 +1,8 @@
 using System.Net.WebSockets;
 using System.Text;
-using PartyGameKit.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.Abstractions;
 
-namespace PartyGameKit.Transport.Lan;
+namespace Dihor.GameKit.Networking.Transport.Lan;
 
 public sealed record LanWebSocketClientMessage(
     ReadOnlyMemory<byte> Payload,
