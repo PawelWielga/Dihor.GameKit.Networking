@@ -96,8 +96,7 @@ public sealed class LatestValueReplayBuffer : IDisposable
             previous = _binding;
             current = new Binding(
                 checked(++_nextGeneration),
-                sender,
-                new CancellationTokenSource());
+                sender);
             _binding = current;
             keys = _latest.Keys.ToArray();
         }
@@ -268,6 +267,8 @@ public sealed class LatestValueReplayBuffer : IDisposable
             {
                 _activeFlushes.Remove(flushKey);
             }
+
+            TryDisposeRetiredBinding(binding);
         }
     }
 
@@ -291,10 +292,10 @@ public sealed class LatestValueReplayBuffer : IDisposable
             try
             {
                 await binding.Sender
-                    .SendAsync(buffered.Payload, binding.Cancellation.Token)
+                    .SendAsync(buffered.Payload, binding.Token)
                     .ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (binding.Cancellation.IsCancellationRequested)
+            catch (OperationCanceledException) when (binding.Token.IsCancellationRequested)
             {
                 return;
             }
@@ -340,20 +341,31 @@ public sealed class LatestValueReplayBuffer : IDisposable
         await flush.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static void CancelBinding(Binding? binding)
+    private void CancelBinding(Binding? binding)
     {
         if (binding is null)
         {
             return;
         }
 
-        try
+        binding.Cancel();
+        TryDisposeRetiredBinding(binding);
+    }
+
+    private void TryDisposeRetiredBinding(Binding binding)
+    {
+        bool shouldDispose;
+
+        lock (_sync)
         {
-            binding.Cancellation.Cancel();
+            shouldDispose =
+                !IsCurrentBinding(binding) &&
+                !_activeFlushes.Keys.Any(key => key.Generation == binding.Generation);
         }
-        finally
+
+        if (shouldDispose)
         {
-            binding.Cancellation.Dispose();
+            binding.Dispose();
         }
     }
 
@@ -373,10 +385,40 @@ public sealed class LatestValueReplayBuffer : IDisposable
 
     private sealed record BufferedMessage(string Scope, byte[] Payload, long Version);
 
-    private sealed record Binding(
-        long Generation,
-        IMessageTransportClient Sender,
-        CancellationTokenSource Cancellation);
+    private sealed class Binding : IDisposable
+    {
+        private readonly CancellationTokenSource _cancellation = new();
+        private int _disposed;
+
+        public Binding(long generation, IMessageTransportClient sender)
+        {
+            Generation = generation;
+            Sender = sender;
+            Token = _cancellation.Token;
+        }
+
+        public long Generation { get; }
+
+        public IMessageTransportClient Sender { get; }
+
+        public CancellationToken Token { get; }
+
+        public void Cancel()
+        {
+            if (Volatile.Read(ref _disposed) == 0)
+            {
+                _cancellation.Cancel();
+            }
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                _cancellation.Dispose();
+            }
+        }
+    }
 
     private readonly record struct FlushKey(long Generation, string Key);
 }
