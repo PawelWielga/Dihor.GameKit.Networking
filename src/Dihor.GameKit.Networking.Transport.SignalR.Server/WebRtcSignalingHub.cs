@@ -25,7 +25,7 @@ public sealed class WebRtcSignalingServerOptions
 
 public static class WebRtcSignalingServiceCollectionExtensions
 {
-    public static IServiceCollection AddDihor.GameKit.NetworkingWebRtcSignaling(
+    public static IServiceCollection AddGameKitNetworkingWebRtcSignaling(
         this IServiceCollection services,
         Action<WebRtcSignalingServerOptions>? configure = null)
     {
@@ -49,7 +49,7 @@ public static class WebRtcSignalingServiceCollectionExtensions
 
 public static class WebRtcSignalingEndpointRouteBuilderExtensions
 {
-    public static HubEndpointConventionBuilder MapDihor.GameKit.NetworkingWebRtcSignaling(
+    public static HubEndpointConventionBuilder MapGameKitNetworkingWebRtcSignaling(
         this IEndpointRouteBuilder endpoints,
         string pattern = "/partygamekit-webrtc-signaling")
     {
