@@ -7,7 +7,7 @@ namespace Dihor.GameKit.Networking.Protocol;
 
 public static class ConnectionDescriptorCodec
 {
-    public const string UriScheme = "dihor-gamekit-networking";
+    public const string UriScheme = "partygamekit";
     public const string UriHost = "connect";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
