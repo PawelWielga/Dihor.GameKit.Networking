@@ -53,7 +53,7 @@ Fragmented WebSocket messages are reassembled before a transport event is emitte
 - Dihor.GameKit.Networking protocol version;
 - optional `ChannelId` technical routing scope.
 
-`ConnectionDescriptorCodec` serializes the descriptor to JSON or a portable `dihor-gamekit-networking://connect?...` form. Product invitation codes, party metadata and QR presentation belong above Dihor.GameKit.Networking.
+`ConnectionDescriptorCodec` serializes the descriptor to JSON or a portable `partygamekit://connect?...` form. Product invitation codes, party metadata and QR presentation belong above Dihor.GameKit.Networking.
 
 ## Reconnect
 
