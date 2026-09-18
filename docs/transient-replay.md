@@ -57,7 +57,9 @@ The lifecycle is:
 
 Binding a replacement sender cancels replay attempts against the previous sender. A stale sender may also call `UnbindSender(sender)` / `unbindSender(sender)` without detaching a newer replacement sender.
 
-A send failure leaves the newest buffered value intact so a later rebind can retry it.
+A staged value remains buffered after a locally successful send because transport completion is not a receiver acknowledgement. That retained latest value is what makes an ambiguous disconnect replay-safe. A send failure likewise leaves the newest buffered value intact so a later rebind can retry it.
+
+The buffer therefore does not drain itself after send success. Consumers explicitly retire state when it is no longer valid.
 
 `ClearLatest` / `clearLatest` removes one replay key. `InvalidateScope` / `invalidateScope` removes every buffered value in a caller-owned scope.
 
@@ -67,7 +69,7 @@ Clearing cannot retract a send that already started on a transport. It only guar
 
 Latest-value replay is **not exactly-once delivery**.
 
-A connection can disappear after the sender handed bytes to the transport but before the caller knows whether the receiver observed them. When that happens, the same staged message may be sent again on the replacement connection.
+A connection can disappear after the sender handed bytes to the transport but before the caller knows whether the receiver observed them. For that reason, local send success does not remove replay state. The same staged message may be sent again on the replacement connection until the consumer explicitly clears or invalidates it.
 
 For protocol-v2 `application.message` values:
 
