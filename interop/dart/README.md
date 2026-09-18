@@ -11,7 +11,7 @@ It covers:
 - connect/resume and resume-token fields;
 - opaque `application.message` payloads;
 - generic message sequence gating;
-- portable `ConnectionDescriptor` JSON and `dihor-gamekit-networking://connect` URI forms;
+- portable `ConnectionDescriptor` JSON and `partygamekit://connect` URI forms;
 - LAN discovery announcement parsing.
 
 It deliberately does **not** contain a Dart transport, Flutter UI, player model, party/session engine or game state.
