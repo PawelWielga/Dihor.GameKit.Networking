@@ -146,7 +146,7 @@ public sealed class SignalRRelayLimitIntegrationTests
 
             return new RelayTestServer(
                 application,
-                new Uri(baseUri, "/partygamekit-relay"));
+                new Uri(baseUri, "/dihor-gamekit-networking-relay"));
         }
 
         public async ValueTask DisposeAsync()

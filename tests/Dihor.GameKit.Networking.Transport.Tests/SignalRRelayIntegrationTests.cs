@@ -301,7 +301,7 @@ public sealed class SignalRRelayIntegrationTests
                 throw new InvalidOperationException("Test relay server did not expose a bound address.");
             }
 
-            var endpoint = new Uri(baseUri, "/partygamekit-relay");
+            var endpoint = new Uri(baseUri, "/dihor-gamekit-networking-relay");
             return new RelayTestServer(application, endpoint);
         }
 
