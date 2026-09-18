@@ -1,16 +1,16 @@
 # Extraction boundary from Państwa Miasta
 
-This document records what PartyGameKit should actually extract from `PawelWielga/panstwa-miasta` after the boundary correction in issue `[15]`.
+This document records what Dihor.GameKit.Networking should actually extract from `PawelWielga/panstwa-miasta` after the boundary correction in issue `[15]`.
 
 The earlier v0.1 interpretation extracted too much product/session meaning. The corrected rule is:
 
-> Reuse proven networking and reconnect behavior. Do not turn Państwa Miasta player/session/game policy into generic PartyGameKit API.
+> Reuse proven networking and reconnect behavior. Do not turn Państwa Miasta player/session/game policy into generic Dihor.GameKit.Networking API.
 
 The detailed target classification is in [Communication boundary](communication-boundary.md).
 
 ## Cross-language decision
 
-PartyGameKit reuses a versioned language-neutral communication protocol and behavior, not Dart implementation classes.
+Dihor.GameKit.Networking reuses a versioned language-neutral communication protocol and behavior, not Dart implementation classes.
 
 ```text
                   communication protocol
@@ -40,9 +40,9 @@ The reference implementation proves reusable networking behavior:
 - transport choice can remain separate from application/game payload meaning;
 - automatic host migration is not a proven generic requirement.
 
-These behaviors justify PartyGameKit communication primitives.
+These behaviors justify Dihor.GameKit.Networking communication primitives.
 
-## What Państwa Miasta does not justify as PartyGameKit ownership
+## What Państwa Miasta does not justify as Dihor.GameKit.Networking ownership
 
 The following are real application behaviors, but they stay in Państwa Miasta or another consumer:
 
@@ -61,9 +61,9 @@ The following are real application behaviors, but they stay in Państwa Miasta o
 
 PartyBeam may have similar concepts, but that still does not make them communication-library concerns.
 
-## Current code to corrected PartyGameKit mapping
+## Current code to corrected Dihor.GameKit.Networking mapping
 
-| Państwa Miasta concept | Corrected classification | PartyGameKit direction |
+| Państwa Miasta concept | Corrected classification | Dihor.GameKit.Networking direction |
 | --- | --- | --- |
 | `MultiplayerTransport` / host/client transport behavior | Communication infrastructure | Transport abstractions and concrete transports. |
 | `InMemoryMultiplayerTransport` | Generic test technique | In-memory reference/test transport. |
@@ -76,16 +76,16 @@ PartyBeam may have similar concepts, but that still does not make them communica
 | `LocalLanGameController` | Mixed composition root | Do not copy. Product/session/UI orchestration remains consumer-owned. |
 | `LocalLanPlayerRegistry` | Product/session semantics mixed with useful reconnect behavior | Do not create generic player registry. Extract only neutral peer-to-connection rebinding. |
 | `GameStateSnapshot` | Consumer state plus generic ordering idea | Game schema stays consumer-owned; optional generic sequence/dedupe utility may remain. |
-| snapshot publisher | Product/game replication policy | Consumer-owned. PartyGameKit transports opaque payloads. |
+| snapshot publisher | Product/game replication policy | Consumer-owned. Dihor.GameKit.Networking transports opaque payloads. |
 | base message envelope metadata | Generic communication protocol | Keep version/message id/correlation/application payload envelope. |
 | join/rejoin messages | Mixed | Replace with neutral connection handshake/resume control messages. Product admission stays outside. |
 | Countries & Cities protocol messages | Game-specific | Stay in Państwa Miasta. |
 | `CountriesCitiesGameEngine` | Game-specific authority logic | Stay in Państwa Miasta. |
 | UDP discovery | Communication infrastructure | LAN discovery of connection endpoints/services. |
 | discovered room/session metadata | Mixed | Keep only technical endpoint/protocol/routing metadata; product labels/state stay outside. |
-| QR/manual IP+port connection | Mixed UI + technical descriptor | PartyGameKit provides a technical connection descriptor; product renders QR and defines invitation UX. |
+| QR/manual IP+port connection | Mixed UI + technical descriptor | Dihor.GameKit.Networking provides a technical connection descriptor; product renders QR and defines invitation UX. |
 | Android foreground service | Platform-specific | Application/platform adapter. |
-| host migration experiments | Experimental product policy | Outside PartyGameKit base contract. |
+| host migration experiments | Experimental product policy | Outside Dihor.GameKit.Networking base contract. |
 
 ## Identity boundary
 
@@ -96,7 +96,7 @@ ConnectionId = transient transport connection
 PeerId       = optional stable logical communication identity used for resume
 ```
 
-A PartyBeam/Państwa Miasta player id may be mapped to a `PeerId`, but PartyGameKit does not interpret that mapping.
+A PartyBeam/Państwa Miasta player id may be mapped to a `PeerId`, but Dihor.GameKit.Networking does not interpret that mapping.
 
 Two consequences are important:
 
@@ -107,7 +107,7 @@ Those are consumer decisions.
 
 ## Protocol boundary
 
-PartyGameKit protocol owns only communication lifecycle/control and an opaque application-message boundary.
+Dihor.GameKit.Networking protocol owns only communication lifecycle/control and an opaque application-message boundary.
 
 Keep/generalize:
 
@@ -129,13 +129,13 @@ Move out:
 - required game snapshot message;
 - public/private player projection targeting.
 
-Consumer protocols may be versioned independently and transported as opaque PartyGameKit application payloads.
+Consumer protocols may be versioned independently and transported as opaque Dihor.GameKit.Networking application payloads.
 
 ## Ordering and state replication boundary
 
-Państwa Miasta proves that monotonic ordering is useful. It does not prove that PartyGameKit should own a generic game snapshot engine.
+Państwa Miasta proves that monotonic ordering is useful. It does not prove that Dihor.GameKit.Networking should own a generic game snapshot engine.
 
-PartyGameKit may retain an optional neutral sequence/deduplication helper. Państwa Miasta continues to own:
+Dihor.GameKit.Networking may retain an optional neutral sequence/deduplication helper. Państwa Miasta continues to own:
 
 - authoritative game snapshot schema;
 - snapshot construction;
@@ -143,7 +143,7 @@ PartyGameKit may retain an optional neutral sequence/deduplication helper. Pańs
 - latest-game-state restore policy;
 - authority semantics.
 
-Those snapshots can travel through PartyGameKit as ordinary consumer messages.
+Those snapshots can travel through Dihor.GameKit.Networking as ordinary consumer messages.
 
 ## LAN and discovery boundary
 
@@ -163,18 +163,18 @@ A browser's inability to accept raw inbound WebSocket connections is a transport
 
 ```text
 CountriesCities PlayerId ───────┐
-                                ├─ mapped by the app to PartyGameKit PeerId
+                                ├─ mapped by the app to Dihor.GameKit.Networking PeerId
 CountriesCities game session ───┘
 
 CountriesCities commands/snapshots
                │
                ▼
-opaque PartyGameKit application messages
+opaque Dihor.GameKit.Networking application messages
 ```
 
 ### PartyBeam
 
-PartyBeam owns TV/pilot/controller/player/party/authority semantics and may map any connected product participant to a PartyGameKit peer. PartyGameKit does not need to know which peer is the TV or which phone is a player.
+PartyBeam owns TV/pilot/controller/player/party/authority semantics and may map any connected product participant to a Dihor.GameKit.Networking peer. Dihor.GameKit.Networking does not need to know which peer is the TV or which phone is a player.
 
 ## Compatibility checklist after `[16]`
 
@@ -190,7 +190,7 @@ The corrected library should still preserve these networking invariants:
 - LAN works without Internet/cloud;
 - discovery is optional for direct connection;
 - application/game logic does not depend on WebSocket/UDP implementation types;
-- game/player/authority/session semantics remain above PartyGameKit.
+- game/player/authority/session semantics remain above Dihor.GameKit.Networking.
 
 ## Historical note
 

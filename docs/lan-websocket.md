@@ -1,6 +1,6 @@
 # Direct LAN WebSocket transport
 
-`PartyGameKit.Transport.Lan` hosts a WebSocket listener directly on the local network and requires no cloud service.
+`Dihor.GameKit.Networking.Transport.Lan` hosts a WebSocket listener directly on the local network and requires no cloud service.
 
 ## Runtime boundary
 
@@ -50,10 +50,10 @@ Fragmented WebSocket messages are reassembled before a transport event is emitte
 
 - transport `lan-websocket`;
 - `ws://` or `wss://` endpoint;
-- PartyGameKit protocol version;
+- Dihor.GameKit.Networking protocol version;
 - optional `ChannelId` technical routing scope.
 
-`ConnectionDescriptorCodec` serializes the descriptor to JSON or a portable `partygamekit://connect?...` form. Product invitation codes, party metadata and QR presentation belong above PartyGameKit.
+`ConnectionDescriptorCodec` serializes the descriptor to JSON or a portable `dihor-gamekit-networking://connect?...` form. Product invitation codes, party metadata and QR presentation belong above Dihor.GameKit.Networking.
 
 ## Reconnect
 
@@ -69,7 +69,7 @@ A typical resume flow is:
 6. on success, the same logical `PeerId` is bound to the replacement connection and the resume token is rotated;
 7. the consumer independently decides whether any application state must be resent.
 
-PartyGameKit does not restore game state, preserve player slots or migrate game authority.
+Dihor.GameKit.Networking does not restore game state, preserve player slots or migrate game authority.
 
 ## Shutdown
 

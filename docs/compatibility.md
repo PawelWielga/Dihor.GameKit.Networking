@@ -1,17 +1,17 @@
 # Compatibility matrix
 
-The language-neutral PartyGameKit wire protocol is the compatibility boundary. Package versions do not replace protocol negotiation.
+The language-neutral Dihor.GameKit.Networking wire protocol is the compatibility boundary. Package versions do not replace protocol negotiation.
 
 ## 0.2 compatibility
 
 | Implementation | Package line | Protocol | Runtime target | Scope |
 | --- | --- | ---: | --- | --- |
-| .NET | `PartyGameKit.*` `0.2.0-preview.5` | 2 | .NET 10 | neutral connection continuity, protocol, in-memory/LAN/SignalR transports, automatic client selection, monotonic timing, WebRTC signaling and LAN discovery |
-| TypeScript | `@partygamekit/client` `0.2.0-preview.5` | 2 | ES2022 browser | neutral connect/resume, opaque application messages, native WebRTC DataChannels, generic automatic transport selection and monotonic timing |
-| Dart | `partygamekit_protocol` `0.2.0-preview.5` | 2 | Dart `>=3.3 <4.0` | protocol-v2 envelopes and connection descriptors; no transport runtime, automatic selector or synchronized timing implementation |
+| .NET | `Dihor.GameKit.Networking.*` `0.2.0-preview.5` | 2 | .NET 10 | neutral connection continuity, protocol, in-memory/LAN/SignalR transports, automatic client selection, monotonic timing, WebRTC signaling and LAN discovery |
+| TypeScript | `@dihor/gamekit-networking` `0.2.0-preview.5` | 2 | ES2022 browser | neutral connect/resume, opaque application messages, native WebRTC DataChannels, generic automatic transport selection and monotonic timing |
+| Dart | `dihor_gamekit_networking_protocol` `0.2.0-preview.5` | 2 | Dart `>=3.3 <4.0` | protocol-v2 envelopes and connection descriptors; no transport runtime, automatic selector or synchronized timing implementation |
 | Państwa Miasta current LAN | application-owned contract | separate contract | Flutter/Dart | existing product/game protocol remains consumer-owned until an adapter migration is scheduled |
 
-The PartyGameKit C#, TypeScript and Dart protocol surfaces continue to validate the same v2 canonical fixtures. A consumer does not need to adopt PartyGameKit protocol v2 merely to keep its existing product protocol alive; migration can happen behind an adapter boundary.
+The Dihor.GameKit.Networking C#, TypeScript and Dart protocol surfaces continue to validate the same v2 canonical fixtures. A consumer does not need to adopt Dihor.GameKit.Networking protocol v2 merely to keep its existing product protocol alive; migration can happen behind an adapter boundary.
 
 `0.2.0-preview.5` does not change the wire protocol from preview.1-preview.4. It adds synchronized monotonic timing as an optional utility while existing connect/resume and opaque application data remain unchanged.
 
@@ -30,9 +30,9 @@ The PartyGameKit C#, TypeScript and Dart protocol surfaces continue to validate 
 
 ## Runtime support
 
-Direct LAN WebSocket and SignalR relay remain .NET-backed communication transports. The initial WebRTC endpoint implementation is browser-native in `@partygamekit/client`; `PartyGameKit.Transport.SignalR.Server` optionally hosts the neutral signaling endpoint.
+Direct LAN WebSocket and SignalR relay remain .NET-backed communication transports. The initial WebRTC endpoint implementation is browser-native in `@dihor/gamekit-networking`; `Dihor.GameKit.Networking.Transport.SignalR.Server` optionally hosts the neutral signaling endpoint.
 
-The .NET selector can orchestrate registered `IMessageTransportClient` candidates, including LAN and SignalR out of the box. The WebRTC identifier is part of the neutral selection vocabulary, but PartyGameKit does **not** claim a native .NET WebRTC DataChannel implementation.
+The .NET selector can orchestrate registered `IMessageTransportClient` candidates, including LAN and SignalR out of the box. The WebRTC identifier is part of the neutral selection vocabulary, but Dihor.GameKit.Networking does **not** claim a native .NET WebRTC DataChannel implementation.
 
 The TypeScript selector is generic and can orchestrate browser-specific adapters including native `WebRtcPeer`. It does not imply that every registered browser runtime has a SignalR relay client or a LAN listener implementation.
 
@@ -44,9 +44,9 @@ Dart remains protocol-only in preview.5 and does not claim a Dart LAN, SignalR, 
 
 Protocol v1 and v2 are deliberately incompatible. A protocol-v2 LAN listener or SignalR relay listener rejects a v1 handshake with `protocol-version-mismatch` before exposing the connection to the application.
 
-WebRTC signaling itself is infrastructure negotiation and does not reinterpret protocol v1 as v2. Products that send PartyGameKit protocol envelopes over a DataChannel remain responsible for using a compatible envelope version.
+WebRTC signaling itself is infrastructure negotiation and does not reinterpret protocol v1 as v2. Products that send Dihor.GameKit.Networking protocol envelopes over a DataChannel remain responsible for using a compatible envelope version.
 
-Automatic selection also does not translate protocol versions. If a selected transport rejects an incompatible protocol handshake, that failure is observable as a connection-attempt failure; PartyGameKit does not mutate the handshake to make it compatible.
+Automatic selection also does not translate protocol versions. If a selected transport rejects an incompatible protocol handshake, that failure is observable as a connection-attempt failure; Dihor.GameKit.Networking does not mutate the handshake to make it compatible.
 
 Timing synchronization likewise does not translate protocol versions or validate product/application payload schemas. It only evaluates monotonic timing evidence supplied to the timing API.
 
