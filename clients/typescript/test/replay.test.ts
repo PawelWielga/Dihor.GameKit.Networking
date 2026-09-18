@@ -104,6 +104,46 @@ test("newer value staged during an in-flight send is delivered before stage comp
   assert.equal(replay.bufferedCount, 1);
 });
 
+test("buffered keys are serialized per bound sender", async () => {
+  const replay = new LatestValueReplayBuffer<ReplayMessage>();
+
+  await replay.stageLatest("a", "scope-a", { messageId: "a", value: 1 });
+  await replay.stageLatest("b", "scope-b", { messageId: "b", value: 2 });
+
+  const sender = new BlockingSender();
+  const binding = replay.bindSender(sender);
+
+  await sender.sendStarted;
+  assert.equal(sender.sent.length, 1);
+
+  sender.release();
+  await binding;
+
+  assert.equal(sender.sent.length, 2);
+});
+
+test("scope invalidation prevents a queued send from starting", async () => {
+  const replay = new LatestValueReplayBuffer<ReplayMessage>();
+
+  await replay.stageLatest("a", "scope-a", { messageId: "a", value: 1 });
+  await replay.stageLatest("b", "scope-b", { messageId: "b", value: 2 });
+
+  const sender = new BlockingSender();
+  const binding = replay.bindSender(sender);
+
+  await sender.sendStarted;
+
+  const first = sender.sent[0];
+  assert.ok(first !== undefined);
+  const scopeStillWaiting = first.value === 1 ? "scope-b" : "scope-a";
+  assert.equal(replay.invalidateScope(scopeStillWaiting), 1);
+
+  sender.release();
+  await binding;
+
+  assert.equal(sender.sent.length, 1);
+});
+
 test("clearLatest and invalidateScope remove only matching replay state", async () => {
   const replay = new LatestValueReplayBuffer<ReplayMessage>();
 
