@@ -1,6 +1,6 @@
-using PartyGameKit.Core;
+using Dihor.GameKit.Networking.Core;
 
-namespace PartyGameKit.Transport.Abstractions;
+namespace Dihor.GameKit.Networking.Transport.Abstractions;
 
 public enum TransportCloseReason
 {

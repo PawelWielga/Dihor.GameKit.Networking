@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
 
-namespace PartyGameKit.Discovery.Lan;
+namespace Dihor.GameKit.Networking.Discovery.Lan;
 
 public sealed class UdpLanDiscoveryListener : IAsyncDisposable
 {

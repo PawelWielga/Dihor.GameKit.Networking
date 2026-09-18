@@ -1,9 +1,9 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using PartyGameKit.Core;
-using PartyGameKit.Transport.Abstractions;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Transport.Abstractions;
 
-namespace PartyGameKit.Transport.InMemory;
+namespace Dihor.GameKit.Networking.Transport.InMemory;
 
 public sealed class InMemoryTransport : IMessageTransport
 {

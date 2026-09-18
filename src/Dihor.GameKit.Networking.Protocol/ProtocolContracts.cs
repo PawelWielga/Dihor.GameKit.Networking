@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using PartyGameKit.Core;
+using Dihor.GameKit.Networking.Core;
 
-namespace PartyGameKit.Protocol;
+namespace Dihor.GameKit.Networking.Protocol;
 
 public static class ProtocolVersions
 {
@@ -89,7 +89,7 @@ public sealed record ApplicationMessagePayload
     public JsonElement Data { get; }
 }
 
-public static class PartyGameKitMessages
+public static class GameKitNetworkingMessages
 {
     public static ProtocolEnvelope<TPayload> Create<TPayload>(
         string type,

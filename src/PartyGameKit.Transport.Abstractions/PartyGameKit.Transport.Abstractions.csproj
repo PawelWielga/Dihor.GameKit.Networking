@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Description>Transport-neutral communication abstractions for PartyGameKit.</Description>
-    <IsPackable>true</IsPackable>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
-  </ItemGroup>
-</Project>
