@@ -52,8 +52,7 @@ void main() {
 
       expect(descriptor.protocolVersion, 2);
       expect(descriptor.transport, 'lan-websocket');
-      expect(descriptor.endpoint,
-          'ws://192.168.1.10:45678/partygamekit');
+      expect(descriptor.endpoint, 'ws://192.168.1.10:45678/partygamekit');
       expect(descriptor.channelId, 'channel-a');
       expect(descriptor.toJsonString(), canonical);
 
