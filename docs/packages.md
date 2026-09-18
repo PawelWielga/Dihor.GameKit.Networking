@@ -53,7 +53,8 @@ Owns technology-neutral host/client communication contracts and orchestration:
 - `ConnectivityMode` / `AutomaticTransportSelector`;
 - deterministic candidate ordering, timeout budgets and reconnect preference;
 - structured automatic-connectivity diagnostics;
-- cancellation and late-connection cleanup.
+- cancellation and late-connection cleanup;
+- `LatestValueReplayBuffer` for transport-agnostic reconnect-safe latest-value application replay.
 
 The selector works on registered communication candidates only. It does not own product roles, sessions, game state or application-failure policy.
 
@@ -107,6 +108,7 @@ The `0.2.0-preview.5` browser client exposes protocol-v2 WebSocket, native WebRT
 Protocol-v2 WebSocket capabilities:
 
 - connect/disconnect;
+- generic `LatestValueReplayBuffer<TMessage>` / `ReplaySender<TMessage>` for reconnect-safe transient application replay;
 - send/receive opaque application messages;
 - connection state and heartbeat;
 - optional stable peer identity;
