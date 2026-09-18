@@ -46,7 +46,8 @@ The transport package exposes technology-neutral message transport concepts:
 - `TransportConnectionClosed`;
 - `TransportMessageReceived`;
 - `TransportFaulted`;
-- neutral transport error/close/exception types.
+- neutral transport error/close/exception types;
+- `LatestValueReplayBuffer` for latest-value/coalescing replay across replacement client connections.
 
 The abstraction deals only with `ConnectionId` plus opaque bytes. It does not require a player, room or game session.
 
@@ -108,7 +109,8 @@ Discovery locates technical endpoints, not product lobbies or game sessions.
 - optional stable peer identity persistence;
 - resume/reconnect;
 - protocol-v2 parsing/serialization;
-- `ConnectionDescriptor` JSON/URI parsing.
+- `ConnectionDescriptor` JSON/URI parsing;
+- `LatestValueReplayBuffer<TMessage>` and `ReplaySender<TMessage>` for reconnect-safe transient replay.
 
 The base SDK has no required player/shared-screen/host role and no public/private game-state projection model.
 
