@@ -405,9 +405,14 @@ public sealed class LatestValueReplayBuffer : IDisposable
 
         public void Cancel()
         {
-            if (Volatile.Read(ref _disposed) == 0)
+            try
             {
                 _cancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // A completed stale flush may dispose the retired binding at
+                // the same time an unbind/rebind path requests cancellation.
             }
         }
 
