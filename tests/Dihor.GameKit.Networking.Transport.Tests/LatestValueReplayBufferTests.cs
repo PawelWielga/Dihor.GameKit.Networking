@@ -167,6 +167,72 @@ public sealed class LatestValueReplayBufferTests
     }
 
     [Fact]
+    public async Task BufferedKeysAreSerializedPerBoundSender()
+    {
+        using var buffer = new LatestValueReplayBuffer();
+
+        await buffer.StageLatestAsync(
+            "draft-a",
+            "scope-a",
+            new byte[] { 1 },
+            TestContext.Current.CancellationToken);
+        await buffer.StageLatestAsync(
+            "draft-b",
+            "scope-b",
+            new byte[] { 2 },
+            TestContext.Current.CancellationToken);
+
+        var sender = new BlockingClient();
+        var binding = buffer.BindSenderAsync(
+            sender,
+            TestContext.Current.CancellationToken);
+
+        await sender.SendStarted.Task.WaitAsync(
+            TestContext.Current.CancellationToken);
+
+        Assert.Single(sender.SentPayloads);
+
+        sender.Release.TrySetResult();
+        await binding;
+
+        Assert.Equal(2, sender.SentPayloads.Count);
+    }
+
+    [Fact]
+    public async Task ScopeInvalidationPreventsQueuedSendFromStarting()
+    {
+        using var buffer = new LatestValueReplayBuffer();
+
+        await buffer.StageLatestAsync(
+            "draft-a",
+            "scope-a",
+            new byte[] { 1 },
+            TestContext.Current.CancellationToken);
+        await buffer.StageLatestAsync(
+            "draft-b",
+            "scope-b",
+            new byte[] { 2 },
+            TestContext.Current.CancellationToken);
+
+        var sender = new BlockingClient();
+        var binding = buffer.BindSenderAsync(
+            sender,
+            TestContext.Current.CancellationToken);
+
+        await sender.SendStarted.Task.WaitAsync(
+            TestContext.Current.CancellationToken);
+
+        var firstPayload = Assert.Single(sender.SentPayloads);
+        var scopeStillWaiting = firstPayload[0] == 1 ? "scope-b" : "scope-a";
+        Assert.Equal(1, buffer.InvalidateScope(scopeStillWaiting));
+
+        sender.Release.TrySetResult();
+        await binding;
+
+        Assert.Single(sender.SentPayloads);
+    }
+
+    [Fact]
     public async Task StaleInFlightSendCompletionDoesNotClearNewerBufferedValue()
     {
         using var buffer = new LatestValueReplayBuffer();
