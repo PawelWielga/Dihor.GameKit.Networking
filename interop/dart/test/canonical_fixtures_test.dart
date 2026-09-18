@@ -14,18 +14,19 @@ void main() {
       ];
 
       for (final fixtureName in envelopeFixtures) {
-        final envelope = Dihor.GameKit.NetworkingEnvelope.parse(_fixture(fixtureName));
-        expect(envelope.protocolVersion, partyGameKitProtocolVersion);
+        final envelope =
+            DihorGameKitNetworkingEnvelope.parse(_fixture(fixtureName));
+        expect(envelope.protocolVersion, dihorGameKitNetworkingProtocolVersion);
         expect(envelope.type, isNotEmpty);
         expect(envelope.messageId, isNotEmpty);
       }
     });
 
     test('connect and resume preserve neutral peer identity', () {
-      final connect =
-          Dihor.GameKit.NetworkingEnvelope.parse(_fixture('v2-connect-request.json'));
-      final resume =
-          Dihor.GameKit.NetworkingEnvelope.parse(_fixture('v2-resume-request.json'));
+      final connect = DihorGameKitNetworkingEnvelope.parse(
+          _fixture('v2-connect-request.json'));
+      final resume = DihorGameKitNetworkingEnvelope.parse(
+          _fixture('v2-resume-request.json'));
 
       expect(connect.type, 'connection.connect.request');
       expect(resume.type, 'connection.resume.request');
@@ -37,8 +38,8 @@ void main() {
     });
 
     test('application message payload remains consumer owned and opaque', () {
-      final message =
-          Dihor.GameKit.NetworkingEnvelope.parse(_fixture('v2-application-message.json'));
+      final message = DihorGameKitNetworkingEnvelope.parse(
+          _fixture('v2-application-message.json'));
       expect(message.type, 'application.message');
       expect(message.payload['applicationType'], isNotEmpty);
       expect(message.payload.containsKey('data'), isTrue);
@@ -47,27 +48,29 @@ void main() {
     test('connection descriptor matches canonical JSON and deterministic URI',
         () {
       final canonical = _fixture('v2-connection-descriptor.json');
-      final descriptor = Dihor.GameKit.NetworkingConnectionDescriptor.parseJson(canonical);
+      final descriptor =
+          DihorGameKitNetworkingConnectionDescriptor.parseJson(canonical);
 
       expect(descriptor.protocolVersion, 2);
       expect(descriptor.transport, 'lan-websocket');
-      expect(descriptor.endpoint, 'ws://192.168.1.10:45678/dihor-gamekit-networking');
+      expect(descriptor.endpoint, 'ws://192.168.1.10:45678/partygamekit');
       expect(descriptor.channelId, 'channel-a');
       expect(descriptor.toJsonString(), canonical);
 
       const expectedUri =
-          'dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket'
-          '&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fdihor-gamekit-networking'
+          'partygamekit://connect?protocolVersion=2&transport=lan-websocket'
+          '&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit'
           '&channelId=channel-a';
       expect(descriptor.toUriString(), expectedUri);
-      final fromUri = Dihor.GameKit.NetworkingConnectionDescriptor.parseUri(expectedUri);
+      final fromUri =
+          DihorGameKitNetworkingConnectionDescriptor.parseUri(expectedUri);
       expect(fromUri.toJsonString(), canonical);
     });
 
     test('descriptor parser preserves literal plus as data', () {
-      final descriptor = Dihor.GameKit.NetworkingConnectionDescriptor.parseUri(
-        'dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket'
-        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fdihor-gamekit-networking'
+      final descriptor = DihorGameKitNetworkingConnectionDescriptor.parseUri(
+        'partygamekit://connect?protocolVersion=2&transport=lan-websocket'
+        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fpartygamekit'
         '&channelId=channel%2Ba',
       );
       expect(descriptor.channelId, 'channel+a');
@@ -75,7 +78,7 @@ void main() {
 
     test('discovery announcement carries only technical descriptor metadata',
         () {
-      final announcement = Dihor.GameKit.NetworkingDiscoveryAnnouncement.parse(
+      final announcement = DihorGameKitNetworkingDiscoveryAnnouncement.parse(
         _fixture('v2-discovery-announcement.json'),
       );
 
@@ -85,7 +88,7 @@ void main() {
     });
 
     test('generic sequence gate rejects stale or equal messages', () {
-      final gate = Dihor.GameKit.NetworkingMessageSequenceGate();
+      final gate = DihorGameKitNetworkingMessageSequenceGate();
       expect(gate.tryAccept(42), isTrue);
       expect(gate.tryAccept(42), isFalse);
       expect(gate.tryAccept(41), isFalse);
@@ -100,7 +103,7 @@ void main() {
       );
 
       expect(
-        () => Dihor.GameKit.NetworkingEnvelope.parse(incompatible),
+        () => DihorGameKitNetworkingEnvelope.parse(incompatible),
         throwsA(isA<FormatException>()),
       );
     });

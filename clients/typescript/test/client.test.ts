@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  LocalStorageIdentityStore,
   MemoryIdentityStore,
   PartyGameClient,
   createMessage,
@@ -46,9 +47,41 @@ test("connection descriptor JSON and URI stay canonical across languages", () =>
   const uri = serializeConnectionDescriptorUri(descriptor);
   assert.equal(
     uri,
-    "dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fdihor-gamekit-networking&channelId=channel-a",
+    "partygamekit://connect?protocolVersion=2&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit&channelId=channel-a",
   );
   assert.deepEqual(parseConnectionDescriptorUri(uri), descriptor);
+});
+
+test("default local storage identity keys remain compatible across package rename", () => {
+  const values = new Map<string, string>([
+    ["partygamekit.client.peerId", "legacy-peer"],
+    [
+      "partygamekit.client.resume.lan-websocket%3Achannel%3Alegacy",
+      JSON.stringify({
+        scope: "lan-websocket:channel:legacy",
+        peerId: "legacy-peer",
+        resumeToken: "legacy-resume-token",
+      }),
+    ],
+  ]);
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  };
+
+  const identity = new LocalStorageIdentityStore(storage);
+
+  assert.equal(identity.getPeerId(), "legacy-peer");
+  assert.deepEqual(identity.getResumeCredential("lan-websocket:channel:legacy"), {
+    scope: "lan-websocket:channel:legacy",
+    peerId: "legacy-peer",
+    resumeToken: "legacy-resume-token",
+  });
+
+  identity.setPeerId("next-peer");
+  assert.equal(values.get("partygamekit.client.peerId"), "next-peer");
+  assert.equal(values.has("dihor-gamekit-networking.client.peerId"), false);
 });
 
 test("generic peer connects, exchanges application messages and resumes without product roles", async (t) => {

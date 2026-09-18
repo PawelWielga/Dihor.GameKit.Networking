@@ -11,7 +11,7 @@ public static class LanConnectionDescriptor
         string host,
         int port,
         ChannelId? channelId = null,
-        string path = "/dihor-gamekit-networking",
+        string path = "/partygamekit",
         bool secure = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(host);

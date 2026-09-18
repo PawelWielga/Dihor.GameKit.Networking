@@ -129,7 +129,7 @@ public sealed class LanWebSocketTransportTests
         Assert.Equal(LanConnectionDescriptor.TransportName, descriptor.Transport);
         Assert.Equal(ProtocolVersions.Current, descriptor.ProtocolVersion);
         Assert.Equal(new ChannelId("channel-a"), descriptor.ChannelId);
-        Assert.Equal("ws://192.168.1.10:45678/dihor-gamekit-networking", descriptor.Endpoint);
+        Assert.Equal("ws://192.168.1.10:45678/partygamekit", descriptor.Endpoint);
     }
 
     private static Task<LanWebSocketTransport> StartTransportAsync(CancellationToken cancellationToken) =>

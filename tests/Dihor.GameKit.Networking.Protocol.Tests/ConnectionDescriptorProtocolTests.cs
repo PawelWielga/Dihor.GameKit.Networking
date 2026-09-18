@@ -10,7 +10,7 @@ public sealed class ConnectionDescriptorProtocolTests
     {
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",
-            "ws://192.168.1.10:45678/dihor-gamekit-networking",
+            "ws://192.168.1.10:45678/partygamekit",
             ProtocolVersions.Current,
             new ChannelId("channel-a"));
 
@@ -19,7 +19,7 @@ public sealed class ConnectionDescriptorProtocolTests
 
         Assert.Equal(descriptor, ConnectionDescriptorCodec.ParseJson(json));
         Assert.Equal(descriptor, ConnectionDescriptorCodec.ParseUri(uri));
-        Assert.Contains("dihor-gamekit-networking://connect?", uri, StringComparison.Ordinal);
+        Assert.Contains("partygamekit://connect?", uri, StringComparison.Ordinal);
         Assert.DoesNotContain("joinCode", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("player", json, StringComparison.OrdinalIgnoreCase);
     }
@@ -29,7 +29,7 @@ public sealed class ConnectionDescriptorProtocolTests
     {
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",
-            "ws://127.0.0.1:45678/dihor-gamekit-networking",
+            "ws://127.0.0.1:45678/partygamekit",
             ProtocolVersions.Current);
 
         var json = ConnectionDescriptorCodec.SerializeJson(descriptor);
@@ -44,7 +44,7 @@ public sealed class ConnectionDescriptorProtocolTests
     {
         var descriptor = new ConnectionDescriptor(
             "lan-websocket",
-            "ws://127.0.0.1:45678/dihor-gamekit-networking",
+            "ws://127.0.0.1:45678/partygamekit",
             ProtocolVersions.Current,
             new ChannelId("channel-a"));
         var announcement = new DiscoveryEndpointAnnouncement(descriptor);

@@ -5,9 +5,9 @@ import {
 } from "@microsoft/signalr";
 import type { WebRtcSignal, WebRtcSignalingChannel } from "./webrtc.js";
 
-const peerJoinedMethod = "Dihor.GameKit.Networking.WebRtcPeerJoined";
-const peerLeftMethod = "Dihor.GameKit.Networking.WebRtcPeerLeft";
-const signalMethod = "Dihor.GameKit.Networking.WebRtcSignal";
+const peerJoinedMethod = "PartyGameKit.WebRtcPeerJoined";
+const peerLeftMethod = "PartyGameKit.WebRtcPeerLeft";
+const signalMethod = "PartyGameKit.WebRtcSignal";
 
 export interface SignalRWebRtcSignalingClientOptions {
   endpoint: string;

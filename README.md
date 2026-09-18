@@ -24,6 +24,8 @@ PartyBeam / Państwa Miasta / future multiplayer products
 
 `0.2.0-preview.1` corrected that boundary. `0.2.0-preview.2` added optional backend-assisted SignalR relay connectivity. `0.2.0-preview.3` added browser-native WebRTC DataChannel communication with optional SignalR signaling. `0.2.0-preview.4` added deterministic automatic transport selection/fallback. `0.2.0-preview.5` adds synchronized monotonic timing, RTT/jitter and uncertainty metrics without changing protocol v2 or reintroducing product/session semantics.
 
+Repository/package/API naming changed to `Dihor.GameKit.Networking`, but protocol-v2 wire identifiers remain stable for compatibility. Existing `partygamekit://connect`, `/partygamekit`, `/partygamekit-relay`, `/partygamekit-webrtc-signaling` and `PartyGameKit.WebRtc*` signaling method names are intentionally preserved until an explicit protocol-versioned migration.
+
 Protocol v2 and the base APIs use communication-neutral concepts:
 
 - transient `ConnectionId`;
@@ -182,7 +184,7 @@ import {
 } from "@dihor/gamekit-networking";
 
 const signaling = new SignalRWebRtcSignalingClient({
-  endpoint: "https://example.test/dihor-gamekit-networking-webrtc-signaling",
+  endpoint: "https://example.test/partygamekit-webrtc-signaling",
   channelId: "scope-a",
 });
 
