@@ -53,13 +53,13 @@ void main() {
       expect(descriptor.protocolVersion, 2);
       expect(descriptor.transport, 'lan-websocket');
       expect(descriptor.endpoint,
-          'ws://192.168.1.10:45678/dihor-gamekit-networking');
+          'ws://192.168.1.10:45678/partygamekit');
       expect(descriptor.channelId, 'channel-a');
       expect(descriptor.toJsonString(), canonical);
 
       const expectedUri =
-          'dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket'
-          '&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fdihor-gamekit-networking'
+          'partygamekit://connect?protocolVersion=2&transport=lan-websocket'
+          '&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit'
           '&channelId=channel-a';
       expect(descriptor.toUriString(), expectedUri);
       final fromUri =
@@ -69,8 +69,8 @@ void main() {
 
     test('descriptor parser preserves literal plus as data', () {
       final descriptor = GameKitNetworkingConnectionDescriptor.parseUri(
-        'dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket'
-        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fdihor-gamekit-networking'
+        'partygamekit://connect?protocolVersion=2&transport=lan-websocket'
+        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fpartygamekit'
         '&channelId=channel%2Ba',
       );
       expect(descriptor.channelId, 'channel+a');
