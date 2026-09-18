@@ -1,23 +1,23 @@
 import 'dart:convert';
 
-const gameKitNetworkingProtocolVersion = 2;
+const dihorGameKitNetworkingProtocolVersion = 2;
 
-final class GameKitNetworkingEnvelope {
-  GameKitNetworkingEnvelope(
+final class DihorGameKitNetworkingEnvelope {
+  DihorGameKitNetworkingEnvelope(
       {required this.type,
       required this.protocolVersion,
       required this.messageId,
       required this.payload,
       this.correlationId});
 
-  factory GameKitNetworkingEnvelope.parse(String source) {
+  factory DihorGameKitNetworkingEnvelope.parse(String source) {
     final json = _jsonObject(jsonDecode(source), 'envelope');
     final version = _requiredInt(json, 'protocolVersion');
-    if (version != gameKitNetworkingProtocolVersion) {
+    if (version != dihorGameKitNetworkingProtocolVersion) {
       throw FormatException(
           'Unsupported Dihor.GameKit.Networking protocol version: $version.');
     }
-    return GameKitNetworkingEnvelope(
+    return DihorGameKitNetworkingEnvelope(
       type: _requiredString(json, 'type'),
       protocolVersion: version,
       messageId: _requiredString(json, 'messageId'),
@@ -33,8 +33,8 @@ final class GameKitNetworkingEnvelope {
   final Map<String, Object?> payload;
 }
 
-final class GameKitNetworkingConnectionDescriptor {
-  GameKitNetworkingConnectionDescriptor(
+final class DihorGameKitNetworkingConnectionDescriptor {
+  DihorGameKitNetworkingConnectionDescriptor(
       {required int protocolVersion,
       required String transport,
       required String endpoint,
@@ -47,20 +47,20 @@ final class GameKitNetworkingConnectionDescriptor {
       throw const FormatException('protocolVersion must be positive.');
   }
 
-  factory GameKitNetworkingConnectionDescriptor.parseJson(String source) =>
-      GameKitNetworkingConnectionDescriptor.fromJsonObject(
+  factory DihorGameKitNetworkingConnectionDescriptor.parseJson(String source) =>
+      DihorGameKitNetworkingConnectionDescriptor.fromJsonObject(
           _jsonObject(jsonDecode(source), 'connection descriptor'));
 
-  factory GameKitNetworkingConnectionDescriptor.fromJsonObject(
+  factory DihorGameKitNetworkingConnectionDescriptor.fromJsonObject(
           Map<String, Object?> json) =>
-      GameKitNetworkingConnectionDescriptor(
+      DihorGameKitNetworkingConnectionDescriptor(
         protocolVersion: _requiredInt(json, 'protocolVersion'),
         transport: _requiredString(json, 'transport'),
         endpoint: _requiredString(json, 'endpoint'),
         channelId: _optionalString(json, 'channelId'),
       );
 
-  factory GameKitNetworkingConnectionDescriptor.parseUri(String source) {
+  factory DihorGameKitNetworkingConnectionDescriptor.parseUri(String source) {
     final uri = Uri.tryParse(source.trim());
     if (uri == null || uri.scheme != 'partygamekit' || uri.host != 'connect') {
       throw const FormatException(
@@ -78,7 +78,7 @@ final class GameKitNetworkingConnectionDescriptor {
     if (version == null)
       throw const FormatException(
           'Connection URI protocolVersion must be an integer.');
-    return GameKitNetworkingConnectionDescriptor(
+    return DihorGameKitNetworkingConnectionDescriptor(
       protocolVersion: version,
       transport: required('transport'),
       endpoint: required('endpoint'),
@@ -109,30 +109,30 @@ final class GameKitNetworkingConnectionDescriptor {
   }
 }
 
-final class GameKitNetworkingDiscoveryAnnouncement {
-  GameKitNetworkingDiscoveryAnnouncement(this.descriptor);
+final class DihorGameKitNetworkingDiscoveryAnnouncement {
+  DihorGameKitNetworkingDiscoveryAnnouncement(this.descriptor);
 
-  factory GameKitNetworkingDiscoveryAnnouncement.parse(String source) {
+  factory DihorGameKitNetworkingDiscoveryAnnouncement.parse(String source) {
     final json = _jsonObject(jsonDecode(source), 'discovery announcement');
     if (_requiredString(json, 'type') != 'connection.discovery.announce') {
       throw const FormatException('Invalid discovery announcement type.');
     }
     final version = _requiredInt(json, 'protocolVersion');
-    if (version != gameKitNetworkingProtocolVersion)
+    if (version != dihorGameKitNetworkingProtocolVersion)
       throw FormatException(
           'Unsupported Dihor.GameKit.Networking protocol version: $version.');
-    final descriptor = GameKitNetworkingConnectionDescriptor.fromJsonObject(
+    final descriptor = DihorGameKitNetworkingConnectionDescriptor.fromJsonObject(
         _jsonObject(json['descriptor'], 'descriptor'));
     if (descriptor.protocolVersion != version)
       throw const FormatException(
           'Discovery and descriptor protocol versions must match.');
-    return GameKitNetworkingDiscoveryAnnouncement(descriptor);
+    return DihorGameKitNetworkingDiscoveryAnnouncement(descriptor);
   }
 
-  final GameKitNetworkingConnectionDescriptor descriptor;
+  final DihorGameKitNetworkingConnectionDescriptor descriptor;
 }
 
-final class GameKitNetworkingMessageSequenceGate {
+final class DihorGameKitNetworkingMessageSequenceGate {
   int _lastAcceptedSequence = 0;
   int get lastAcceptedSequence => _lastAcceptedSequence;
 
