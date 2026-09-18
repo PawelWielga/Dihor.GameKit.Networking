@@ -1,9 +1,9 @@
 {
-  "version": "0.2.0-preview.6",
-  "tag": "v0.2.0-preview.6",
+  "version": "0.2.0-preview.7",
+  "tag": "v0.2.0-preview.7",
   "protocolVersion": 2,
   "license": "MIT",
-  "nugetFeedAsset": "dihor-gamekit-networking-nuget-feed-0.2.0-preview.6.zip",
+  "nugetFeedAsset": "dihor-gamekit-networking-nuget-feed-0.2.0-preview.7.zip",
   "nugetPackages": [
     "Dihor.GameKit.Networking.Core",
     "Dihor.GameKit.Networking.Protocol",

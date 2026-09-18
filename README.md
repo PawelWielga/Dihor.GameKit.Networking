@@ -22,7 +22,7 @@ PartyBeam / Państwa Miasta / future multiplayer products
 
 `0.1.0-preview.1` proved the LAN transport, discovery and reconnect approach, but also exposed product concepts such as players, client roles, room sessions, authority and public/private game-state projections.
 
-`0.2.0-preview.1` corrected that boundary. `0.2.0-preview.2` added optional backend-assisted SignalR relay connectivity. `0.2.0-preview.3` added browser-native WebRTC DataChannel communication with optional SignalR signaling. `0.2.0-preview.4` added deterministic automatic transport selection/fallback. `0.2.0-preview.5` adds synchronized monotonic timing, RTT/jitter and uncertainty metrics without changing protocol v2 or reintroducing product/session semantics.
+`0.2.0-preview.1` corrected that boundary. `0.2.0-preview.2` added optional backend-assisted SignalR relay connectivity. `0.2.0-preview.3` added browser-native WebRTC DataChannel communication with optional SignalR signaling. `0.2.0-preview.4` added deterministic automatic transport selection/fallback. `0.2.0-preview.5` added synchronized monotonic timing, RTT/jitter and uncertainty metrics. `0.2.0-preview.6` added Android-compatible LAN client/host packaging. `0.2.0-preview.7` renames the library and package identities to Dihor.GameKit.Networking while intentionally preserving protocol-v2 wire compatibility.
 
 Protocol v2 and the base APIs use communication-neutral concepts:
 

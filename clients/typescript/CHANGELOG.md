@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - Dihor.GameKit.Networking rename
+## 0.2.0-preview.7 - 2026-09-18
 
 - Renames the browser package to `@dihor/gamekit-networking`.
 - Keeps protocol-v2 connection URI and signaling wire identifiers stable for compatibility with existing peers.

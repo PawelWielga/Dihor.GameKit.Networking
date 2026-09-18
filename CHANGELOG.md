@@ -2,7 +2,7 @@
 
 All notable Dihor.GameKit.Networking changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
-## Unreleased - Dihor.GameKit.Networking rename
+## 0.2.0-preview.7 - 2026-09-18
 
 - Renames the repository, .NET package/project identities and namespaces to `Dihor.GameKit.Networking.*`.
 - Renames the browser package to `@dihor/gamekit-networking` and the Dart package to `dihor_gamekit_networking_protocol`.

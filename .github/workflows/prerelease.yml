@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Prerelease tag, for example v0.2.0-preview.6
+        description: Prerelease tag, for example v0.2.0-preview.7
         required: true
-        default: v0.2.0-preview.6
+        default: v0.2.0-preview.7
 
 permissions:
   contents: write

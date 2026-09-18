@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - Dihor.GameKit.Networking rename
+## 0.2.0-preview.7 - 2026-09-18
 
 - Renames the Dart package to `dihor_gamekit_networking_protocol`.
 - Keeps protocol-v2 connection URI wire identifiers stable for compatibility with existing peers.

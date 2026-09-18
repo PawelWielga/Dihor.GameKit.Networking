@@ -1,5 +1,5 @@
 name: dihor_gamekit_networking_protocol
-version: 0.2.0-preview.6
+version: 0.2.0-preview.7
 description: Dihor.GameKit.Networking communication protocol v2, connection descriptors and LAN discovery interoperability for Dart.
 publish_to: none
 repository: https://github.com/PawelWielga/Dihor.GameKit.Networking
