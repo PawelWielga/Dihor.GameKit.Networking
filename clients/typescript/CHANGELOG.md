@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased - Dihor.GameKit.Networking rename
+
+- Renames the browser package to `@dihor/gamekit-networking`.
+- Keeps protocol-v2 connection URI and signaling wire identifiers stable for compatibility with existing peers.
+
 ## 0.2.0-preview.5 - 2026-09-15
 
 - Adds `MonotonicTimingSynchronizer` for bounded peer/reference monotonic clock-offset estimation.
@@ -25,7 +30,7 @@
 
 - Adds browser-native `WebRtcPeer` using `RTCPeerConnection` and `RTCDataChannel`.
 - Adds explicit `reliable` ordered and `low-latency` unordered/no-retransmit profiles.
-- Adds bounded DataChannel buffering/backpressure with explicit reject/drop behavior instead of an unbounded Dihor.GameKit.Networking queue.
+- Adds bounded DataChannel buffering/backpressure with explicit reject/drop behavior instead of an unbounded PartyGameKit queue.
 - Bounds ICE candidates received before the remote description is available.
 - Adds communication diagnostics for buffered bytes, dropped-message count, candidate-pair RTT and RTT variation.
 - Adds neutral `WebRtcSignalingChannel` plus optional `SignalRWebRtcSignalingClient` for SDP/ICE routing only.
@@ -36,23 +41,23 @@
 
 ## 0.2.0-preview.2 - 2026-09-13
 
-- Aligns the browser package version with the Dihor.GameKit.Networking preview.2 release line.
+- Aligns the browser package version with the PartyGameKit preview.2 release line.
 - Keeps protocol v2 and the preview.1 browser API unchanged.
 - The SignalR relay transport is provided by the .NET transport packages; this release does not claim a browser SignalR relay transport implementation.
 
 ## 0.2.0-preview.1 - 2026-09-13
 
-- Moves the browser SDK to Dihor.GameKit.Networking protocol v2.
+- Moves the browser SDK to PartyGameKit protocol v2.
 - Replaces player/shared-screen roles with neutral peer identity.
 - Replaces join/rejoin vocabulary with connect/resume.
-- Replaces room/join descriptors with technical `ConnectionDescriptor` JSON and `dihor-gamekit-networking://connect` URI forms.
+- Replaces room/join descriptors with technical `ConnectionDescriptor` JSON and `partygamekit://connect` URI forms.
 - Replaces public/private game snapshot handling with opaque consumer-owned `application.message` delivery.
 - Keeps heartbeat, reconnect and local identity persistence as communication concerns.
 - Removes the v0.1 snapshot projection helper from the base SDK.
 
 ## 0.1.0-preview.1 - 2026-09-12
 
-- Dihor.GameKit.Networking protocol-v1 browser models and validation.
+- PartyGameKit protocol-v1 browser models and validation.
 - LAN WebSocket join/rejoin/leave flow.
 - Stable player identity and reconnect credential persistence.
 - Heartbeat and automatic reconnect.
