@@ -26,7 +26,7 @@ public sealed class SignalRRelayLimitIntegrationTests
         {
             options.MaximumReceiveMessageSize = 12_345;
         });
-        services.AddDihor.GameKit.NetworkingSignalRRelay(options =>
+        services.AddGameKitNetworkingSignalRRelay(options =>
         {
             options.MaxMessageBytes = 1024;
         });
@@ -85,7 +85,7 @@ public sealed class SignalRRelayLimitIntegrationTests
     }
 
     private static string CreateConnectHandshake() =>
-        ProtocolJson.Serialize(Dihor.GameKit.NetworkingMessages.Create(
+        ProtocolJson.Serialize(GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
             "limit-connect",
             new ConnectRequestPayload(new PeerId("limit-peer"))));
@@ -126,10 +126,10 @@ public sealed class SignalRRelayLimitIntegrationTests
             });
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
-            builder.Services.AddDihor.GameKit.NetworkingSignalRRelay();
+            builder.Services.AddGameKitNetworkingSignalRRelay();
 
             var application = builder.Build();
-            application.MapDihor.GameKit.NetworkingSignalRRelay();
+            application.MapGameKitNetworkingSignalRRelay();
             await application.StartAsync(cancellationToken);
 
             var server = application.Services.GetRequiredService<IServer>();
