@@ -224,6 +224,7 @@ public sealed class LatestValueReplayBuffer : IDisposable
         }
 
         CancelBinding(binding);
+        GC.SuppressFinalize(this);
     }
 
     private Task GetOrStartFlush(string key, Binding binding)
