@@ -154,7 +154,9 @@ export class LatestValueReplayBuffer<TMessage> {
       if (current === undefined) return;
 
       if (current.version === buffered.version) {
-        this.latest.delete(key);
+        // A locally completed send is not a receiver acknowledgement. Keep the
+        // latest value staged so a replacement connection can replay the same
+        // message (and therefore the same protocol messageId).
         return;
       }
 
