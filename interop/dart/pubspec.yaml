@@ -1,8 +1,8 @@
-name: partygamekit_protocol
+name: dihor_gamekit_networking_protocol
 version: 0.2.0-preview.6
-description: PartyGameKit communication protocol v2, connection descriptors and LAN discovery interoperability for Dart.
+description: Dihor.GameKit.Networking communication protocol v2, connection descriptors and LAN discovery interoperability for Dart.
 publish_to: none
-repository: https://github.com/PawelWielga/PartyGameKit
+repository: https://github.com/PawelWielga/Dihor.GameKit.Networking
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

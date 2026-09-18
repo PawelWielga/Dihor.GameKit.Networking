@@ -1,6 +1,6 @@
-# partygamekit_protocol
+# dihor_gamekit_networking_protocol
 
-`partygamekit_protocol` is the small Dart implementation of PartyGameKit's language-neutral protocol v2 boundary.
+`dihor_gamekit_networking_protocol` is the small Dart implementation of Dihor.GameKit.Networking's language-neutral protocol v2 boundary.
 
 It exists for Flutter/Dart consumers that need wire compatibility without importing a duplicate game/session runtime. It deliberately models communication primitives only.
 
@@ -11,7 +11,7 @@ It covers:
 - connect/resume and resume-token fields;
 - opaque `application.message` payloads;
 - generic message sequence gating;
-- portable `ConnectionDescriptor` JSON and `partygamekit://connect` URI forms;
+- portable `ConnectionDescriptor` JSON and `dihor-gamekit-networking://connect` URI forms;
 - LAN discovery announcement parsing.
 
 It deliberately does **not** contain a Dart transport, Flutter UI, player model, party/session engine or game state.
@@ -22,9 +22,9 @@ The `0.2.0-preview.1` package remains `publish_to: none`. After the matching Git
 
 ```yaml
 dependencies:
-  partygamekit_protocol:
+  dihor_gamekit_networking_protocol:
     git:
-      url: https://github.com/PawelWielga/PartyGameKit.git
+      url: https://github.com/PawelWielga/Dihor.GameKit.Networking.git
       ref: v0.2.0-preview.1
       path: interop/dart
 ```
@@ -42,4 +42,4 @@ dart analyze
 dart test
 ```
 
-Państwa Miasta remains free to keep its own player identity, host-authoritative game model and game snapshots above these primitives. PartyGameKit does not require those concepts to move into this package.
+Państwa Miasta remains free to keep its own player identity, host-authoritative game model and game snapshots above these primitives. Dihor.GameKit.Networking does not require those concepts to move into this package.
