@@ -11,6 +11,6 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/PartyGameKit.Core/PartyGameKit.Core.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Core/Dihor.GameKit.Networking.Core.csproj" />
   </ItemGroup>
 </Project>

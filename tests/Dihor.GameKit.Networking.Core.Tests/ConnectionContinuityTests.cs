@@ -1,6 +1,6 @@
-using PartyGameKit.Core;
+using Dihor.GameKit.Networking.Core;
 
-namespace PartyGameKit.Core.Tests;
+namespace Dihor.GameKit.Networking.Core.Tests;
 
 public sealed class ConnectionContinuityTests
 {
