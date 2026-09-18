@@ -62,7 +62,9 @@ final class GameKitNetworkingConnectionDescriptor {
 
   factory GameKitNetworkingConnectionDescriptor.parseUri(String source) {
     final uri = Uri.tryParse(source.trim());
-    if (uri == null || uri.scheme != 'dihor-gamekit-networking' || uri.host != 'connect') {
+    if (uri == null ||
+        uri.scheme != 'dihor-gamekit-networking' ||
+        uri.host != 'connect') {
       throw const FormatException(
           'Invalid Dihor.GameKit.Networking connection URI.');
     }
