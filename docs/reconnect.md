@@ -2,7 +2,7 @@
 
 ## Boundary
 
-Reconnect remains a PartyGameKit responsibility only as **communication continuity**. Product/player/game recovery policy belongs to consumers.
+Reconnect remains a Dihor.GameKit.Networking responsibility only as **communication continuity**. Product/player/game recovery policy belongs to consumers.
 
 See [Communication boundary](communication-boundary.md).
 
@@ -15,7 +15,7 @@ PeerId       = optional stable logical communication identity
 
 A reconnect credential/token proves that a replacement connection may resume the same `PeerId`.
 
-PartyGameKit may:
+Dihor.GameKit.Networking may:
 
 - record last-seen/heartbeat timestamps;
 - report connection/peer timeout;
@@ -25,7 +25,7 @@ PartyGameKit may:
 - avoid duplicate logical peers on successful resume;
 - expose deterministic resume failure reasons.
 
-PartyGameKit must not:
+Dihor.GameKit.Networking must not:
 
 - decide that the peer is a player;
 - decide that disconnect means player leave;
@@ -53,9 +53,9 @@ A neutral resume flow is:
 
 1. client reconnects over a replacement transport connection;
 2. client presents stable `PeerId` plus resume credential;
-3. PartyGameKit validates the credential and reconnect window;
+3. Dihor.GameKit.Networking validates the credential and reconnect window;
 4. old connection binding is replaced by the new `ConnectionId`;
-5. PartyGameKit reports resumed communication;
+5. Dihor.GameKit.Networking reports resumed communication;
 6. consumer decides whether/how to restore application state.
 
 Application state restoration may be implemented by the consumer sending its latest snapshot/state as an ordinary opaque message after resume.

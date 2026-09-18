@@ -1,12 +1,12 @@
 # WebRTC DataChannel transport
 
-Issue `[19]` adds a low-latency peer-to-peer communication path for browser-based PartyGameKit consumers while preserving the communication-only boundary established in `[15]`–`[18]`.
+Issue `[19]` adds a low-latency peer-to-peer communication path for browser-based Dihor.GameKit.Networking consumers while preserving the communication-only boundary established in `[15]`–`[18]`.
 
 ## Decision
 
-The first production WebRTC implementation uses the browser's native `RTCPeerConnection` and `RTCDataChannel` APIs in `@partygamekit/client`.
+The first production WebRTC implementation uses the browser's native `RTCPeerConnection` and `RTCDataChannel` APIs in `@dihor/gamekit-networking`.
 
-Signaling is a separate infrastructure concern. PartyGameKit exposes a small neutral signaling abstraction and an optional SignalR-backed implementation. SignalR carries only WebRTC negotiation data (SDP/ICE and transient routing metadata); application payloads move directly over the negotiated DataChannel.
+Signaling is a separate infrastructure concern. Dihor.GameKit.Networking exposes a small neutral signaling abstraction and an optional SignalR-backed implementation. SignalR carries only WebRTC negotiation data (SDP/ICE and transient routing metadata); application payloads move directly over the negotiated DataChannel.
 
 ```text
 browser peer A                         browser peer B
@@ -23,17 +23,17 @@ The backend must not become a data relay for the normal WebRTC path. If direct W
 
 ## Why browser-native WebRTC
 
-PartyBeam's TV and phone clients are browser/PWA consumers, so native browser WebRTC covers the primary low-latency path without adding a native runtime dependency to PartyGameKit.
+PartyBeam's TV and phone clients are browser/PWA consumers, so native browser WebRTC covers the primary low-latency path without adding a native runtime dependency to Dihor.GameKit.Networking.
 
 This also avoids forcing a desktop/server WebRTC implementation into the .NET package line when the .NET side is not required to be a DataChannel endpoint for the primary PartyBeam topology.
 
 ## Dependency/license review
 
-PartyGameKit dependencies must permit free commercial use and must not require a paid commercial license, runtime royalty, subscription, per-seat fee or similar commercial-use payment. Prefer standard permissive open-source licenses such as MIT, Apache-2.0 and BSD.
+Dihor.GameKit.Networking dependencies must permit free commercial use and must not require a paid commercial license, runtime royalty, subscription, per-seat fee or similar commercial-use payment. Prefer standard permissive open-source licenses such as MIT, Apache-2.0 and BSD.
 
 For `[19]` the following options were reviewed on 2026-09-13:
 
-- **SIPSorcery 10.0.16** — technically capable and actively maintained, but the current package uses a non-standard license containing additional geographic/use restrictions. It is not accepted for PartyGameKit.
+- **SIPSorcery 10.0.16** — technically capable and actively maintained, but the current package uses a non-standard license containing additional geographic/use restrictions. It is not accepted for Dihor.GameKit.Networking.
 - **Microsoft.MixedReality-WebRTC 2.0.2** — MIT, but deprecated/archived since 2022 and distributed with old platform-specific native binaries. It is not accepted as the new foundation.
 - **WebRTCme 2.0.0** — MIT wrapper, but its desktop path depends on SIPSorcery and therefore does not remove the licensing concern.
 - **Pion WebRTC** — active and MIT, but Go-based. Introducing a helper process/native bridge only to connect browser peers would add deployment complexity without improving the primary PartyBeam path. It remains a possible future non-browser adapter, not a dependency for the initial implementation.
@@ -89,7 +89,7 @@ ordered = false
 maxRetransmits = 0
 ```
 
-Consumers choose which messages belong on which profile. PartyGameKit does not decide that controller input, snapshots or any other product concept belongs on a specific channel.
+Consumers choose which messages belong on which profile. Dihor.GameKit.Networking does not decide that controller input, snapshots or any other product concept belongs on a specific channel.
 
 ## Buffering and backpressure
 
@@ -99,7 +99,7 @@ The browser adapter therefore:
 
 1. applies a configurable maximum `RTCDataChannel.bufferedAmount` threshold before each send;
 2. rejects or drops a new send according to an explicit overflow policy when the threshold would be exceeded;
-3. never grows an unbounded pending application-message array inside PartyGameKit;
+3. never grows an unbounded pending application-message array inside Dihor.GameKit.Networking;
 4. bounds ICE candidates received before a remote description is available;
 5. exposes buffered amount / drop counters for diagnostics.
 
@@ -124,7 +124,7 @@ A newly joined signaling peer may send an offer before the existing peer has fin
 
 `SignalRWebRtcSignalingClient` therefore temporarily buffers early signals per remote transient connection. That buffer is bounded by `maxPendingSignalsPerPeer` (default `64`).
 
-If the bound is exceeded, PartyGameKit discards that incomplete negotiation buffer and the later channel subscription fails deterministically instead of silently losing an arbitrary subset or growing memory without limit.
+If the bound is exceeded, Dihor.GameKit.Networking discards that incomplete negotiation buffer and the later channel subscription fails deterministically instead of silently losing an arbitrary subset or growing memory without limit.
 
 When a handler subscribes normally, buffered signals are replayed in arrival order. Peer-leave and client disposal clear the associated pending state.
 
@@ -184,7 +184,7 @@ Interpretation:
 - `inter-sample variation` is a simple jitter indicator over those observations;
 - `sampleDiagnostics()` separately exposes browser WebRTC candidate-pair RTT when the browser provides it.
 
-For a home-LAN manual check with two real devices, a consuming test page may instantiate the same `WebRtcPeer` APIs on each device using the SignalR signaling endpoint. The diagnostic values should be recorded from both peers; PartyGameKit intentionally does not impose a pass/fail latency threshold because device/browser/Wi-Fi conditions are environment-dependent.
+For a home-LAN manual check with two real devices, a consuming test page may instantiate the same `WebRtcPeer` APIs on each device using the SignalR signaling endpoint. The diagnostic values should be recorded from both peers; Dihor.GameKit.Networking intentionally does not impose a pass/fail latency threshold because device/browser/Wi-Fi conditions are environment-dependent.
 
 The acceptance requirement is that application payloads use the direct DataChannel and do not require the backend to process every 30–60 Hz message.
 

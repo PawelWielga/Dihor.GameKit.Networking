@@ -1,16 +1,16 @@
 # Package boundaries
 
-PartyGameKit `0.2.0-preview.5` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
+Dihor.GameKit.Networking `0.2.0-preview.5` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
 
 The authoritative ownership decision is [Communication boundary](communication-boundary.md).
 
 ## Package rule
 
-A PartyGameKit package may depend on communication concepts. It must not require consumers to adopt players, hosts, shared screens, game sessions, authority policy, scoring or game-state projections.
+A Dihor.GameKit.Networking package may depend on communication concepts. It must not require consumers to adopt players, hosts, shared screens, game sessions, authority policy, scoring or game-state projections.
 
 ## Current .NET packages
 
-### `PartyGameKit.Core`
+### `Dihor.GameKit.Networking.Core`
 
 Contains small communication-neutral primitives:
 
@@ -26,7 +26,7 @@ The timing API reports communication evidence only. It does not choose reaction 
 
 It does not contain player membership, room lifecycle, product roles, authority policy or game snapshots.
 
-### `PartyGameKit.Protocol`
+### `Dihor.GameKit.Networking.Protocol`
 
 Owns the language-neutral protocol-v2 communication contract:
 
@@ -39,7 +39,7 @@ Owns the language-neutral protocol-v2 communication contract:
 
 Synchronized timing does not add a protocol-v2 control message. Probe/reply data remains caller/adapter-owned payload data.
 
-### `PartyGameKit.Transport.Abstractions`
+### `Dihor.GameKit.Networking.Transport.Abstractions`
 
 Owns technology-neutral host/client communication contracts and orchestration:
 
@@ -57,17 +57,17 @@ Owns technology-neutral host/client communication contracts and orchestration:
 
 The selector works on registered communication candidates only. It does not own product roles, sessions, game state or application-failure policy.
 
-### `PartyGameKit.Transport.InMemory`
+### `Dihor.GameKit.Networking.Transport.InMemory`
 
 Deterministic transport for tests, package consumers and applications that need an in-process implementation of the same message contract.
 
-### `PartyGameKit.Transport.Lan`
+### `Dihor.GameKit.Networking.Transport.Lan`
 
 Direct LAN WebSocket communication using the same neutral protocol/transport boundary. It validates connect/resume admission but does not own product/player admission or game-session rules.
 
 `LanWebSocketClient` implements `IMessageTransportClient`, so it can be registered as an automatic-connectivity candidate without hiding its concrete LAN API from callers that intentionally force LAN.
 
-### `PartyGameKit.Transport.SignalR`
+### `Dihor.GameKit.Networking.Transport.SignalR`
 
 Optional backend-assisted connectivity over SignalR.
 
@@ -81,26 +81,26 @@ It provides:
 
 The client package depends on the SignalR client stack but does not require an ASP.NET Core server reference.
 
-### `PartyGameKit.Transport.SignalR.Server`
+### `Dihor.GameKit.Networking.Transport.SignalR.Server`
 
 Minimal ASP.NET Core communication hosting support.
 
 The public setup surface includes:
 
-- `AddPartyGameKitSignalRRelay(...)` / `MapPartyGameKitSignalRRelay(...)` for opaque application-data relay;
-- `AddPartyGameKitWebRtcSignaling(...)` / `MapPartyGameKitWebRtcSignaling(...)` for SDP/ICE signaling only.
+- `AddGameKitNetworkingSignalRRelay(...)` / `MapGameKitNetworkingSignalRRelay(...)` for opaque application-data relay;
+- `AddGameKitNetworkingWebRtcSignaling(...)` / `MapGameKitNetworkingWebRtcSignaling(...)` for SDP/ICE signaling only.
 
 The hubs and registries remain implementation details. Relay routing uses technical `ChannelId` and transient `ConnectionId`; WebRTC signaling uses technical `ChannelId` plus transient SignalR connection IDs. Neither endpoint models players, parties, lobbies, authority or game state.
 
 See [SignalR relay](signalr-relay.md), [WebRTC DataChannel](webrtc-datachannel.md), [Automatic connectivity](automatic-connectivity.md) and [Synchronized monotonic timing](monotonic-timing.md).
 
-### `PartyGameKit.Discovery.Lan`
+### `Dihor.GameKit.Networking.Discovery.Lan`
 
 Optional UDP discovery for technical `ConnectionDescriptor` endpoints. Discovery is convenience infrastructure only; a valid descriptor can always be supplied directly.
 
 ## Browser package
 
-### `@partygamekit/client`
+### `@dihor/gamekit-networking`
 
 The `0.2.0-preview.5` browser client exposes protocol-v2 WebSocket, native WebRTC, generic transport-selection and monotonic-timing capabilities.
 
@@ -152,9 +152,9 @@ The npm runtime dependency added for `[19]` is MIT-licensed `@microsoft/signalr`
 
 ## Dart package
 
-### `partygamekit_protocol`
+### `dihor_gamekit_networking_protocol`
 
-The Dart package is a thin implementation of the PartyGameKit v2 protocol and connection-descriptor contract.
+The Dart package is a thin implementation of the Dihor.GameKit.Networking v2 protocol and connection-descriptor contract.
 
 `0.2.0-preview.5` keeps the same protocol-v2 wire contract. It deliberately does not claim a Dart LAN, SignalR, WebRTC, automatic transport or synchronized timing runtime and does not contain a game/session engine. Państwa Miasta keeps its player model, host-authoritative game engine, snapshots and lifecycle policy above the adapter boundary.
 
@@ -177,7 +177,7 @@ WebRTC is validated separately in the browser package through unit tests and a r
               application/game protocol
                          │
                          ▼
-                  PartyGameKit 0.2
+                  Dihor.GameKit.Networking 0.2
         ┌────────────────┼────────────────────────────┐
         ▼                ▼                            ▼
       Core            Protocol               Transport/browser APIs
@@ -202,7 +202,7 @@ The combined gate verifies:
 - opaque `application.message` exchange;
 - neutral connection events;
 - stable `PeerId` resume on a replacement `ConnectionId`;
-- package-only monotonic timing offset/normalization through `PartyGameKit.Core`;
+- package-only monotonic timing offset/normalization through `Dihor.GameKit.Networking.Core`;
 - SignalR client/server package availability from the generated NuGet feed;
 - bounded/deterministic automatic transport selection and cancellation cleanup;
 - neutral Auto sample behavior;

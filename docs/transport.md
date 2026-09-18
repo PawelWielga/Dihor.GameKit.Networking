@@ -1,6 +1,6 @@
 # Transport abstraction
 
-PartyGameKit transports move opaque bytes between current connections. They do not own player identity, game rules or reconnect semantics.
+Dihor.GameKit.Networking transports move opaque bytes between current connections. They do not own player identity, game rules or reconnect semantics.
 
 ## Boundary
 
@@ -57,7 +57,7 @@ Concrete adapters may log native exceptions internally, but socket/SignalR/WebRT
 
 ## In-memory reference transport
 
-`PartyGameKit.Transport.InMemory` is a deterministic reference implementation and test harness. It provides peers that can:
+`Dihor.GameKit.Networking.Transport.InMemory` is a deterministic reference implementation and test harness. It provides peers that can:
 
 - open/close a connection;
 - inject bytes into the transport event stream;
