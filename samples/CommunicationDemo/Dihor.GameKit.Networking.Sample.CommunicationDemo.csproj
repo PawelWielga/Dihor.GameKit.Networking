@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Core/Dihor.GameKit.Networking.Core.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Protocol/Dihor.GameKit.Networking.Protocol.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Transport.Abstractions/Dihor.GameKit.Networking.Transport.Abstractions.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Transport.Lan/Dihor.GameKit.Networking.Transport.Lan.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Transport.SignalR/Dihor.GameKit.Networking.Transport.SignalR.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Transport.SignalR.Server/Dihor.GameKit.Networking.Transport.SignalR.Server.csproj" />
+    <ProjectReference Include="../../src/Dihor.GameKit.Networking.Discovery.Lan/Dihor.GameKit.Networking.Discovery.Lan.csproj" />
+  </ItemGroup>
+</Project>

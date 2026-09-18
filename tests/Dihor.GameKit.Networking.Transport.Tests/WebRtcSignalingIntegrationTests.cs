@@ -7,15 +7,15 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PartyGameKit.Transport.SignalR.Server;
+using Dihor.GameKit.Networking.Transport.SignalR.Server;
 
-namespace PartyGameKit.Transport.Tests;
+namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class WebRtcSignalingIntegrationTests
 {
-    private const string PeerJoinedMethod = "PartyGameKit.WebRtcPeerJoined";
-    private const string PeerLeftMethod = "PartyGameKit.WebRtcPeerLeft";
-    private const string SignalMethod = "PartyGameKit.WebRtcSignal";
+    private const string PeerJoinedMethod = "Dihor.GameKit.Networking.WebRtcPeerJoined";
+    private const string PeerLeftMethod = "Dihor.GameKit.Networking.WebRtcPeerLeft";
+    private const string SignalMethod = "Dihor.GameKit.Networking.WebRtcSignal";
 
     [Fact]
     public async Task SignalingRoutesOnlyWithinTechnicalChannel()
@@ -85,7 +85,7 @@ public sealed class WebRtcSignalingIntegrationTests
     }
 
     [Fact]
-    public async Task SignalingPayloadLimitIsEnforcedByPartyGameKitHubOnly()
+    public async Task SignalingPayloadLimitIsEnforcedByDihorGameKitNetworkingHubOnly()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var server = await SignalingTestServer.StartAsync(
@@ -138,13 +138,13 @@ public sealed class WebRtcSignalingIntegrationTests
             });
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
-            builder.Services.AddPartyGameKitWebRtcSignaling(options =>
+            builder.Services.AddDihorGameKitNetworkingWebRtcSignaling(options =>
             {
                 options.MaxSignalBytes = maxSignalBytes;
             });
 
             var application = builder.Build();
-            application.MapPartyGameKitWebRtcSignaling();
+            application.MapDihorGameKitNetworkingWebRtcSignaling();
             await application.StartAsync(cancellationToken);
 
             var server = application.Services.GetRequiredService<IServer>();
@@ -161,7 +161,7 @@ public sealed class WebRtcSignalingIntegrationTests
 
             return new SignalingTestServer(
                 application,
-                new Uri(baseUri, "/partygamekit-webrtc-signaling"));
+                new Uri(baseUri, "/dihor-gamekit-networking-webrtc-signaling"));
         }
 
         public async ValueTask DisposeAsync()

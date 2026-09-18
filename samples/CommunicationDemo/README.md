@@ -1,6 +1,6 @@
 # Neutral Communication Demo
 
-`CommunicationDemo` is the reference sample for PartyGameKit's corrected communication-only boundary.
+`CommunicationDemo` is the reference sample for Dihor.GameKit.Networking's corrected communication-only boundary.
 
 It deliberately has no `Player`, `Host`, `TV`, lobby, authority, score or game-state model. Two generic peers run the same protocol-v2/application-message scenario over direct LAN WebSocket and backend-assisted SignalR relay transports.
 
@@ -21,23 +21,23 @@ The executable verifies, end to end:
 Run both real transport scenarios from the repository root:
 
 ```bash
-dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj
+dotnet run --project samples/CommunicationDemo/Dihor.GameKit.Networking.Sample.CommunicationDemo.csproj
 ```
 
 Run only LAN:
 
 ```bash
-dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj -- lan
+dotnet run --project samples/CommunicationDemo/Dihor.GameKit.Networking.Sample.CommunicationDemo.csproj -- lan
 ```
 
 Run only SignalR:
 
 ```bash
-dotnet run --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj -- signalr
+dotnet run --project samples/CommunicationDemo/Dihor.GameKit.Networking.Sample.CommunicationDemo.csproj -- signalr
 ```
 
 The demo binds only to loopback and uses ephemeral ports, so it is deterministic enough to run in CI while still exercising real Kestrel/WebSocket, UDP discovery and SignalR implementations.
 
 The relay instance used by the sample is deliberately local and ephemeral. Production deployment, TLS and authentication/authorization requirements are described in `docs/signalr-relay.md`.
 
-Product semantics belong above this sample. PartyBeam may map peers to a TV, pilot or controller; Państwa Miasta may map them to its own players and authoritative game state. PartyGameKit itself does not make those decisions.
+Product semantics belong above this sample. PartyBeam may map peers to a TV, pilot or controller; Państwa Miasta may map them to its own players and authoritative game state. Dihor.GameKit.Networking itself does not make those decisions.

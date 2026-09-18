@@ -1,6 +1,6 @@
-using PartyGameKit.Transport.Lan;
+using Dihor.GameKit.Networking.Transport.Lan;
 
-namespace PartyGameKit.Packaging.AndroidClient;
+namespace Dihor.GameKit.Networking.Packaging.AndroidClient;
 
 public static class AndroidLanClientPackageProbe
 {

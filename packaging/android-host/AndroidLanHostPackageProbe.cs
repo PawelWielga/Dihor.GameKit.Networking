@@ -1,9 +1,9 @@
 using System.Net;
-using PartyGameKit.Core;
-using PartyGameKit.Discovery.Lan;
-using PartyGameKit.Transport.Lan;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Discovery.Lan;
+using Dihor.GameKit.Networking.Transport.Lan;
 
-namespace PartyGameKit.Packaging.AndroidHost;
+namespace Dihor.GameKit.Networking.Packaging.AndroidHost;
 
 public static class AndroidLanHostPackageProbe
 {
