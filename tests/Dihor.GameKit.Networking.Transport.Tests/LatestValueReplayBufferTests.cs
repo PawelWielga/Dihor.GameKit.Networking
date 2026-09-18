@@ -120,6 +120,47 @@ public sealed class LatestValueReplayBufferTests
     }
 
     [Fact]
+    public async Task StaleInFlightSendCompletionDoesNotClearNewerBufferedValue()
+    {
+        using var buffer = new LatestValueReplayBuffer();
+
+        await buffer.StageLatestAsync(
+            "draft",
+            "round-1",
+            new byte[] { 1 },
+            TestContext.Current.CancellationToken);
+
+        var stale = new BlockingClient();
+        var binding = buffer.BindSenderAsync(
+            stale,
+            TestContext.Current.CancellationToken);
+
+        await stale.SendStarted.Task.WaitAsync(
+            TestContext.Current.CancellationToken);
+
+        buffer.UnbindSender(stale);
+
+        await buffer.StageLatestAsync(
+            "draft",
+            "round-1",
+            new byte[] { 2 },
+            TestContext.Current.CancellationToken);
+
+        stale.Release.TrySetResult();
+        await binding;
+
+        Assert.Equal(1, buffer.BufferedCount);
+
+        var replacement = new FakeClient();
+        await buffer.BindSenderAsync(
+            replacement,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(new byte[] { 2 }, Assert.Single(replacement.SentPayloads));
+        Assert.Equal(0, buffer.BufferedCount);
+    }
+
+    [Fact]
     public async Task ClearAndScopeInvalidationRemoveReplayStateDeterministically()
     {
         using var buffer = new LatestValueReplayBuffer();
@@ -211,6 +252,34 @@ public sealed class LatestValueReplayBufferTests
 
         Assert.Equal(new byte[] { 7 }, Assert.Single(webRtc.SentPayloads));
         Assert.Equal(new byte[] { 8 }, Assert.Single(signalR.SentPayloads));
+    }
+
+    private sealed class BlockingClient : IMessageTransportClient
+    {
+        public TaskCompletionSource SendStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask SendAsync(
+            ReadOnlyMemory<byte> payload,
+            CancellationToken cancellationToken = default)
+        {
+            SendStarted.TrySetResult();
+            await Release.Task.ConfigureAwait(false);
+        }
+
+        public ValueTask<ClientTransportMessage> ReceiveAsync(
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(
+                new ClientTransportMessage(ReadOnlyMemory<byte>.Empty));
+
+        public ValueTask DisposeAsync()
+        {
+            Release.TrySetResult();
+            return ValueTask.CompletedTask;
+        }
     }
 
     private sealed class FakeClient : IMessageTransportClient
