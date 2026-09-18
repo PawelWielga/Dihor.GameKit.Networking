@@ -85,7 +85,7 @@ public sealed class WebRtcSignalingIntegrationTests
     }
 
     [Fact]
-    public async Task SignalingPayloadLimitIsEnforcedByDihor.GameKit.NetworkingHubOnly()
+    public async Task SignalingPayloadLimitIsEnforcedByGameKitNetworkingHubOnly()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var server = await SignalingTestServer.StartAsync(
@@ -138,13 +138,13 @@ public sealed class WebRtcSignalingIntegrationTests
             });
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
-            builder.Services.AddDihor.GameKit.NetworkingWebRtcSignaling(options =>
+            builder.Services.AddGameKitNetworkingWebRtcSignaling(options =>
             {
                 options.MaxSignalBytes = maxSignalBytes;
             });
 
             var application = builder.Build();
-            application.MapDihor.GameKit.NetworkingWebRtcSignaling();
+            application.MapGameKitNetworkingWebRtcSignaling();
             await application.StartAsync(cancellationToken);
 
             var server = application.Services.GetRequiredService<IServer>();
