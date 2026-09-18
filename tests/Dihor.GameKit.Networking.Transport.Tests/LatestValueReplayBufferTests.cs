@@ -133,6 +133,40 @@ public sealed class LatestValueReplayBufferTests
     }
 
     [Fact]
+    public async Task NewerValueStagedDuringSendIsDeliveredBeforeStageCompletes()
+    {
+        using var buffer = new LatestValueReplayBuffer();
+        var sender = new BlockingClient();
+
+        await buffer.BindSenderAsync(
+            sender,
+            TestContext.Current.CancellationToken);
+
+        var firstStage = buffer.StageLatestAsync(
+            "draft",
+            "round-1",
+            new byte[] { 1 },
+            TestContext.Current.CancellationToken);
+
+        await sender.SendStarted.Task.WaitAsync(
+            TestContext.Current.CancellationToken);
+
+        var secondStage = buffer.StageLatestAsync(
+            "draft",
+            "round-1",
+            new byte[] { 2 },
+            TestContext.Current.CancellationToken);
+
+        sender.Release.TrySetResult();
+        await Task.WhenAll(firstStage, secondStage);
+
+        Assert.Equal(2, sender.SentPayloads.Count);
+        Assert.Equal(new byte[] { 1 }, sender.SentPayloads[0]);
+        Assert.Equal(new byte[] { 2 }, sender.SentPayloads[1]);
+        Assert.Equal(1, buffer.BufferedCount);
+    }
+
+    [Fact]
     public async Task StaleInFlightSendCompletionDoesNotClearNewerBufferedValue()
     {
         using var buffer = new LatestValueReplayBuffer();
@@ -269,6 +303,8 @@ public sealed class LatestValueReplayBufferTests
 
     private sealed class BlockingClient : IMessageTransportClient
     {
+        public List<byte[]> SentPayloads { get; } = new();
+
         public TaskCompletionSource SendStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -279,6 +315,7 @@ public sealed class LatestValueReplayBufferTests
             ReadOnlyMemory<byte> payload,
             CancellationToken cancellationToken = default)
         {
+            SentPayloads.Add(payload.ToArray());
             SendStarted.TrySetResult();
             await Release.Task.ConfigureAwait(false);
         }
