@@ -311,29 +311,55 @@ public sealed class LatestValueReplayBuffer : IDisposable
 
         while (true)
         {
-            BufferedMessage buffered;
-
-            lock (_sync)
-            {
-                if (!IsCurrentBinding(binding) ||
-                    !_latest.TryGetValue(key, out var currentBuffered))
-                {
-                    return lastSentVersion;
-                }
-
-                buffered = currentBuffered;
-            }
-
             try
             {
-                await binding.Sender
-                    .SendAsync(buffered.Payload, binding.Token)
+                await binding.SendGate
+                    .WaitAsync(binding.Token)
                     .ConfigureAwait(false);
-                lastSentVersion = buffered.Version;
             }
             catch (OperationCanceledException) when (binding.Token.IsCancellationRequested)
             {
                 return lastSentVersion;
+            }
+
+            BufferedMessage buffered;
+            ValueTask sendTask;
+
+            try
+            {
+                lock (_sync)
+                {
+                    if (!IsCurrentBinding(binding) ||
+                        !_latest.TryGetValue(key, out var currentBuffered))
+                    {
+                        return lastSentVersion;
+                    }
+
+                    buffered = currentBuffered;
+
+                    // Starting the send while holding _sync makes ClearLatest /
+                    // InvalidateScope atomic with respect to send start. A clear
+                    // that completes first prevents this transport call; a clear
+                    // that happens after this point cannot retract an in-flight
+                    // transport operation.
+                    sendTask = binding.Sender.SendAsync(
+                        buffered.Payload,
+                        binding.Token);
+                }
+
+                try
+                {
+                    await sendTask.ConfigureAwait(false);
+                    lastSentVersion = buffered.Version;
+                }
+                catch (OperationCanceledException) when (binding.Token.IsCancellationRequested)
+                {
+                    return lastSentVersion;
+                }
+            }
+            finally
+            {
+                binding.SendGate.Release();
             }
 
             lock (_sync)
@@ -442,6 +468,8 @@ public sealed class LatestValueReplayBuffer : IDisposable
 
         public CancellationToken Token { get; }
 
+        public SemaphoreSlim SendGate { get; } = new(1, 1);
+
         public void Cancel()
         {
             try
@@ -460,6 +488,7 @@ public sealed class LatestValueReplayBuffer : IDisposable
             if (Interlocked.Exchange(ref _disposed, 1) == 0)
             {
                 _cancellation.Dispose();
+                SendGate.Dispose();
             }
         }
     }
