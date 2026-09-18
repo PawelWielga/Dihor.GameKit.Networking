@@ -9,7 +9,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void ConnectRequestSerializesNeutralPeerIdentity()
     {
-        var envelope = Dihor.GameKit.NetworkingMessages.Create(
+        var envelope = GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
             "connect-1",
             new ConnectRequestPayload(new PeerId("peer-a")));
@@ -25,7 +25,7 @@ public sealed class ProtocolV2Tests
     public void ApplicationMessageRoundTripsOpaqueConsumerPayload()
     {
         using var data = JsonDocument.Parse("{\"value\":42,\"label\":\"consumer-owned\"}");
-        var envelope = Dihor.GameKit.NetworkingMessages.Create(
+        var envelope = GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ApplicationMessage,
             "application-1",
             new ApplicationMessagePayload("example.command", data.RootElement));
@@ -44,7 +44,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void ResumeRequestRoundTripsPeerAndCredentialOnly()
     {
-        var envelope = Dihor.GameKit.NetworkingMessages.Create(
+        var envelope = GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ResumeRequest,
             "resume-1",
             new ResumeRequestPayload(new PeerId("peer-a"), "resume-token"));
@@ -72,7 +72,7 @@ public sealed class ProtocolV2Tests
     [Fact]
     public void ConnectionRejectionCodeUsesStableWireValue()
     {
-        var envelope = Dihor.GameKit.NetworkingMessages.Create(
+        var envelope = GameKitNetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRejected,
             "reject-1",
             new ConnectRejectedPayload(ConnectionRejectionCode.InvalidRequest, "bad handshake"));
