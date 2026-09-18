@@ -51,11 +51,11 @@ internal sealed class SignalRRelayHub(
     SignalRRelayRegistry registry,
     SignalRRelayServerOptions options) : Hub
 {
-    private const string PeerConnectedMethod = "Dihor.GameKit.Networking.PeerConnected";
-    private const string PeerMessageMethod = "Dihor.GameKit.Networking.PeerMessage";
-    private const string PeerDisconnectedMethod = "Dihor.GameKit.Networking.PeerDisconnected";
-    private const string ClientMessageMethod = "Dihor.GameKit.Networking.Message";
-    private const string ClientDisconnectedMethod = "Dihor.GameKit.Networking.Disconnected";
+    private const string PeerConnectedMethod = "PartyGameKit.PeerConnected";
+    private const string PeerMessageMethod = "PartyGameKit.PeerMessage";
+    private const string PeerDisconnectedMethod = "PartyGameKit.PeerDisconnected";
+    private const string ClientMessageMethod = "PartyGameKit.Message";
+    private const string ClientDisconnectedMethod = "PartyGameKit.Disconnected";
 
     public Task RegisterListener(string channelId)
     {
