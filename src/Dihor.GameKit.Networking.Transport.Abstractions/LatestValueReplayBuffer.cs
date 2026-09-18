@@ -15,7 +15,7 @@ public sealed class LatestValueReplayBuffer : IDisposable
 {
     private readonly object _sync = new();
     private readonly Dictionary<string, BufferedMessage> _latest = new(StringComparer.Ordinal);
-    private readonly Dictionary<FlushKey, Task> _activeFlushes = new();
+    private readonly Dictionary<FlushKey, Task<long>> _activeFlushes = new();
 
     private Binding? _binding;
     private long _nextVersion;
@@ -53,14 +53,16 @@ public sealed class LatestValueReplayBuffer : IDisposable
         var normalizedKey = RequiredToken(key, nameof(key));
         var normalizedScope = RequiredToken(scope, nameof(scope));
         Binding? binding;
+        long stagedVersion;
 
         lock (_sync)
         {
             ThrowIfDisposed();
+            stagedVersion = checked(++_nextVersion);
             _latest[normalizedKey] = new BufferedMessage(
                 normalizedScope,
                 message.ToArray(),
-                checked(++_nextVersion));
+                stagedVersion);
             binding = _binding;
         }
 
@@ -69,10 +71,27 @@ public sealed class LatestValueReplayBuffer : IDisposable
             return;
         }
 
-        await WaitForFlushAsync(
-                GetOrStartFlush(normalizedKey, binding),
-                cancellationToken)
-            .ConfigureAwait(false);
+        while (true)
+        {
+            var sentVersion = await WaitForFlushAsync(
+                    GetOrStartFlush(normalizedKey, binding),
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (sentVersion >= stagedVersion)
+            {
+                return;
+            }
+
+            lock (_sync)
+            {
+                if (!IsCurrentBinding(binding) ||
+                    !_latest.ContainsKey(normalizedKey))
+                {
+                    return;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -228,9 +247,9 @@ public sealed class LatestValueReplayBuffer : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private Task GetOrStartFlush(string key, Binding binding)
+    private Task<long> GetOrStartFlush(string key, Binding binding)
     {
-        TaskCompletionSource completion;
+        TaskCompletionSource<long> completion;
         var flushKey = new FlushKey(binding.Generation, key);
 
         lock (_sync)
@@ -240,7 +259,8 @@ public sealed class LatestValueReplayBuffer : IDisposable
                 return active;
             }
 
-            completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            completion = new TaskCompletionSource<long>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
             _activeFlushes.Add(flushKey, completion.Task);
         }
 
@@ -252,16 +272,18 @@ public sealed class LatestValueReplayBuffer : IDisposable
         string key,
         Binding binding,
         FlushKey flushKey,
-        TaskCompletionSource completion)
+        TaskCompletionSource<long> completion)
     {
+        long sentVersion = 0;
+        Exception? failure = null;
+
         try
         {
-            await FlushCoreAsync(key, binding).ConfigureAwait(false);
-            completion.TrySetResult();
+            sentVersion = await FlushCoreAsync(key, binding).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
-            completion.TrySetException(exception);
+            failure = exception;
         }
         finally
         {
@@ -272,10 +294,21 @@ public sealed class LatestValueReplayBuffer : IDisposable
 
             TryDisposeRetiredBinding(binding);
         }
+
+        if (failure is null)
+        {
+            completion.TrySetResult(sentVersion);
+        }
+        else
+        {
+            completion.TrySetException(failure);
+        }
     }
 
-    private async Task FlushCoreAsync(string key, Binding binding)
+    private async Task<long> FlushCoreAsync(string key, Binding binding)
     {
+        long lastSentVersion = 0;
+
         while (true)
         {
             BufferedMessage buffered;
@@ -285,7 +318,7 @@ public sealed class LatestValueReplayBuffer : IDisposable
                 if (!IsCurrentBinding(binding) ||
                     !_latest.TryGetValue(key, out var currentBuffered))
                 {
-                    return;
+                    return lastSentVersion;
                 }
 
                 buffered = currentBuffered;
@@ -296,10 +329,11 @@ public sealed class LatestValueReplayBuffer : IDisposable
                 await binding.Sender
                     .SendAsync(buffered.Payload, binding.Token)
                     .ConfigureAwait(false);
+                lastSentVersion = buffered.Version;
             }
             catch (OperationCanceledException) when (binding.Token.IsCancellationRequested)
             {
-                return;
+                return lastSentVersion;
             }
 
             lock (_sync)
@@ -309,12 +343,12 @@ public sealed class LatestValueReplayBuffer : IDisposable
                     // Delivery on a connection that was replaced while the send
                     // was in flight is ambiguous. Keep the value so the current
                     // connection can replay it with the same message id.
-                    return;
+                    return lastSentVersion;
                 }
 
                 if (!_latest.TryGetValue(key, out var current))
                 {
-                    return;
+                    return lastSentVersion;
                 }
 
                 if (current.Version == buffered.Version)
@@ -322,7 +356,7 @@ public sealed class LatestValueReplayBuffer : IDisposable
                     // A locally completed send is not an acknowledgement from
                     // the remote peer. Keep the latest value staged so a later
                     // replacement connection can replay the exact same message.
-                    return;
+                    return lastSentVersion;
                 }
 
                 // A newer value replaced the one that just completed. Continue
@@ -334,15 +368,16 @@ public sealed class LatestValueReplayBuffer : IDisposable
     private bool IsCurrentBinding(Binding binding) =>
         _binding is not null && _binding.Generation == binding.Generation;
 
-    private static async Task WaitForFlushAsync(Task flush, CancellationToken cancellationToken)
+    private static async Task<T> WaitForFlushAsync<T>(
+        Task<T> flush,
+        CancellationToken cancellationToken)
     {
         if (!cancellationToken.CanBeCanceled)
         {
-            await flush.ConfigureAwait(false);
-            return;
+            return await flush.ConfigureAwait(false);
         }
 
-        await flush.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await flush.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private void CancelBinding(Binding? binding)
