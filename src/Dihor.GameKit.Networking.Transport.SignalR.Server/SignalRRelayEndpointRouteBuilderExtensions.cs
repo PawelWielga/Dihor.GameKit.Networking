@@ -7,7 +7,7 @@ public static class SignalRRelayEndpointRouteBuilderExtensions
 {
     public static HubEndpointConventionBuilder MapDihorGameKitNetworkingSignalRRelay(
         this IEndpointRouteBuilder endpoints,
-        string pattern = "/dihor-gamekit-networking-relay")
+        string pattern = "/partygamekit-relay")
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         ArgumentException.ThrowIfNullOrWhiteSpace(pattern);
