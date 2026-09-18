@@ -29,6 +29,15 @@ test("latest-value replay coalesces disconnected updates per key", async () => {
   await replay.bindSender(sender);
 
   assert.deepEqual(sender.sent, [{ messageId: "m3", value: 3 }]);
+  assert.equal(replay.bufferedCount, 1);
+
+  replay.unbindSender(sender);
+  const replacement = new FakeSender();
+  await replay.bindSender(replacement);
+
+  assert.deepEqual(replacement.sent, [{ messageId: "m3", value: 3 }]);
+  assert.equal(replay.bufferedCount, 1);
+  assert.equal(replay.clearLatest("draft", "round-1"), true);
   assert.equal(replay.bufferedCount, 0);
 });
 
@@ -62,7 +71,7 @@ test("failed send retains the exact staged message for a replacement sender", as
   assert.equal(replacement.sent.length, 1);
   assert.equal(replacement.sent[0], staged);
   assert.equal(replacement.sent[0]?.messageId, "stable-replay-id");
-  assert.equal(replay.bufferedCount, 0);
+  assert.equal(replay.bufferedCount, 1);
 });
 
 test("clearLatest and invalidateScope remove only matching replay state", async () => {
