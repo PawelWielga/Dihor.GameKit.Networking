@@ -1,6 +1,6 @@
 # Roadmap
 
-PartyGameKit is developed in the exact ordered backlog tracked by GitHub issue `#2`. Work follows `[NN]` prefixes, not GitHub issue numbers.
+Dihor.GameKit.Networking is developed in the exact ordered backlog tracked by GitHub issue `#2`. Work follows `[NN]` prefixes, not GitHub issue numbers.
 
 ## Historical v0.1 foundation: `[01]`–`[14]`
 
@@ -15,25 +15,25 @@ The first implementation cycle successfully proved:
 - game-oriented validation samples;
 - reproducible prerelease packaging.
 
-It also overreached architecturally by promoting player/session/authority/snapshot semantics into PartyGameKit base APIs.
+It also overreached architecturally by promoting player/session/authority/snapshot semantics into Dihor.GameKit.Networking base APIs.
 
 Those issues remain useful implementation history, but the v0.1 product/session surface is not the architecture going forward.
 
 ## Corrected communication foundation: `[15]`–`[17]`
 
-The boundary-correction phase establishes PartyGameKit `0.2` as communication infrastructure only.
+The boundary-correction phase establishes Dihor.GameKit.Networking `0.2` as communication infrastructure only.
 
 ### `[15]` Boundary decision
 
 The architecture decision established that:
 
-- PartyGameKit owns communication/networking, not PartyBeam/game runtime semantics;
+- Dihor.GameKit.Networking owns communication/networking, not PartyBeam/game runtime semantics;
 - `ConnectionId` is transient transport identity;
 - optional stable reconnect identity is neutral `PeerId`;
 - optional routing isolation is technical `ChannelId`;
 - player, role, room-session, authority and game-state semantics belong to consumers;
 - connection descriptors and discovery describe technical connectivity;
-- application/game payloads remain opaque to PartyGameKit.
+- application/game payloads remain opaque to Dihor.GameKit.Networking.
 
 Source of truth: [Communication boundary](communication-boundary.md).
 
@@ -55,18 +55,18 @@ The .NET foundation implements that decision:
 
 The consumer-facing surfaces are aligned to the corrected boundary:
 
-- `@partygamekit/client` uses protocol v2 and neutral peer/connection vocabulary;
+- `@dihor/gamekit-networking` uses protocol v2 and neutral peer/connection vocabulary;
 - Dart validates the same protocol-v2 fixture set;
 - C#, Dart and TypeScript consume one canonical `v2-*` contract;
 - `samples/CommunicationDemo` verifies real LAN communication with generic peers, discovery, targeted/broadcast delivery and resume;
 - package-only NuGet validation exercises opaque messages and neutral resume;
 - migration documentation covers the deliberate v0.1 → v0.2 break;
-- cross-repository validation confirms PartyBeam and Państwa Miasta keep product/game semantics above PartyGameKit;
+- cross-repository validation confirms PartyBeam and Państwa Miasta keep product/game semantics above Dihor.GameKit.Networking;
 - v0.1 game-oriented samples and fixture vectors were retired from the active v0.2 tree and remain available through Git history/tags.
 
 ## Corrected foundation invariant
 
-PartyGameKit must continue to satisfy all of these:
+Dihor.GameKit.Networking must continue to satisfy all of these:
 
 - direct LAN connect/send/receive/disconnect/resume works without a cloud backend;
 - LAN discovery and direct descriptor connection are independent;
@@ -90,8 +90,8 @@ SignalR/backend relay is available as another communication transport.
 Implemented rules and validation:
 
 - LAN remains usable with no backend deployed;
-- `PartyGameKit.Transport.SignalR` provides listener/client communication over SignalR;
-- `PartyGameKit.Transport.SignalR.Server` provides a minimal ASP.NET Core relay endpoint;
+- `Dihor.GameKit.Networking.Transport.SignalR` provides listener/client communication over SignalR;
+- `Dihor.GameKit.Networking.Transport.SignalR.Server` provides a minimal ASP.NET Core relay endpoint;
 - backend routing uses opaque `ChannelId` and transient `ConnectionId` only;
 - backend does not own PartyBeam parties, players, lobbies, authority or game state;
 - the same protocol-v2 and opaque application payloads work over LAN and SignalR;
@@ -112,7 +112,7 @@ Implemented rules and validation:
 - native browser `RTCPeerConnection` / `RTCDataChannel` avoids an unsuitable native WebRTC dependency;
 - `reliable` uses an ordered reliable DataChannel;
 - `low-latency` uses an unordered DataChannel with zero retransmits;
-- PartyGameKit keeps application payloads opaque and peer-to-peer after negotiation;
+- Dihor.GameKit.Networking keeps application payloads opaque and peer-to-peer after negotiation;
 - signaling is a separate neutral concern and may use the optional SignalR signaling endpoint;
 - SignalR signaling carries SDP/ICE only, scoped by transient connection IDs and technical `ChannelId`;
 - cross-channel signaling is rejected and signaling payload sizes are bounded;
@@ -138,7 +138,7 @@ Automatic mode only answers: **which communication path should carry messages no
 
 ## Explicitly consumer-owned
 
-Do not move these into PartyGameKit base packages without a new communication-level justification:
+Do not move these into Dihor.GameKit.Networking base packages without a new communication-level justification:
 
 - PartyBeam party/lobby lifecycle;
 - TV/pilot/controller/player/spectator roles;
@@ -156,6 +156,6 @@ Do not move these into PartyGameKit base packages without a new communication-le
 
 ## Rule for future issues
 
-A new abstraction belongs in PartyGameKit only when it answers a communication/networking problem that remains meaningful for an application with no players and no game session.
+A new abstraction belongs in Dihor.GameKit.Networking only when it answers a communication/networking problem that remains meaningful for an application with no players and no game session.
 
-If the abstraction answers a product/game question, it belongs above PartyGameKit.
+If the abstraction answers a product/game question, it belongs above Dihor.GameKit.Networking.

@@ -2,19 +2,19 @@
 
 ## Status
 
-PartyGameKit `0.2.0-preview.1` uses wire protocol **2**. Protocol v2 is communication-only and intentionally incompatible with the historical room/player/session protocol v1 from `0.1.0-preview.1`.
+Dihor.GameKit.Networking `0.2.0-preview.1` uses wire protocol **2**. Protocol v2 is communication-only and intentionally incompatible with the historical room/player/session protocol v1 from `0.1.0-preview.1`.
 
 See [Communication boundary](communication-boundary.md) and [Compatibility](compatibility.md).
 
 ## Protocol layers
 
-The PartyGameKit wire contract has two distinct layers:
+The Dihor.GameKit.Networking wire contract has two distinct layers:
 
-1. **control protocol** owned by PartyGameKit;
+1. **control protocol** owned by Dihor.GameKit.Networking;
 2. **application messages** owned by the consumer and treated as opaque payloads.
 
 ```text
-PartyGameKit protocol v2 envelope
+Dihor.GameKit.Networking protocol v2 envelope
 ├── protocol compatibility
 ├── connection lifecycle
 ├── heartbeat/connectivity
@@ -63,7 +63,7 @@ The base protocol does not define:
 - public/private/player projection targeting;
 - game commands, phases or state schemas.
 
-Consumers independently define and version those concepts above PartyGameKit.
+Consumers independently define and version those concepts above Dihor.GameKit.Networking.
 
 ## Identity
 
@@ -74,7 +74,7 @@ ConnectionId = transient network/transport connection
 PeerId       = optional stable logical communication identity for resume
 ```
 
-A product may map its own participant identifier to `PeerId` at an adapter boundary. PartyGameKit does not interpret that mapping.
+A product may map its own participant identifier to `PeerId` at an adapter boundary. Dihor.GameKit.Networking does not interpret that mapping.
 
 ## Connect
 
@@ -108,9 +108,9 @@ Consumer data uses `application.message`:
 }
 ```
 
-`applicationType` belongs to the consumer's protocol namespace. `data` is opaque to PartyGameKit beyond valid JSON serialization/deserialization.
+`applicationType` belongs to the consumer's protocol namespace. `data` is opaque to Dihor.GameKit.Networking beyond valid JSON serialization/deserialization.
 
-Consumers may version their own application payload schemas without changing PartyGameKit protocol version 2, provided the PartyGameKit envelope/control contract does not change.
+Consumers may version their own application payload schemas without changing Dihor.GameKit.Networking protocol version 2, provided the Dihor.GameKit.Networking envelope/control contract does not change.
 
 ## Heartbeat
 
@@ -136,7 +136,7 @@ A consumer such as Państwa Miasta may put its own snapshot or command sequence 
 The deterministic URI form uses:
 
 ```text
-partygamekit://connect?protocolVersion=2&transport=...&endpoint=...&channelId=...
+dihor-gamekit-networking://connect?protocolVersion=2&transport=...&endpoint=...&channelId=...
 ```
 
 Product join codes, party names, game identifiers and QR presentation remain outside the base descriptor.

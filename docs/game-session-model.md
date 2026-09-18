@@ -1,10 +1,10 @@
 # Game/session model is consumer-owned
 
-PartyGameKit `0.2` does not own a generic player/room/game-session runtime. See [Communication boundary](communication-boundary.md).
+Dihor.GameKit.Networking `0.2` does not own a generic player/room/game-session runtime. See [Communication boundary](communication-boundary.md).
 
 ## Decision
 
-The following concepts belong to PartyBeam, Państwa Miasta or another consumer, not PartyGameKit base packages:
+The following concepts belong to PartyBeam, Państwa Miasta or another consumer, not Dihor.GameKit.Networking base packages:
 
 - player membership;
 - player capacity/admission;
@@ -19,7 +19,7 @@ The following concepts belong to PartyBeam, Państwa Miasta or another consumer,
 
 There is no generic `RoomSession` abstraction in the `0.2` package line.
 
-## What PartyGameKit provides underneath
+## What Dihor.GameKit.Networking provides underneath
 
 A consumer may build its own session model above:
 
@@ -52,7 +52,7 @@ PartySession
 └── product lifecycle/policies
 ```
 
-PartyBeam can map those participants to PartyGameKit peers/connections without PartyGameKit knowing their roles.
+PartyBeam can map those participants to Dihor.GameKit.Networking peers/connections without Dihor.GameKit.Networking knowing their roles.
 
 ## Państwa Miasta example
 
@@ -64,7 +64,7 @@ Państwa Miasta keeps:
 - disconnect-vs-leave policy;
 - game snapshots and restore behavior.
 
-It may map a reconnecting game participant to a PartyGameKit `PeerId` at the adapter boundary and carry commands/snapshots as opaque application messages.
+It may map a reconnecting game participant to a Dihor.GameKit.Networking `PeerId` at the adapter boundary and carry commands/snapshots as opaque application messages.
 
 ## Historical v0.1 API
 

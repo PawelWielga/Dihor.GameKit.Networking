@@ -1,6 +1,6 @@
 # Public API review for 0.2
 
-PartyGameKit `0.2.0-preview.2` exposes communication/networking primitives only. The corrected boundary was established in `[15]`–`[17]`; `[18]` adds SignalR as another transport without changing ownership of product/game semantics.
+Dihor.GameKit.Networking `0.2.0-preview.2` exposes communication/networking primitives only. The corrected boundary was established in `[15]`–`[17]`; `[18]` adds SignalR as another transport without changing ownership of product/game semantics.
 
 The detailed ownership rationale is in [Communication boundary](communication-boundary.md).
 
@@ -27,12 +27,12 @@ The public protocol surface uses neutral connection language:
 - resume request/accepted/rejected payloads;
 - heartbeat/disconnect payloads;
 - `ApplicationMessagePayload` for opaque consumer data;
-- `PartyGameKitMessages.Create`;
+- `Dihor.GameKit.NetworkingMessages.Create`;
 - `ProtocolJson`;
 - `ConnectionDescriptorCodec`;
 - `DiscoveryEndpointAnnouncementCodec`.
 
-PartyGameKit control messages and application messages are distinct. The library does not inspect the game/product meaning of `ApplicationMessagePayload.Data`.
+Dihor.GameKit.Networking control messages and application messages are distinct. The library does not inspect the game/product meaning of `ApplicationMessagePayload.Data`.
 
 Protocol remains version `2` in `0.2.0-preview.2`.
 
@@ -65,11 +65,11 @@ The supported public LAN surface includes:
 - `LanWebSocketHostOptions`;
 - `LanConnectionDescriptor`.
 
-LAN handshake validation accepts only PartyGameKit connection control messages. Player capacity/admission and other product rules remain above the transport.
+LAN handshake validation accepts only Dihor.GameKit.Networking connection control messages. Player capacity/admission and other product rules remain above the transport.
 
 ### SignalR relay
 
-`PartyGameKit.Transport.SignalR` exposes:
+`Dihor.GameKit.Networking.Transport.SignalR` exposes:
 
 - `SignalRRelayOptions`;
 - `SignalRRelayTransport : IMessageTransport` for the listener/multi-connection side;
@@ -78,10 +78,10 @@ LAN handshake validation accepts only PartyGameKit connection control messages. 
 
 The transport validates the same protocol-v2 connect/resume handshake boundary as LAN before publishing `TransportConnectionOpened`.
 
-`PartyGameKit.Transport.SignalR.Server` deliberately exposes only server setup/mapping extensions:
+`Dihor.GameKit.Networking.Transport.SignalR.Server` deliberately exposes only server setup/mapping extensions:
 
-- `AddPartyGameKitSignalRRelay(...)`;
-- `MapPartyGameKitSignalRRelay(...)`;
+- `AddDihorGameKitNetworkingSignalRRelay(...)`;
+- `MapDihorGameKitNetworkingSignalRRelay(...)`;
 - `SignalRRelayServerOptions` for transport-level limits.
 
 The actual Hub and routing registry remain internal. They are not an application session API.
@@ -99,7 +99,7 @@ Discovery locates technical endpoints, not product lobbies or game sessions.
 
 ## TypeScript browser SDK
 
-`@partygamekit/client` `0.2.0-preview.2` exposes:
+`@dihor/gamekit-networking` `0.2.0-preview.2` exposes:
 
 - `PartyGameClient` with connect/disconnect;
 - send/receive of opaque application messages;
@@ -112,14 +112,14 @@ Discovery locates technical endpoints, not product lobbies or game sessions.
 
 The base SDK has no required player/shared-screen/host role and no public/private game-state projection model.
 
-Preview.2 does not add a browser SignalR implementation; its version is aligned with the supported PartyGameKit compatibility line while the browser API stays protocol-v2 compatible with preview.1.
+Preview.2 does not add a browser SignalR implementation; its version is aligned with the supported Dihor.GameKit.Networking compatibility line while the browser API stays protocol-v2 compatible with preview.1.
 
 ## Dart interoperability package
 
-`partygamekit_protocol` `0.2.0-preview.2` implements the protocol-v2 compatibility layer in Dart:
+`dihor_gamekit_networking_protocol` `0.2.0-preview.2` implements the protocol-v2 compatibility layer in Dart:
 
 - envelope parsing/version admission;
-- `PartyGameKitConnectionDescriptor`;
+- `Dihor.GameKit.NetworkingConnectionDescriptor`;
 - discovery announcement parsing;
 - neutral peer/resume fields;
 - opaque application-message payload parsing;

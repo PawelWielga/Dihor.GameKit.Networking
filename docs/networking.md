@@ -1,6 +1,6 @@
 # Networking
 
-PartyGameKit networking is intentionally product-neutral. It connects peers and transports messages; it does not model players, parties or game sessions.
+Dihor.GameKit.Networking networking is intentionally product-neutral. It connects peers and transports messages; it does not model players, parties or game sessions.
 
 See [Communication boundary](communication-boundary.md).
 
@@ -10,7 +10,7 @@ See [Communication boundary](communication-boundary.md).
 consumer application
        │ opaque application data
        ▼
-PartyGameKit communication layer
+Dihor.GameKit.Networking communication layer
        │
        ├── protocol v2 over LAN WebSocket
        ├── protocol v2 over SignalR relay
@@ -33,7 +33,7 @@ A transport exposes only communication concerns:
 
 `IMessageTransport` is the listener-side .NET abstraction used by direct LAN and SignalR relay transports. A transport may have a technology-specific single-peer client counterpart, such as `LanWebSocketClient` or `SignalRRelayClient`, without changing the application protocol.
 
-The initial WebRTC implementation is browser-native in `@partygamekit/client`; it is not presented as a .NET `IMessageTransport` implementation. That keeps the public surface honest about runtime capabilities.
+The initial WebRTC implementation is browser-native in `@dihor/gamekit-networking`; it is not presented as a .NET `IMessageTransport` implementation. That keeps the public surface honest about runtime capabilities.
 
 `ConnectionId` identifies a transient network connection. It is not a player id.
 
@@ -47,7 +47,7 @@ PeerId P1
   └── ConnectionId C2   (replacement/resumed)
 ```
 
-PartyGameKit may validate a resume credential and rebind C2 to P1. The consumer decides whether P1 represents a player, TV, controller, server or something else.
+Dihor.GameKit.Networking may validate a resume credential and rebind C2 to P1. The consumer decides whether P1 represents a player, TV, controller, server or something else.
 
 The same continuity coordinator can be used when the physical protocol-v2 path is LAN or SignalR. The relay backend itself never owns `PeerId` or resume credentials.
 
@@ -61,7 +61,7 @@ For SignalR relay, the backend registry maps a `ChannelId` to one active listene
 
 ## Application messages
 
-Application payloads are opaque to PartyGameKit.
+Application payloads are opaque to Dihor.GameKit.Networking.
 
 A consumer may transport:
 
@@ -71,9 +71,9 @@ A consumer may transport:
 - a collaborative document operation;
 - any other consumer-defined payload.
 
-None of those schemas become PartyGameKit base API.
+None of those schemas become Dihor.GameKit.Networking base API.
 
-LAN WebSocket and SignalR relay carry protocol-v2 `application.message` payloads. Browser WebRTC DataChannels carry opaque binary consumer data directly. A consumer may serialize the same logical schema for all three paths, but PartyGameKit does not require a game-specific schema.
+LAN WebSocket and SignalR relay carry protocol-v2 `application.message` payloads. Browser WebRTC DataChannels carry opaque binary consumer data directly. A consumer may serialize the same logical schema for all three paths, but Dihor.GameKit.Networking does not require a game-specific schema.
 
 ## Connection health
 
@@ -93,7 +93,7 @@ UDP LAN discovery is optional and remains independent from backend-assisted conn
 
 ## Optional SignalR relay
 
-`PartyGameKit.Transport.SignalR` and `PartyGameKit.Transport.SignalR.Server` provide an optional path for peers that cannot use direct LAN communication or are on different networks.
+`Dihor.GameKit.Networking.Transport.SignalR` and `Dihor.GameKit.Networking.Transport.SignalR.Server` provide an optional path for peers that cannot use direct LAN communication or are on different networks.
 
 The relay:
 
@@ -101,23 +101,23 @@ The relay:
 - uses technical `ChannelId` routing only;
 - exposes targeted send and broadcast through `IMessageTransport`;
 - removes transient bindings when clients/listeners disconnect;
-- leaves stable `PeerId` continuity to the PartyGameKit protocol/core layer;
+- leaves stable `PeerId` continuity to the Dihor.GameKit.Networking protocol/core layer;
 - does not implement PartyBeam parties, player admission, product join codes or game state.
 
 SignalR deployment is optional. See [SignalR relay](signalr-relay.md) for server configuration and security assumptions.
 
 ## Browser WebRTC DataChannel
 
-`@partygamekit/client` provides direct browser-to-browser communication through native `RTCPeerConnection` / `RTCDataChannel`.
+`@dihor/gamekit-networking` provides direct browser-to-browser communication through native `RTCPeerConnection` / `RTCDataChannel`.
 
 The library exposes explicit communication profiles:
 
 - `reliable` — ordered, fully reliable DataChannel;
 - `low-latency` — unordered DataChannel with `maxRetransmits: 0`.
 
-PartyGameKit does not decide which product messages belong on which profile.
+Dihor.GameKit.Networking does not decide which product messages belong on which profile.
 
-Buffering is deliberately bounded. Reliable mode reports backpressure when a configured limit would be exceeded; low-latency mode can drop the newest payload rather than allowing stale data to accumulate in an unbounded PartyGameKit queue.
+Buffering is deliberately bounded. Reliable mode reports backpressure when a configured limit would be exceeded; low-latency mode can drop the newest payload rather than allowing stale data to accumulate in an unbounded Dihor.GameKit.Networking queue.
 
 See [WebRTC DataChannel](webrtc-datachannel.md).
 

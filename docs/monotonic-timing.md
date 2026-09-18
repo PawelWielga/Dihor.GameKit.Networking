@@ -1,6 +1,6 @@
 # Synchronized monotonic timing
 
-PartyGameKit `0.2.0-preview.5` adds a transport-neutral timing primitive for consumers that need to compare peer-local event timestamps without trusting raw packet-arrival order.
+Dihor.GameKit.Networking `0.2.0-preview.5` adds a transport-neutral timing primitive for consumers that need to compare peer-local event timestamps without trusting raw packet-arrival order.
 
 The timing layer reports communication facts only. It does **not** decide player roles, winners, reaction order, scoring, game pauses or whether a timing estimate is good enough for a particular game.
 
@@ -20,7 +20,7 @@ A synchronization probe uses four monotonic timestamps:
 - `t3`: peer sends the reply;
 - `t4`: reference side receives the reply.
 
-PartyGameKit calculates peer-minus-reference offset and network round trip using the NTP-style formulas:
+Dihor.GameKit.Networking calculates peer-minus-reference offset and network round trip using the NTP-style formulas:
 
 ```text
 offset = ((t2 - t1) + (t3 - t4)) / 2
@@ -57,7 +57,7 @@ minimumRTT / 2 + medianOffsetSpread + RTTJitter / 2
 var timing = new MonotonicTimingSynchronizer();
 
 var probe = timing.CreateProbe(MonotonicClock.TimestampMilliseconds);
-// Send probe.ProbeId to the peer using whichever PartyGameKit transport is active.
+// Send probe.ProbeId to the peer using whichever Dihor.GameKit.Networking transport is active.
 
 // The peer records its own monotonic receive/send timestamps and returns them.
 var observation = timing.ObserveReply(
@@ -102,7 +102,7 @@ if (observation.status === "accepted") {
 
 ## Transport and protocol boundary
 
-Timing probes/replies are plain transport-neutral data. PartyGameKit does not add a new protocol-v2 control message and does not require one concrete transport.
+Timing probes/replies are plain transport-neutral data. Dihor.GameKit.Networking does not add a new protocol-v2 control message and does not require one concrete transport.
 
 A consumer may carry the probe ID and peer timestamps inside its existing opaque `application.message` payload, a WebRTC payload, or another adapter-owned envelope. LAN, SignalR, WebRTC and Auto selection do not inspect or reinterpret the timing data.
 
