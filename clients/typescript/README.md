@@ -35,6 +35,34 @@ The protocol-v2 client provides:
 
 The built-in WebSocket path supports `lan-websocket` descriptors using `ws://` or `wss://` endpoints.
 
+## Transient latest-value replay
+
+`LatestValueReplayBuffer<TMessage>` keeps at most one newest replayable value per caller-owned key and scope/epoch. It is separate from heartbeat and from the automatic transport selector.
+
+For protocol-v2 WebSocket traffic, stage the already serialized `application.message` so a reconnect retry reuses the same `messageId`:
+
+```ts
+const replay = new LatestValueReplayBuffer<string>();
+
+const wire = serializeMessage(createMessage(
+  messageTypes.applicationMessage,
+  "draft-value-7",
+  { applicationType: "my-app.draft", data: { value: "latest" } },
+));
+
+await replay.stageLatest("draft", "interaction-42", wire);
+
+const sender = {
+  send: (message: string) => client.sendRaw(message),
+};
+
+await replay.bindSender(sender);
+```
+
+Call `replay.unbindSender(sender)` as soon as reconnect begins. Values staged while unbound do not touch the stale connection. Binding a replacement sender immediately replays the newest still-valid value.
+
+A new logical value should use a new `messageId`; replay of that same staged value should reuse its existing serialized message. This is not exactly-once delivery. Receiver-side bounded deduplication is tracked separately in issue [25].
+
 ## WebRTC DataChannel
 
 `0.2.0-preview.3` adds a browser-native peer-to-peer path based on `RTCPeerConnection` and `RTCDataChannel`.
