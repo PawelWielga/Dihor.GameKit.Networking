@@ -74,6 +74,36 @@ test("failed send retains the exact staged message for a replacement sender", as
   assert.equal(replay.bufferedCount, 1);
 });
 
+test("newer value staged during an in-flight send is delivered before stage completes", async () => {
+  const replay = new LatestValueReplayBuffer<ReplayMessage>();
+  const sender = new BlockingSender();
+
+  await replay.bindSender(sender);
+
+  const first = replay.stageLatest(
+    "draft",
+    "round-1",
+    { messageId: "m1", value: 1 },
+  );
+
+  await sender.sendStarted;
+
+  const second = replay.stageLatest(
+    "draft",
+    "round-1",
+    { messageId: "m2", value: 2 },
+  );
+
+  sender.release();
+  await Promise.all([first, second]);
+
+  assert.deepEqual(sender.sent, [
+    { messageId: "m1", value: 1 },
+    { messageId: "m2", value: 2 },
+  ]);
+  assert.equal(replay.bufferedCount, 1);
+});
+
 test("clearLatest and invalidateScope remove only matching replay state", async () => {
   const replay = new LatestValueReplayBuffer<ReplayMessage>();
 
@@ -137,6 +167,28 @@ test("automatic reconnect fallback replays the newest buffered value on the repl
   assert.deepEqual(webRtcSender.sent, [{ messageId: "m1", value: 1 }]);
   assert.deepEqual(signalRSender.sent, [{ messageId: "m2", value: 2 }]);
 });
+
+class BlockingSender implements ReplaySender<ReplayMessage> {
+  public readonly sent: ReplayMessage[] = [];
+  private resolveSendStarted!: () => void;
+  private resolveRelease!: () => void;
+  public readonly sendStarted = new Promise<void>((resolve) => {
+    this.resolveSendStarted = resolve;
+  });
+  private readonly released = new Promise<void>((resolve) => {
+    this.resolveRelease = resolve;
+  });
+
+  public async send(message: ReplayMessage): Promise<void> {
+    this.sent.push(message);
+    this.resolveSendStarted();
+    await this.released;
+  }
+
+  public release(): void {
+    this.resolveRelease();
+  }
+}
 
 class FakeSender implements ReplaySender<ReplayMessage> {
   public readonly sent: ReplayMessage[] = [];
