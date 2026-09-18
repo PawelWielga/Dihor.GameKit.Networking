@@ -489,7 +489,7 @@ internal sealed class RelayDemoServer : IAsyncDisposable
             throw new InvalidOperationException("SignalR demo relay did not expose a bound address.");
         }
 
-        return new RelayDemoServer(application, new Uri(baseUri, "/dihor-gamekit-networking-relay"));
+        return new RelayDemoServer(application, new Uri(baseUri, "/partygamekit-relay"));
     }
 
     public async ValueTask DisposeAsync()
