@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   MemoryIdentityStore,
-  PartyGameClient,
+  GameKitNetworkingClient,
   createMessage,
   messageTypes,
   parseConnectionDescriptorJson,
@@ -46,7 +46,7 @@ test("connection descriptor JSON and URI stay canonical across languages", () =>
   const uri = serializeConnectionDescriptorUri(descriptor);
   assert.equal(
     uri,
-    "partygamekit://connect?protocolVersion=2&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit&channelId=channel-a",
+    "dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fdihor-gamekit-networking&channelId=channel-a",
   );
   assert.deepEqual(parseConnectionDescriptorUri(uri), descriptor);
 });
@@ -55,7 +55,7 @@ test("generic peer connects, exchanges application messages and resumes without 
   const sockets: FakeWebSocket[] = [];
   const identityStore = new MemoryIdentityStore();
   const ids = ["connect-1", "app-1", "resume-1", "app-2", "disconnect-1"];
-  const client = new PartyGameClient({
+  const client = new GameKitNetworkingClient({
     peerId: "peer-a",
     identityStore,
     autoReconnect: false,
@@ -135,7 +135,7 @@ test("generic peer connects, exchanges application messages and resumes without 
 
 test("anonymous connection does not acquire player or role semantics", async (t) => {
   const socket = new FakeWebSocket("ws://unused");
-  const client = new PartyGameClient({
+  const client = new GameKitNetworkingClient({
     peerId: null,
     autoReconnect: false,
     heartbeatIntervalMs: 60_000,

@@ -13,7 +13,7 @@ const server = createServer(async (request, response) => {
   }
 
   response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-  response.end("<!doctype html><meta charset=\"utf-8\"><title>PartyGameKit WebRTC test</title>");
+  response.end("<!doctype html><meta charset=\"utf-8\"><title>Dihor.GameKit.Networking WebRTC test</title>");
 });
 
 await new Promise((resolveListen, reject) => {
