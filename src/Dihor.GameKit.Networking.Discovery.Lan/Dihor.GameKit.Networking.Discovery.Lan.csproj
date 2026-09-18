@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>UDP LAN discovery for Dihor.GameKit.Networking connection endpoints.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Dihor.GameKit.Networking.Core/Dihor.GameKit.Networking.Core.csproj" />
+    <ProjectReference Include="../Dihor.GameKit.Networking.Protocol/Dihor.GameKit.Networking.Protocol.csproj" />
+  </ItemGroup>
+</Project>

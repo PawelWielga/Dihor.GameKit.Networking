@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
-namespace PartyGameKit.Discovery.Lan;
+namespace Dihor.GameKit.Networking.Discovery.Lan;
 
 public static class LanDiscoveryBroadcastAddressResolver
 {

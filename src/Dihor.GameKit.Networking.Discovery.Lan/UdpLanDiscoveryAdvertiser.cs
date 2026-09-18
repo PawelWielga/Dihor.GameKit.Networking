@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
 
-namespace PartyGameKit.Discovery.Lan;
+namespace Dihor.GameKit.Networking.Discovery.Lan;
 
 public sealed class UdpLanDiscoveryAdvertiser : IAsyncDisposable
 {

@@ -1,8 +1,8 @@
 using System.Net;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
 
-namespace PartyGameKit.Discovery.Lan;
+namespace Dihor.GameKit.Networking.Discovery.Lan;
 
 public sealed record DiscoveredEndpoint(
     ConnectionDescriptor Descriptor,

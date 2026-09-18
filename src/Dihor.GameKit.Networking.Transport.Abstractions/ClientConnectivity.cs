@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace PartyGameKit.Transport.Abstractions;
+namespace Dihor.GameKit.Networking.Transport.Abstractions;
 
 public static class TransportIds
 {

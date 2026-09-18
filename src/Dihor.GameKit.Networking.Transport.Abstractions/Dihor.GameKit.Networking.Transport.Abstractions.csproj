@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Transport-neutral communication abstractions for Dihor.GameKit.Networking.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Dihor.GameKit.Networking.Core/Dihor.GameKit.Networking.Core.csproj" />
+  </ItemGroup>
+</Project>
