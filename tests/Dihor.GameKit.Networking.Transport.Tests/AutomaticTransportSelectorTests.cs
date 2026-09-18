@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using PartyGameKit.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.Abstractions;
 
-namespace PartyGameKit.Transport.Tests;
+namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class AutomaticTransportSelectorTests
 {

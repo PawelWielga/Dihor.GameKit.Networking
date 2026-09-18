@@ -8,13 +8,13 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.SignalR;
-using PartyGameKit.Transport.SignalR.Server;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.SignalR;
+using Dihor.GameKit.Networking.Transport.SignalR.Server;
 
-namespace PartyGameKit.Transport.Tests;
+namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class SignalRRelayLimitIntegrationTests
 {
@@ -26,7 +26,7 @@ public sealed class SignalRRelayLimitIntegrationTests
         {
             options.MaximumReceiveMessageSize = 12_345;
         });
-        services.AddPartyGameKitSignalRRelay(options =>
+        services.AddDihor.GameKit.NetworkingSignalRRelay(options =>
         {
             options.MaxMessageBytes = 1024;
         });
@@ -85,7 +85,7 @@ public sealed class SignalRRelayLimitIntegrationTests
     }
 
     private static string CreateConnectHandshake() =>
-        ProtocolJson.Serialize(PartyGameKitMessages.Create(
+        ProtocolJson.Serialize(Dihor.GameKit.NetworkingMessages.Create(
             ProtocolMessageTypes.ConnectRequest,
             "limit-connect",
             new ConnectRequestPayload(new PeerId("limit-peer"))));
@@ -126,10 +126,10 @@ public sealed class SignalRRelayLimitIntegrationTests
             });
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
-            builder.Services.AddPartyGameKitSignalRRelay();
+            builder.Services.AddDihor.GameKit.NetworkingSignalRRelay();
 
             var application = builder.Build();
-            application.MapPartyGameKitSignalRRelay();
+            application.MapDihor.GameKit.NetworkingSignalRRelay();
             await application.StartAsync(cancellationToken);
 
             var server = application.Services.GetRequiredService<IServer>();
