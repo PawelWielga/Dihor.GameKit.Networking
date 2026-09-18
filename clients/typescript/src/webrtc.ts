@@ -97,7 +97,7 @@ export class WebRtcPeer {
     this.options = {
       initiator: options.initiator ?? false,
       profile,
-      label: options.label ?? "dihor-gamekit-networking",
+      label: options.label ?? "partygamekit",
       maxBufferedAmount: options.maxBufferedAmount ?? 256 * 1024,
       bufferedAmountLowThreshold: options.bufferedAmountLowThreshold ?? 32 * 1024,
       overflowPolicy:
