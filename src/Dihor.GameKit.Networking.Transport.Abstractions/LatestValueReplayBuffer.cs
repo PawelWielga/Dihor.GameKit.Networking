@@ -280,10 +280,12 @@ public sealed class LatestValueReplayBuffer : IDisposable
             lock (_sync)
             {
                 if (!IsCurrentBinding(binding) ||
-                    !_latest.TryGetValue(key, out buffered!))
+                    !_latest.TryGetValue(key, out var currentBuffered))
                 {
                     return;
                 }
+
+                buffered = currentBuffered;
             }
 
             try
