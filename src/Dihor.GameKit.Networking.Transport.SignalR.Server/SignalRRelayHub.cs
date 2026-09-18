@@ -22,7 +22,7 @@ public sealed class SignalRRelayServerOptions
 
 public static class SignalRRelayServiceCollectionExtensions
 {
-    public static IServiceCollection AddDihor.GameKit.NetworkingSignalRRelay(
+    public static IServiceCollection AddGameKitNetworkingSignalRRelay(
         this IServiceCollection services,
         Action<SignalRRelayServerOptions>? configure = null)
     {
