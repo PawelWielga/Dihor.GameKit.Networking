@@ -61,7 +61,7 @@ await replay.bindSender(sender);
 
 Call `replay.unbindSender(sender)` as soon as reconnect begins. Values staged while unbound do not touch the stale connection. Binding a replacement sender immediately replays the newest still-valid value.
 
-A new logical value should use a new `messageId`; replay of that same staged value should reuse its existing serialized message. This is not exactly-once delivery. Receiver-side bounded deduplication is tracked separately in issue [25].
+A locally successful `send` is not treated as a receiver acknowledgement, so the latest value remains staged until `clearLatest` / `invalidateScope` retires it. A new logical value should use a new `messageId`; replay of that same staged value should reuse its existing serialized message. This is not exactly-once delivery. Receiver-side bounded deduplication is tracked separately in issue [25].
 
 ## WebRTC DataChannel
 
