@@ -30,6 +30,19 @@ public sealed class LatestValueReplayBufferTests
 
         var sent = Assert.Single(sender.SentPayloads);
         Assert.Equal(new byte[] { 3 }, sent);
+        Assert.Equal(1, buffer.BufferedCount);
+
+        buffer.UnbindSender(sender);
+
+        var replacement = new FakeClient();
+        await buffer.BindSenderAsync(
+            replacement,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(new byte[] { 3 }, Assert.Single(replacement.SentPayloads));
+        Assert.Equal(1, buffer.BufferedCount);
+
+        Assert.True(buffer.ClearLatest("draft", "round-1"));
         Assert.Equal(0, buffer.BufferedCount);
     }
 
@@ -84,7 +97,7 @@ public sealed class LatestValueReplayBufferTests
 
         var sent = Assert.Single(replacement.SentPayloads);
         Assert.Equal(new byte[] { 4, 2 }, sent);
-        Assert.Equal(0, buffer.BufferedCount);
+        Assert.Equal(1, buffer.BufferedCount);
     }
 
     [Fact]
@@ -157,7 +170,7 @@ public sealed class LatestValueReplayBufferTests
             TestContext.Current.CancellationToken);
 
         Assert.Equal(new byte[] { 2 }, Assert.Single(replacement.SentPayloads));
-        Assert.Equal(0, buffer.BufferedCount);
+        Assert.Equal(1, buffer.BufferedCount);
     }
 
     [Fact]
