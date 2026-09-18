@@ -46,7 +46,7 @@ test("connection descriptor JSON and URI stay canonical across languages", () =>
   const uri = serializeConnectionDescriptorUri(descriptor);
   assert.equal(
     uri,
-    "partygamekit://connect?protocolVersion=2&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit&channelId=channel-a",
+    "dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fdihor-gamekit-networking&channelId=channel-a",
   );
   assert.deepEqual(parseConnectionDescriptorUri(uri), descriptor);
 });

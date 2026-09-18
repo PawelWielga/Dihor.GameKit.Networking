@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:partygamekit_protocol/partygamekit_protocol.dart';
+import 'package:dihor_gamekit_networking_protocol/dihor_gamekit_networking_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('canonical PartyGameKit v2 fixtures', () {
+  group('canonical Dihor.GameKit.Networking v2 fixtures', () {
     test('all communication envelopes use the supported protocol version', () {
       const envelopeFixtures = <String>[
         'v2-connect-request.json',
@@ -14,7 +14,7 @@ void main() {
       ];
 
       for (final fixtureName in envelopeFixtures) {
-        final envelope = PartyGameKitEnvelope.parse(_fixture(fixtureName));
+        final envelope = Dihor.GameKit.NetworkingEnvelope.parse(_fixture(fixtureName));
         expect(envelope.protocolVersion, partyGameKitProtocolVersion);
         expect(envelope.type, isNotEmpty);
         expect(envelope.messageId, isNotEmpty);
@@ -23,9 +23,9 @@ void main() {
 
     test('connect and resume preserve neutral peer identity', () {
       final connect =
-          PartyGameKitEnvelope.parse(_fixture('v2-connect-request.json'));
+          Dihor.GameKit.NetworkingEnvelope.parse(_fixture('v2-connect-request.json'));
       final resume =
-          PartyGameKitEnvelope.parse(_fixture('v2-resume-request.json'));
+          Dihor.GameKit.NetworkingEnvelope.parse(_fixture('v2-resume-request.json'));
 
       expect(connect.type, 'connection.connect.request');
       expect(resume.type, 'connection.resume.request');
@@ -38,7 +38,7 @@ void main() {
 
     test('application message payload remains consumer owned and opaque', () {
       final message =
-          PartyGameKitEnvelope.parse(_fixture('v2-application-message.json'));
+          Dihor.GameKit.NetworkingEnvelope.parse(_fixture('v2-application-message.json'));
       expect(message.type, 'application.message');
       expect(message.payload['applicationType'], isNotEmpty);
       expect(message.payload.containsKey('data'), isTrue);
@@ -47,27 +47,27 @@ void main() {
     test('connection descriptor matches canonical JSON and deterministic URI',
         () {
       final canonical = _fixture('v2-connection-descriptor.json');
-      final descriptor = PartyGameKitConnectionDescriptor.parseJson(canonical);
+      final descriptor = Dihor.GameKit.NetworkingConnectionDescriptor.parseJson(canonical);
 
       expect(descriptor.protocolVersion, 2);
       expect(descriptor.transport, 'lan-websocket');
-      expect(descriptor.endpoint, 'ws://192.168.1.10:45678/partygamekit');
+      expect(descriptor.endpoint, 'ws://192.168.1.10:45678/dihor-gamekit-networking');
       expect(descriptor.channelId, 'channel-a');
       expect(descriptor.toJsonString(), canonical);
 
       const expectedUri =
-          'partygamekit://connect?protocolVersion=2&transport=lan-websocket'
-          '&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit'
+          'dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket'
+          '&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fdihor-gamekit-networking'
           '&channelId=channel-a';
       expect(descriptor.toUriString(), expectedUri);
-      final fromUri = PartyGameKitConnectionDescriptor.parseUri(expectedUri);
+      final fromUri = Dihor.GameKit.NetworkingConnectionDescriptor.parseUri(expectedUri);
       expect(fromUri.toJsonString(), canonical);
     });
 
     test('descriptor parser preserves literal plus as data', () {
-      final descriptor = PartyGameKitConnectionDescriptor.parseUri(
-        'partygamekit://connect?protocolVersion=2&transport=lan-websocket'
-        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fpartygamekit'
+      final descriptor = Dihor.GameKit.NetworkingConnectionDescriptor.parseUri(
+        'dihor-gamekit-networking://connect?protocolVersion=2&transport=lan-websocket'
+        '&endpoint=ws%3A%2F%2F127.0.0.1%3A5042%2Fdihor-gamekit-networking'
         '&channelId=channel%2Ba',
       );
       expect(descriptor.channelId, 'channel+a');
@@ -75,7 +75,7 @@ void main() {
 
     test('discovery announcement carries only technical descriptor metadata',
         () {
-      final announcement = PartyGameKitDiscoveryAnnouncement.parse(
+      final announcement = Dihor.GameKit.NetworkingDiscoveryAnnouncement.parse(
         _fixture('v2-discovery-announcement.json'),
       );
 
@@ -85,7 +85,7 @@ void main() {
     });
 
     test('generic sequence gate rejects stale or equal messages', () {
-      final gate = PartyGameKitMessageSequenceGate();
+      final gate = Dihor.GameKit.NetworkingMessageSequenceGate();
       expect(gate.tryAccept(42), isTrue);
       expect(gate.tryAccept(42), isFalse);
       expect(gate.tryAccept(41), isFalse);
@@ -100,7 +100,7 @@ void main() {
       );
 
       expect(
-        () => PartyGameKitEnvelope.parse(incompatible),
+        () => Dihor.GameKit.NetworkingEnvelope.parse(incompatible),
         throwsA(isA<FormatException>()),
       );
     });

@@ -6,8 +6,8 @@ import {
   type WebRtcSignal,
 } from "../src/index.js";
 
-const peerLeftMethod = "PartyGameKit.WebRtcPeerLeft";
-const signalMethod = "PartyGameKit.WebRtcSignal";
+const peerLeftMethod = "Dihor.GameKit.Networking.WebRtcPeerLeft";
+const signalMethod = "Dihor.GameKit.Networking.WebRtcSignal";
 
 test("SignalR signaling buffers an early offer until the peer channel subscribes", async (t) => {
   const connection = new FakeHubConnection("local");

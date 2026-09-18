@@ -8,13 +8,13 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PartyGameKit.Core;
-using PartyGameKit.Discovery.Lan;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
-using PartyGameKit.Transport.Lan;
-using PartyGameKit.Transport.SignalR;
-using PartyGameKit.Transport.SignalR.Server;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Discovery.Lan;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
+using Dihor.GameKit.Networking.Transport.Lan;
+using Dihor.GameKit.Networking.Transport.SignalR;
+using Dihor.GameKit.Networking.Transport.SignalR.Server;
 
 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
 var cancellationToken = timeout.Token;
@@ -36,7 +36,7 @@ switch (mode)
         throw new ArgumentException("Communication demo mode must be 'all', 'lan' or 'signalr'.");
 }
 
-Console.WriteLine("PartyGameKit neutral communication demo passed.");
+Console.WriteLine("Dihor.GameKit.Networking neutral communication demo passed.");
 
 static async Task RunLanScenarioAsync(CancellationToken cancellationToken)
 {
@@ -286,7 +286,7 @@ static async Task HandleHostMessageAsync(
                 ?? throw new InvalidOperationException("Communication demo requires a stable peer ID for resume verification.");
             var registration = continuity.Register(peerId, received.ConnectionId);
             Ensure(registration.IsConnected, $"Unable to register {peerId}: {registration.Status}.");
-            var accepted = PartyGameKitMessages.Create(
+            var accepted = DihorGameKitNetworkingMessages.Create(
                 ProtocolMessageTypes.ConnectAccepted,
                 $"accepted-{received.ConnectionId.Value}",
                 new ConnectAcceptedPayload(received.ConnectionId, peerId, registration.ResumeToken),
@@ -300,7 +300,7 @@ static async Task HandleHostMessageAsync(
             var request = RequireMessage<ResumeRequestPayload>(json, ProtocolMessageTypes.ResumeRequest);
             var resume = continuity.Resume(request.Payload.PeerId, request.Payload.ResumeToken, received.ConnectionId);
             Ensure(resume.IsResumed, $"Unable to resume {request.Payload.PeerId}: {resume.Status}.");
-            var accepted = PartyGameKitMessages.Create(
+            var accepted = DihorGameKitNetworkingMessages.Create(
                 ProtocolMessageTypes.ResumeAccepted,
                 $"resumed-{received.ConnectionId.Value}",
                 new ResumeAcceptedPayload(received.ConnectionId, request.Payload.PeerId, resume.ResumeToken),
@@ -348,13 +348,13 @@ static async Task VerifyDiscoveryAsync(
 }
 
 static string CreateConnectHandshake(PeerId peerId, string messageId) =>
-    ProtocolJson.Serialize(PartyGameKitMessages.Create(
+    ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
         ProtocolMessageTypes.ConnectRequest,
         messageId,
         new ConnectRequestPayload(peerId)));
 
 static string CreateResumeHandshake(PeerId peerId, string resumeToken, string messageId) =>
-    ProtocolJson.Serialize(PartyGameKitMessages.Create(
+    ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
         ProtocolMessageTypes.ResumeRequest,
         messageId,
         new ResumeRequestPayload(peerId, resumeToken)));
@@ -364,7 +364,7 @@ static byte[] CreateApplicationBytes(string applicationType, object data, string
     var payload = new ApplicationMessagePayload(
         applicationType,
         JsonSerializer.SerializeToElement(data));
-    return Utf8(ProtocolJson.Serialize(PartyGameKitMessages.Create(
+    return Utf8(ProtocolJson.Serialize(DihorGameKitNetworkingMessages.Create(
         ProtocolMessageTypes.ApplicationMessage,
         messageId,
         payload)));
@@ -475,10 +475,10 @@ internal sealed class RelayDemoServer : IAsyncDisposable
         {
             options.Listen(IPAddress.Loopback, 0);
         });
-        builder.Services.AddPartyGameKitSignalRRelay();
+        builder.Services.AddDihorGameKitNetworkingSignalRRelay();
 
         var application = builder.Build();
-        application.MapPartyGameKitSignalRRelay();
+        application.MapDihorGameKitNetworkingSignalRRelay();
         await application.StartAsync(cancellationToken);
 
         var server = application.Services.GetRequiredService<IServer>();
@@ -489,7 +489,7 @@ internal sealed class RelayDemoServer : IAsyncDisposable
             throw new InvalidOperationException("SignalR demo relay did not expose a bound address.");
         }
 
-        return new RelayDemoServer(application, new Uri(baseUri, "/partygamekit-relay"));
+        return new RelayDemoServer(application, new Uri(baseUri, "/dihor-gamekit-networking-relay"));
     }
 
     public async ValueTask DisposeAsync()
