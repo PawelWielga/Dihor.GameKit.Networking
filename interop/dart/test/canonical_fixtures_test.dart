@@ -37,8 +37,8 @@ void main() {
     });
 
     test('application message payload remains consumer owned and opaque', () {
-      final message =
-          GameKitNetworkingEnvelope.parse(_fixture('v2-application-message.json'));
+      final message = GameKitNetworkingEnvelope.parse(
+          _fixture('v2-application-message.json'));
       expect(message.type, 'application.message');
       expect(message.payload['applicationType'], isNotEmpty);
       expect(message.payload.containsKey('data'), isTrue);
@@ -47,7 +47,8 @@ void main() {
     test('connection descriptor matches canonical JSON and deterministic URI',
         () {
       final canonical = _fixture('v2-connection-descriptor.json');
-      final descriptor = GameKitNetworkingConnectionDescriptor.parseJson(canonical);
+      final descriptor =
+          GameKitNetworkingConnectionDescriptor.parseJson(canonical);
 
       expect(descriptor.protocolVersion, 2);
       expect(descriptor.transport, 'lan-websocket');
@@ -60,7 +61,8 @@ void main() {
           '&endpoint=ws%3A%2F%2F192.168.1.10%3A45678%2Fpartygamekit'
           '&channelId=channel-a';
       expect(descriptor.toUriString(), expectedUri);
-      final fromUri = GameKitNetworkingConnectionDescriptor.parseUri(expectedUri);
+      final fromUri =
+          GameKitNetworkingConnectionDescriptor.parseUri(expectedUri);
       expect(fromUri.toJsonString(), canonical);
     });
 
