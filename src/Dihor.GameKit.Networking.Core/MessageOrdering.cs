@@ -1,4 +1,4 @@
-namespace PartyGameKit.Core;
+namespace Dihor.GameKit.Networking.Core;
 
 public readonly record struct MessageSequence
 {

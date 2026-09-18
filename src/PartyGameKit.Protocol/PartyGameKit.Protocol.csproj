@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Description>Versioned communication control protocol and connection descriptors for PartyGameKit.</Description>
-    <IsPackable>true</IsPackable>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
-  </ItemGroup>
-</Project>

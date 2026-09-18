@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace PartyGameKit.Core;
+namespace Dihor.GameKit.Networking.Core;
 
 public static class MonotonicClock
 {

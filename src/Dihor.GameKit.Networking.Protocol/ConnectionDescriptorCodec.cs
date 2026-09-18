@@ -1,13 +1,13 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using PartyGameKit.Core;
+using Dihor.GameKit.Networking.Core;
 
-namespace PartyGameKit.Protocol;
+namespace Dihor.GameKit.Networking.Protocol;
 
 public static class ConnectionDescriptorCodec
 {
-    public const string UriScheme = "partygamekit";
+    public const string UriScheme = "dihor-gamekit-networking";
     public const string UriHost = "connect";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -67,7 +67,7 @@ public static class ConnectionDescriptorCodec
             !string.Equals(uri.Scheme, UriScheme, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(uri.Host, UriHost, StringComparison.OrdinalIgnoreCase))
         {
-            throw new FormatException("Invalid PartyGameKit connection URI.");
+            throw new FormatException("Invalid Dihor.GameKit.Networking connection URI.");
         }
 
         var query = ParseQuery(uri.Query);
