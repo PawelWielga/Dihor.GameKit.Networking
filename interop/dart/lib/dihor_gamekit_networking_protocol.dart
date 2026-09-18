@@ -63,7 +63,7 @@ final class GameKitNetworkingConnectionDescriptor {
   factory GameKitNetworkingConnectionDescriptor.parseUri(String source) {
     final uri = Uri.tryParse(source.trim());
     if (uri == null ||
-        uri.scheme != 'dihor-gamekit-networking' ||
+        uri.scheme != 'partygamekit' ||
         uri.host != 'connect') {
       throw const FormatException(
           'Invalid Dihor.GameKit.Networking connection URI.');
@@ -104,7 +104,7 @@ final class GameKitNetworkingConnectionDescriptor {
 
   String toUriString() {
     String encode(String value) => Uri.encodeComponent(value);
-    return 'dihor-gamekit-networking://connect?protocolVersion=$protocolVersion'
+    return 'partygamekit://connect?protocolVersion=$protocolVersion'
         '&transport=${encode(transport)}'
         '&endpoint=${encode(endpoint)}'
         '${channelId == null ? '' : '&channelId=${encode(channelId!)}'}';
