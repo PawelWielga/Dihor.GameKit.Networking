@@ -13,9 +13,9 @@ namespace Dihor.GameKit.Networking.Transport.Tests;
 
 public sealed class WebRtcSignalingIntegrationTests
 {
-    private const string PeerJoinedMethod = "Dihor.GameKit.Networking.WebRtcPeerJoined";
-    private const string PeerLeftMethod = "Dihor.GameKit.Networking.WebRtcPeerLeft";
-    private const string SignalMethod = "Dihor.GameKit.Networking.WebRtcSignal";
+    private const string PeerJoinedMethod = "PartyGameKit.WebRtcPeerJoined";
+    private const string PeerLeftMethod = "PartyGameKit.WebRtcPeerLeft";
+    private const string SignalMethod = "PartyGameKit.WebRtcSignal";
 
     [Fact]
     public async Task SignalingRoutesOnlyWithinTechnicalChannel()
