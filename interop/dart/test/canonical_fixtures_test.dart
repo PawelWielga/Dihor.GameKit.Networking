@@ -14,7 +14,8 @@ void main() {
       ];
 
       for (final fixtureName in envelopeFixtures) {
-        final envelope = DihorGameKitNetworkingEnvelope.parse(_fixture(fixtureName));
+        final envelope =
+            DihorGameKitNetworkingEnvelope.parse(_fixture(fixtureName));
         expect(envelope.protocolVersion, dihorGameKitNetworkingProtocolVersion);
         expect(envelope.type, isNotEmpty);
         expect(envelope.messageId, isNotEmpty);
@@ -22,10 +23,10 @@ void main() {
     });
 
     test('connect and resume preserve neutral peer identity', () {
-      final connect =
-          DihorGameKitNetworkingEnvelope.parse(_fixture('v2-connect-request.json'));
-      final resume =
-          DihorGameKitNetworkingEnvelope.parse(_fixture('v2-resume-request.json'));
+      final connect = DihorGameKitNetworkingEnvelope.parse(
+          _fixture('v2-connect-request.json'));
+      final resume = DihorGameKitNetworkingEnvelope.parse(
+          _fixture('v2-resume-request.json'));
 
       expect(connect.type, 'connection.connect.request');
       expect(resume.type, 'connection.resume.request');
