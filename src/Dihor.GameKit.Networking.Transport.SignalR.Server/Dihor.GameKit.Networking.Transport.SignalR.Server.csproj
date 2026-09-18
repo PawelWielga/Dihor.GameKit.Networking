@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Neutral ASP.NET Core SignalR relay endpoint for PartyGameKit communication.</Description>
+    <Description>Neutral ASP.NET Core SignalR relay endpoint for Dihor.GameKit.Networking communication.</Description>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../PartyGameKit.Core/PartyGameKit.Core.csproj" />
+    <ProjectReference Include="../Dihor.GameKit.Networking.Core/Dihor.GameKit.Networking.Core.csproj" />
   </ItemGroup>
 </Project>

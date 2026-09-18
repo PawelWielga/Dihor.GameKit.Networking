@@ -4,11 +4,11 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
-using PartyGameKit.Core;
-using PartyGameKit.Protocol;
-using PartyGameKit.Transport.Abstractions;
+using Dihor.GameKit.Networking.Core;
+using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Transport.Abstractions;
 
-namespace PartyGameKit.Transport.SignalR;
+namespace Dihor.GameKit.Networking.Transport.SignalR;
 
 public sealed class SignalRRelayOptions
 {
@@ -614,11 +614,11 @@ internal static class SignalRRelayMethods
     public const string DisconnectClient = "DisconnectClient";
     public const string DetachClient = "DetachClient";
     public const string UnregisterListener = "UnregisterListener";
-    public const string PeerConnected = "PartyGameKit.PeerConnected";
-    public const string PeerMessage = "PartyGameKit.PeerMessage";
-    public const string PeerDisconnected = "PartyGameKit.PeerDisconnected";
-    public const string ClientMessage = "PartyGameKit.Message";
-    public const string ClientDisconnected = "PartyGameKit.Disconnected";
+    public const string PeerConnected = "Dihor.GameKit.Networking.PeerConnected";
+    public const string PeerMessage = "Dihor.GameKit.Networking.PeerMessage";
+    public const string PeerDisconnected = "Dihor.GameKit.Networking.PeerDisconnected";
+    public const string ClientMessage = "Dihor.GameKit.Networking.Message";
+    public const string ClientDisconnected = "Dihor.GameKit.Networking.Disconnected";
 }
 
 internal static class CloseReasonCodec
