@@ -23,8 +23,9 @@ public sealed class LatestValueReplayBuffer : IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// Gets the number of caller-owned replay keys that currently have an
-    /// undelivered latest value.
+    /// Gets the number of caller-owned replay keys that currently have a
+    /// staged latest value. Successfully sent values remain staged until they
+    /// are replaced, cleared or invalidated so reconnect can replay them.
     /// </summary>
     public int BufferedCount
     {
@@ -318,7 +319,9 @@ public sealed class LatestValueReplayBuffer : IDisposable
 
                 if (current.Version == buffered.Version)
                 {
-                    _latest.Remove(key);
+                    // A locally completed send is not an acknowledgement from
+                    // the remote peer. Keep the latest value staged so a later
+                    // replacement connection can replay the exact same message.
                     return;
                 }
 
