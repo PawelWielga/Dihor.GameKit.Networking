@@ -1,6 +1,6 @@
 # Automatic connectivity
 
-PartyGameKit `0.2.0-preview.4` adds a communication-only automatic connectivity policy. It chooses which registered client transport should establish a connection without interpreting players, hosts, parties, game sessions, authority or application state.
+Dihor.GameKit.Networking `0.2.0-preview.4` adds a communication-only automatic connectivity policy. It chooses which registered client transport should establish a connection without interpreting players, hosts, parties, game sessions, authority or application state.
 
 ## Default policy
 
@@ -24,9 +24,9 @@ Fallback is limited to connection establishment and reconnect attempts:
 - candidate timeout;
 - candidate unavailable in the current runtime.
 
-PartyGameKit does **not** silently reinterpret an application-level failure, rejected application message or game error as a reason to switch transports. The consumer remains responsible for its own application semantics.
+Dihor.GameKit.Networking does **not** silently reinterpret an application-level failure, rejected application message or game error as a reason to switch transports. The consumer remains responsible for its own application semantics.
 
-Caller cancellation stops the selection immediately and does not continue to another candidate. If a candidate ignores cancellation and succeeds later, PartyGameKit disposes that abandoned connection when the candidate supplies the required cleanup hook or implements the .NET client contract.
+Caller cancellation stops the selection immediately and does not continue to another candidate. If a candidate ignores cancellation and succeeds later, Dihor.GameKit.Networking disposes that abandoned connection when the candidate supplies the required cleanup hook or implements the .NET client contract.
 
 ## Reconnect
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-PartyGameKit is a reusable communication/networking layer for multiplayer applications. It is intentionally below PartyBeam, Państwa Miasta and future products.
+Dihor.GameKit.Networking is a reusable communication/networking layer for multiplayer applications. It is intentionally below PartyBeam, Państwa Miasta and future products.
 
 The authoritative boundary decision is [Communication boundary](communication-boundary.md).
 
@@ -12,7 +12,7 @@ PartyBeam / Państwa Miasta / future multiplayer products
                 │ product roles, players, parties, authority,
                 │ state, game lifecycle and rules
                 ▼
-          PartyGameKit
+          Dihor.GameKit.Networking
       communication/networking
                 │
         transports + discovery
@@ -22,11 +22,11 @@ PartyBeam / Państwa Miasta / future multiplayer products
 
 The central architectural rule is:
 
-> PartyGameKit moves messages and maintains communication continuity. Consumers decide what those messages and connected peers mean.
+> Dihor.GameKit.Networking moves messages and maintains communication continuity. Consumers decide what those messages and connected peers mean.
 
 ## Dependency licensing policy
 
-PartyGameKit must not depend on external libraries or packages whose commercial use requires payment.
+Dihor.GameKit.Networking must not depend on external libraries or packages whose commercial use requires payment.
 
 Every third-party dependency introduced into the project must permit commercial use without requiring:
 
@@ -34,9 +34,9 @@ Every third-party dependency introduced into the project must permit commercial 
 - a subscription or recurring license fee;
 - per-seat, per-device or per-runtime fees;
 - royalties or revenue sharing;
-- any other mandatory payment triggered by commercial use of PartyGameKit or products that consume it.
+- any other mandatory payment triggered by commercial use of Dihor.GameKit.Networking or products that consume it.
 
-Prefer permissive open-source licenses such as MIT, Apache-2.0 or BSD when a suitable dependency exists. Dual-licensed libraries are acceptable only when PartyGameKit and its commercial consumers can legally use the dependency under a free, commercial-compatible license.
+Prefer permissive open-source licenses such as MIT, Apache-2.0 or BSD when a suitable dependency exists. Dual-licensed libraries are acceptable only when Dihor.GameKit.Networking and its commercial consumers can legally use the dependency under a free, commercial-compatible license.
 
 The license of a new external dependency must be verified before the dependency is added. If commercial-use rights are unclear, treat the dependency as unsuitable until the license is confirmed.
 
@@ -44,7 +44,7 @@ For `[19]`, native browser WebRTC was chosen rather than introducing a native .N
 
 ## Communication identities and control protocol
 
-PartyGameKit defines only identities required by communication itself:
+Dihor.GameKit.Networking defines only identities required by communication itself:
 
 - transient `ConnectionId`;
 - optional stable neutral `PeerId` for resume/reconnect;
@@ -61,7 +61,7 @@ The language-neutral protocol owns:
 - message identifiers/correlation metadata;
 - opaque `application.message` payload transport.
 
-Application messages are consumer-owned. PartyGameKit does not require a game/session schema.
+Application messages are consumer-owned. Dihor.GameKit.Networking does not require a game/session schema.
 
 ## Transport abstractions
 
@@ -90,7 +90,7 @@ Concrete adapters remain separate by technology/runtime:
 
 The LAN and SignalR listener sides implement `IMessageTransport`. Their single-peer client adapters are technology-specific (`LanWebSocketClient` and `SignalRRelayClient`), but they carry the same protocol-v2/application payload semantics.
 
-Browser WebRTC uses `WebRtcPeer` in `@partygamekit/client`. It carries opaque binary consumer data directly over `RTCDataChannel`; it does not claim to be a native .NET or Dart endpoint.
+Browser WebRTC uses `WebRtcPeer` in `@dihor/gamekit-networking`. It carries opaque binary consumer data directly over `RTCDataChannel`; it does not claim to be a native .NET or Dart endpoint.
 
 Adding a communication path must never add player/session/authority semantics to base APIs.
 
@@ -114,7 +114,7 @@ SignalRRelayClient
 consumer peer
 ```
 
-The relay backend does not parse `PeerId`, resume credentials or application-message meaning. Protocol-v2 connect/resume validation remains in the PartyGameKit transport/protocol layer, and `ConnectionContinuityCoordinator` remains responsible for rebinding a stable neutral peer to a replacement connection.
+The relay backend does not parse `PeerId`, resume credentials or application-message meaning. Protocol-v2 connect/resume validation remains in the Dihor.GameKit.Networking transport/protocol layer, and `ConnectionContinuityCoordinator` remains responsible for rebinding a stable neutral peer to a replacement connection.
 
 See [SignalR relay](signalr-relay.md).
 
@@ -145,7 +145,7 @@ The optional ASP.NET Core signaling endpoint provides only technical SDP/ICE rou
 
 It does not relay normal DataChannel application traffic and does not own `PeerId`, player identity, parties or game state.
 
-TURN may be required in some Internet/NAT topologies, but PartyGameKit does not implement or operate a TURN service in `[19]`.
+TURN may be required in some Internet/NAT topologies, but Dihor.GameKit.Networking does not implement or operate a TURN service in `[19]`.
 
 See [WebRTC DataChannel](webrtc-datachannel.md).
 
@@ -155,7 +155,7 @@ Discovery advertises technical connection endpoints/services. It is separate fro
 
 `ConnectionDescriptor` contains only data required to establish communication: transport kind, endpoint, protocol version and optional technical `ChannelId`.
 
-Product invitation concepts such as party join code, game id, display name or QR presentation belong to the consumer. PartyBeam may wrap a PartyGameKit connection descriptor inside its own invite payload.
+Product invitation concepts such as party join code, game id, display name or QR presentation belong to the consumer. PartyBeam may wrap a Dihor.GameKit.Networking connection descriptor inside its own invite payload.
 
 LAN UDP discovery remains optional and backend-free. SignalR does not turn discovery into a product lobby service.
 
@@ -171,11 +171,11 @@ The Dart package remains a thin interoperability/protocol layer and deliberately
 
 `0.2.0-preview.3` aligns package versions across supported surfaces while allowing runtime-specific capability differences. Version alignment does not mean every language implements every transport.
 
-Framework UI/state-management concerns remain outside PartyGameKit.
+Framework UI/state-management concerns remain outside Dihor.GameKit.Networking.
 
 ## Cross-language boundary
 
-The compatibility model for PartyGameKit protocol v2 is:
+The compatibility model for Dihor.GameKit.Networking protocol v2 is:
 
 ```text
 protocol/fixtures/v2-*.json
@@ -185,7 +185,7 @@ protocol/fixtures/v2-*.json
   C#        Dart   TypeScript
 ```
 
-The fixtures specify the PartyGameKit protocol communication contract. Consumer/game protocols may be independently versioned by their owners.
+The fixtures specify the Dihor.GameKit.Networking protocol communication contract. Consumer/game protocols may be independently versioned by their owners.
 
 WebRTC DataChannel tests validate browser transport behavior separately; adding WebRTC does not modify the canonical protocol-v2 fixture set.
 
@@ -226,7 +226,7 @@ SignalR relay uses `ChannelId` to isolate application-data delivery. WebRTC sign
 
 WebRTC adds transport-level buffering policy, not game-state semantics. Reliable DataChannel traffic reports backpressure when the configured buffer bound would be exceeded; low-latency traffic may drop newest payloads according to explicit communication policy.
 
-Game snapshot semantics are not PartyGameKit base responsibilities. Public/private player projections, authority-bound publication and game-state restoration belong to consumers.
+Game snapshot semantics are not Dihor.GameKit.Networking base responsibilities. Public/private player projections, authority-bound publication and game-state restoration belong to consumers.
 
 ## Consumer examples
 
@@ -246,13 +246,13 @@ browser clients  = collaborators
 no players at all
 ```
 
-Both use the same PartyGameKit communication foundation without changing the library's ownership boundary.
+Both use the same Dihor.GameKit.Networking communication foundation without changing the library's ownership boundary.
 
 ## LAN host constraint
 
 The direct LAN WebSocket listener requires a server-capable runtime. A browser can initiate WebSocket connections but cannot be the raw inbound WebSocket listener.
 
-This is a transport capability constraint, not a reason to model `Host` or `SharedScreen` in PartyGameKit.
+This is a transport capability constraint, not a reason to model `Host` or `SharedScreen` in Dihor.GameKit.Networking.
 
 Browser WebRTC changes the peer-to-peer capability picture for browser consumers but does not turn browser transport capability into a product role.
 
@@ -266,7 +266,7 @@ See [Public API review](public-api.md), [Package boundaries](packages.md) and [M
 
 ## Architecture invariant
 
-A minimal PartyGameKit consumer can:
+A minimal Dihor.GameKit.Networking consumer can:
 
 1. connect generic clients;
 2. exchange opaque messages;

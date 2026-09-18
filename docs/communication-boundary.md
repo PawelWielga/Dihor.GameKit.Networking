@@ -1,10 +1,10 @@
 # Communication boundary
 
-This document is the architecture decision for issue `[15]`. It supersedes the original v0.1 assumption that PartyGameKit should own a generic room/player/game-session runtime.
+This document is the architecture decision for issue `[15]`. It supersedes the original v0.1 assumption that Dihor.GameKit.Networking should own a generic room/player/game-session runtime.
 
 ## Decision
 
-PartyGameKit is a **reusable communication/networking library**. It is infrastructure below PartyBeam, Państwa Miasta and future multiplayer products.
+Dihor.GameKit.Networking is a **reusable communication/networking library**. It is infrastructure below PartyBeam, Państwa Miasta and future multiplayer products.
 
 ```text
 PartyBeam / Państwa Miasta / future multiplayer products
@@ -12,7 +12,7 @@ PartyBeam / Państwa Miasta / future multiplayer products
                 │ product roles, players, parties, game sessions,
                 │ authority policy, state and game rules
                 ▼
-          PartyGameKit
+          Dihor.GameKit.Networking
       communication/networking
                 │
         transports + discovery
@@ -20,13 +20,13 @@ PartyBeam / Państwa Miasta / future multiplayer products
      LAN / SignalR / WebRTC
 ```
 
-PartyGameKit owns connection mechanics. Consumers own the meaning of connected participants.
+Dihor.GameKit.Networking owns connection mechanics. Consumers own the meaning of connected participants.
 
-A consumer must be able to use PartyGameKit without defining a `Player`, `Host`, `SharedScreen`, party, lobby, score or game state.
+A consumer must be able to use Dihor.GameKit.Networking without defining a `Player`, `Host`, `SharedScreen`, party, lobby, score or game state.
 
 ## Rules
 
-PartyGameKit may own:
+Dihor.GameKit.Networking may own:
 
 - transient transport connection identity;
 - a neutral stable logical client/peer identity required only for resume/reconnect;
@@ -42,7 +42,7 @@ PartyGameKit may own:
 - diagnostics, cancellation and cleanup;
 - cross-language C#/TypeScript/Dart compatibility for the communication contract.
 
-PartyGameKit must not own:
+Dihor.GameKit.Networking must not own:
 
 - `Player` or player membership;
 - player capacity/admission policy;
@@ -64,7 +64,7 @@ ConnectionId   transient transport connection
 PeerId         optional stable logical communication identity used for resume
 ```
 
-`PeerId` is neutral. It does not mean player, account, controller, TV, host or spectator. A consumer may map its own participant identity to a `PeerId`, or may use PartyGameKit without stable peer identity when reconnect is not required.
+`PeerId` is neutral. It does not mean player, account, controller, TV, host or spectator. A consumer may map its own participant identity to a `PeerId`, or may use Dihor.GameKit.Networking without stable peer identity when reconnect is not required.
 
 Current `PlayerId` is therefore **RENAME/GENERALIZE** to `PeerId` (or the final equivalent chosen in `[16]`). Current `ConnectionId` is **KEEP**, but it should move to the lowest coherent communication package so transport abstractions do not depend on a game/session Core package.
 
@@ -95,16 +95,16 @@ Target: a neutral `ConnectionDescriptor` containing only the data required to es
 - optional routing scope;
 - optional transport-specific metadata.
 
-A PartyBeam join code, QR presentation, party name or game identifier belongs above PartyGameKit. A product may embed or wrap a PartyGameKit connection descriptor in its own invite payload.
+A PartyBeam join code, QR presentation, party name or game identifier belongs above Dihor.GameKit.Networking. A product may embed or wrap a Dihor.GameKit.Networking connection descriptor in its own invite payload.
 
 ## Reconnect decision
 
-Reconnect/resume remains a PartyGameKit responsibility when implemented as communication continuity:
+Reconnect/resume remains a Dihor.GameKit.Networking responsibility when implemented as communication continuity:
 
 1. a stable neutral `PeerId` may outlive one network connection;
 2. a reconnect credential/token proves that a replacement connection may resume that peer identity;
 3. heartbeat loss marks connectivity state only;
-4. PartyGameKit does not decide whether a disconnected peer still occupies a player slot or whether a game pauses/ends;
+4. Dihor.GameKit.Networking does not decide whether a disconnected peer still occupies a player slot or whether a game pauses/ends;
 5. successful resume rebinds the new `ConnectionId` to the same `PeerId` and does not create a duplicate logical peer.
 
 Current `SessionContinuityCoordinator<TPublicState,TPrivateState>` mixes valid reconnect mechanics with player roles and snapshot restoration. It must be split in `[16]`.
@@ -123,13 +123,13 @@ Target examples:
 - `SequenceGate` / deduplication helper;
 - no `SnapshotAudience.Public`, `SnapshotTarget.ForPlayer`, `AuthorityId` or player projection model in base packages.
 
-Consumers such as Państwa Miasta may continue to own authoritative snapshots and use PartyGameKit only to carry those opaque payloads.
+Consumers such as Państwa Miasta may continue to own authoritative snapshots and use Dihor.GameKit.Networking only to carry those opaque payloads.
 
 ## Protocol decision
 
 The base wire contract has two layers:
 
-1. **PartyGameKit control protocol** for communication lifecycle and compatibility;
+1. **Dihor.GameKit.Networking control protocol** for communication lifecycle and compatibility;
 2. **opaque application messages** whose schema and semantics are consumer-owned.
 
 Keep/generalize:
@@ -147,7 +147,7 @@ Move out/remove from the base protocol:
 - player admission and room-full rejection;
 - `session.leave` as a product/player lifecycle event;
 - `authorityId`;
-- `state.snapshot` as a required PartyGameKit message;
+- `state.snapshot` as a required Dihor.GameKit.Networking message;
 - public/private/player projection metadata.
 
 The target vocabulary should use communication terms such as connect, peer, connection, resume, channel/scope and application message.
@@ -156,7 +156,7 @@ The target vocabulary should use communication terms such as connect, peer, conn
 
 | Current public abstraction/package | Decision | Target / reason |
 | --- | --- | --- |
-| `PartyGameKit.Core` package | **RENAME/GENERALIZE** | Do not preserve the package solely for compatibility. Split/collapse it around communication identities and reconnect utilities, or remove it if responsibilities fit Protocol/Transport packages better. |
+| `Dihor.GameKit.Networking.Core` package | **RENAME/GENERALIZE** | Do not preserve the package solely for compatibility. Split/collapse it around communication identities and reconnect utilities, or remove it if responsibilities fit Protocol/Transport packages better. |
 | `ConnectionId` | **KEEP** | Pure transport identity. Move to the lowest coherent communication package. |
 | `PlayerId` | **RENAME/GENERALIZE** | Replace with neutral `PeerId`/logical client identity used only for reconnect/routing. |
 | `RoomId` | **RENAME/GENERALIZE** | Keep only as a neutral `ChannelId`/`ScopeId` if routing isolation requires it. |
@@ -174,8 +174,8 @@ The target vocabulary should use communication terms such as connect, peer, conn
 | `SnapshotSequence` / `SnapshotSequenceGate` | **OPTIONAL UTILITY** | Generalize to message sequencing/deduplication without snapshot/game semantics. |
 | `SnapshotAudience`, `SnapshotTarget` | **MOVE OUT** | Public/player projection policy is consumer-specific. |
 | `PublicStateProjection`, `PlayerStateProjection` | **MOVE OUT** | Consumer state model. |
-| `StateSnapshot`, `PublishedSnapshotSet`, `AuthoritativeSnapshotPublisher` | **MOVE OUT** | Authority/game-state replication policy belongs above PartyGameKit. |
-| `PartyGameKit.Protocol` package | **KEEP/GENERALIZE** | Keep as language-neutral communication protocol; remove application/session semantics. |
+| `StateSnapshot`, `PublishedSnapshotSet`, `AuthoritativeSnapshotPublisher` | **MOVE OUT** | Authority/game-state replication policy belongs above Dihor.GameKit.Networking. |
+| `Dihor.GameKit.Networking.Protocol` package | **KEEP/GENERALIZE** | Keep as language-neutral communication protocol; remove application/session semantics. |
 | `ProtocolEnvelope<TPayload>` | **KEEP** | Neutral versioned envelope. |
 | `ProtocolVersions` | **KEEP** | Wire compatibility. |
 | current `ProtocolMessageTypes` | **RENAME/GENERALIZE** | Replace session/player/snapshot message set with neutral connection/control/application message types. |
@@ -184,22 +184,22 @@ The target vocabulary should use communication terms such as connect, peer, conn
 | heartbeat payload | **RENAME/GENERALIZE** | Keep health data; remove room/snapshot coupling. |
 | rejoin payloads | **RENAME/GENERALIZE** | Neutral peer resume. |
 | state snapshot payload | **MOVE OUT** | Consumer application message. |
-| `PartyGameKitMessages.Create` | **KEEP/GENERALIZE** | Generic envelope factory; rename if needed to avoid game-specific naming. |
+| `Dihor.GameKit.NetworkingMessages.Create` | **KEEP/GENERALIZE** | Generic envelope factory; rename if needed to avoid game-specific naming. |
 | `JoinDescriptorCodec` | **RENAME/GENERALIZE** | Codec for neutral connection descriptor. |
-| `PartyGameKit.Transport.Abstractions` | **KEEP** | Core responsibility, but remove dependency on product/session Core. |
+| `Dihor.GameKit.Networking.Transport.Abstractions` | **KEEP** | Core responsibility, but remove dependency on product/session Core. |
 | `IGameTransport` | **RENAME/GENERALIZE** | Rename to neutral `ITransport`/`IMessageTransport`. |
 | transport events/errors/close reasons | **KEEP** | Communication concerns. |
-| `PartyGameKit.Transport.InMemory` | **KEEP** | Deterministic reference/test transport. Rename game-specific public types if present. |
-| `PartyGameKit.Transport.Lan` | **KEEP** | Direct LAN WebSocket implementation. |
+| `Dihor.GameKit.Networking.Transport.InMemory` | **KEEP** | Deterministic reference/test transport. Rename game-specific public types if present. |
+| `Dihor.GameKit.Networking.Transport.Lan` | **KEEP** | Direct LAN WebSocket implementation. |
 | `LanWebSocketTransport`, client and options | **KEEP** | Concrete communication transport. Ensure API accepts neutral descriptors/control messages. |
 | `LanJoinDescriptor` | **RENAME/GENERALIZE** | LAN-specific connection descriptor, not product join/session object. |
-| `PartyGameKit.Discovery.Lan` | **KEEP/GENERALIZE** | Discovery remains useful, but advertises connection endpoints/scopes rather than game sessions. |
+| `Dihor.GameKit.Networking.Discovery.Lan` | **KEEP/GENERALIZE** | Discovery remains useful, but advertises connection endpoints/scopes rather than game sessions. |
 | `DiscoveredSessionRegistry` | **RENAME/GENERALIZE** | Rename to discovered endpoint/service/connection registry. |
 | UDP advertiser/listener and broadcast resolver | **KEEP/GENERALIZE** | Keep mechanics; neutralize payload vocabulary. |
-| `@partygamekit/client` package | **KEEP/GENERALIZE** | Base browser SDK becomes connect/send/receive/resume client with opaque payloads. |
+| `@dihor/gamekit-networking` package | **KEEP/GENERALIZE** | Base browser SDK becomes connect/send/receive/resume client with opaque payloads. |
 | TypeScript player/shared-screen roles, player identity, projections | **MOVE OUT/GENERALIZE** | Replace with neutral peer identity and application messages. |
 | TypeScript snapshot gate | **OPTIONAL UTILITY** | Keep only as generic sequence/dedupe utility. |
-| `partygamekit_protocol` Dart package | **KEEP/GENERALIZE** | Thin communication protocol/descriptor compatibility layer. |
+| `dihor_gamekit_networking_protocol` Dart package | **KEEP/GENERALIZE** | Thin communication protocol/descriptor compatibility layer. |
 | Dart player/role/session/snapshot protocol models | **MOVE OUT/GENERALIZE** | Align with neutral protocol; game snapshot behavior stays in Państwa Miasta. |
 | SharedCounter and DungeonPrototype samples | **KEEP AS CONSUMERS** | Samples may define Player/Authority/GameState locally but must not define generic API. Add a neutral communication sample in `[17]`. |
 
@@ -244,7 +244,7 @@ No low-level package should depend on a package whose responsibility is player/s
 - game snapshot schema and restoration policy;
 - categories, answers, voting, scoring and phases.
 
-It may map its participant identity to PartyGameKit `PeerId` and transport its snapshots/commands as opaque application messages.
+It may map its participant identity to Dihor.GameKit.Networking `PeerId` and transport its snapshots/commands as opaque application messages.
 
 ## Migration from `0.1.0-preview.1`
 
@@ -266,7 +266,7 @@ Do not add obsolete adapters that silently keep the old API as the preferred pat
 ## Refactoring checklist for `[16]`
 
 1. Introduce neutral communication identities (`ConnectionId`, optional stable `PeerId`, optional routing scope).
-2. Move transport abstractions off `PartyGameKit.Core`; rename `IGameTransport` and other game-specific transport vocabulary.
+2. Move transport abstractions off `Dihor.GameKit.Networking.Core`; rename `IGameTransport` and other game-specific transport vocabulary.
 3. Replace `JoinDescriptor`/`LanJoinDescriptor` with technical connection descriptors.
 4. Replace protocol `session.join.*`/`session.rejoin.*` with neutral handshake/resume control messages.
 5. Remove `ClientRole`, `AuthorityId`, `RoomSession`, capacity/admission/player lifecycle APIs from base production packages.

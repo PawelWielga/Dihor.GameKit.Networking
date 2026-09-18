@@ -1,6 +1,6 @@
 # LAN discovery and connection descriptors
 
-LAN discovery remains PartyGameKit infrastructure, but it discovers **technical connection endpoints/services**, not product game sessions.
+LAN discovery remains Dihor.GameKit.Networking infrastructure, but it discovers **technical connection endpoints/services**, not product game sessions.
 
 See [Communication boundary](communication-boundary.md).
 
@@ -23,7 +23,7 @@ Discovery never carries authoritative game state and is not required for direct 
 
 ## Target discovery data
 
-A PartyGameKit discovery announcement may contain only communication metadata such as:
+A Dihor.GameKit.Networking discovery announcement may contain only communication metadata such as:
 
 - protocol version;
 - transport kind;
@@ -32,7 +32,7 @@ A PartyGameKit discovery announcement may contain only communication metadata su
 - expiry/refresh identity required to deduplicate advertisements;
 - transport capability metadata when justified.
 
-Product metadata such as party name, player count, game phase, selected game, join policy or player capacity belongs to the consumer. A consumer may advertise that separately or wrap PartyGameKit discovery data in its own product discovery layer.
+Product metadata such as party name, player count, game phase, selected game, join policy or player capacity belongs to the consumer. A consumer may advertise that separately or wrap Dihor.GameKit.Networking discovery data in its own product discovery layer.
 
 ## Connection descriptor
 
@@ -44,7 +44,7 @@ A PartyBeam invite may therefore conceptually contain:
 
 ```text
 PartyBeam invite metadata
-└── PartyGameKit ConnectionDescriptor
+└── Dihor.GameKit.Networking ConnectionDescriptor
 ```
 
 ## UDP implementation
