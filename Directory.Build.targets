@@ -2,14 +2,14 @@
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
     <Version>0.2.0-preview.6</Version>
     <Authors>PawelWielga</Authors>
-    <Company>PartyGameKit</Company>
-    <RepositoryUrl>https://github.com/PawelWielga/PartyGameKit</RepositoryUrl>
+    <Company>Dihor.GameKit.Networking</Company>
+    <RepositoryUrl>https://github.com/PawelWielga/Dihor.GameKit.Networking</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/PawelWielga/PartyGameKit</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/PawelWielga/Dihor.GameKit.Networking</PackageProjectUrl>
     <PackageTags>multiplayer;communication;networking;lan;signalr;relay;webrtc;datachannel;timing;latency</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>PartyGameKit 0.2.0-preview.6 makes the direct LAN WebSocket client, host and discovery path consumable from net10.0-android API 28+ by removing the ASP.NET Core/Kestrel runtime dependency and adding package-only Android compatibility validation while retaining protocol v2. See docs/android-lan.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>Dihor.GameKit.Networking 0.2.0-preview.6 makes the direct LAN WebSocket client, host and discovery path consumable from net10.0-android API 28+ by removing the ASP.NET Core/Kestrel runtime dependency and adding package-only Android compatibility validation while retaining protocol v2. See docs/android-lan.md.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IncludeSymbols>true</IncludeSymbols>

@@ -3,15 +3,15 @@
   "tag": "v0.2.0-preview.6",
   "protocolVersion": 2,
   "license": "MIT",
-  "nugetFeedAsset": "partygamekit-nuget-feed-0.2.0-preview.6.zip",
+  "nugetFeedAsset": "dihor-gamekit-networking-nuget-feed-0.2.0-preview.6.zip",
   "nugetPackages": [
-    "PartyGameKit.Core",
-    "PartyGameKit.Protocol",
-    "PartyGameKit.Transport.Abstractions",
-    "PartyGameKit.Transport.InMemory",
-    "PartyGameKit.Transport.Lan",
-    "PartyGameKit.Transport.SignalR",
-    "PartyGameKit.Transport.SignalR.Server",
-    "PartyGameKit.Discovery.Lan"
+    "Dihor.GameKit.Networking.Core",
+    "Dihor.GameKit.Networking.Protocol",
+    "Dihor.GameKit.Networking.Transport.Abstractions",
+    "Dihor.GameKit.Networking.Transport.InMemory",
+    "Dihor.GameKit.Networking.Transport.Lan",
+    "Dihor.GameKit.Networking.Transport.SignalR",
+    "Dihor.GameKit.Networking.Transport.SignalR.Server",
+    "Dihor.GameKit.Networking.Discovery.Lan"
   ]
 }

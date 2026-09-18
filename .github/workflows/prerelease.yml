@@ -80,21 +80,21 @@ jobs:
 
       - name: Restore, build and test .NET
         run: |
-          dotnet restore PartyGameKit.slnx
-          dotnet build PartyGameKit.slnx --configuration Release --no-restore
-          dotnet test PartyGameKit.slnx --configuration Release --no-build
+          dotnet restore Dihor.GameKit.Networking.slnx
+          dotnet build Dihor.GameKit.Networking.slnx --configuration Release --no-restore
+          dotnet test Dihor.GameKit.Networking.slnx --configuration Release --no-build
 
       - name: Run neutral communication demo
         run: >-
           dotnet run
-          --project samples/CommunicationDemo/PartyGameKit.Sample.CommunicationDemo.csproj
+          --project samples/CommunicationDemo/Dihor.GameKit.Networking.Sample.CommunicationDemo.csproj
           --configuration Release
           --no-build
 
       - name: Run automatic connectivity demo
         run: >-
           dotnet run
-          --project samples/AutoConnectivityDemo/PartyGameKit.Sample.AutoConnectivityDemo.csproj
+          --project samples/AutoConnectivityDemo/Dihor.GameKit.Networking.Sample.AutoConnectivityDemo.csproj
           --configuration Release
           --no-build
 
@@ -108,11 +108,11 @@ jobs:
         shell: bash
         run: |
           sed -E -i "s/Version=\"0\.2\.0-preview\.[0-9]+\"/Version=\"${{ steps.version.outputs.version }}\"/g" \
-            packaging/android-client/PartyGameKit.AndroidClient.PackageConsumer.csproj \
-            packaging/android-host/PartyGameKit.AndroidHost.PackageConsumer.csproj
+            packaging/android-client/Dihor.GameKit.Networking.AndroidClient.PackageConsumer.csproj \
+            packaging/android-host/Dihor.GameKit.Networking.AndroidHost.PackageConsumer.csproj
           for PROJECT in \
-            packaging/android-client/PartyGameKit.AndroidClient.PackageConsumer.csproj \
-            packaging/android-host/PartyGameKit.AndroidHost.PackageConsumer.csproj; do
+            packaging/android-client/Dihor.GameKit.Networking.AndroidClient.PackageConsumer.csproj \
+            packaging/android-host/Dihor.GameKit.Networking.AndroidHost.PackageConsumer.csproj; do
             NUGET_PACKAGES="$PWD/artifacts/android-packages" \
               dotnet restore "$PROJECT" \
               --no-cache \
@@ -149,14 +149,14 @@ jobs:
         shell: bash
         run: |
           sed -E -i "s/Version=\"0\.2\.0-preview\.[0-9]+\"/Version=\"${{ steps.version.outputs.version }}\"/g" \
-            packaging/consumer/PartyGameKit.PackageConsumer.csproj
+            packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj
           NUGET_PACKAGES="$PWD/artifacts/consumer-packages" \
-            dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj \
+            dotnet restore packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj \
             --no-cache \
             --source "$PWD/artifacts/nuget" \
             --source "https://api.nuget.org/v3/index.json"
-          dotnet build packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-restore
-          dotnet run --project packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-build
+          dotnet build packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj --configuration Release --no-restore
+          dotnet run --project packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj --configuration Release --no-build
 
       - name: Build durable NuGet release feed
         shell: bash
@@ -193,7 +193,7 @@ jobs:
         run: |
           sed -i "s/^version: .*/version: ${{ steps.version.outputs.version }}/" interop/dart/pubspec.yaml
           mkdir -p artifacts/dart
-          tar -czf "artifacts/dart/partygamekit_protocol-${{ steps.version.outputs.version }}.tar.gz" \
+          tar -czf "artifacts/dart/dihor_gamekit_networking_protocol-${{ steps.version.outputs.version }}.tar.gz" \
             -C interop/dart pubspec.yaml README.md CHANGELOG.md LICENSE lib
 
       - name: Setup Node
@@ -236,7 +236,7 @@ jobs:
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: partygamekit-${{ steps.version.outputs.version }}
+          name: dihor-gamekit-networking-${{ steps.version.outputs.version }}
           path: artifacts/
           if-no-files-found: error
 
@@ -251,13 +251,13 @@ jobs:
             gh release create "$TAG" "${RELEASE_ASSETS[@]}" \
               --prerelease \
               --generate-notes \
-              --title "PartyGameKit ${{ steps.version.outputs.version }}"
+              --title "Dihor.GameKit.Networking ${{ steps.version.outputs.version }}"
           else
             gh release create "$TAG" "${RELEASE_ASSETS[@]}" \
               --target "$GITHUB_SHA" \
               --prerelease \
               --generate-notes \
-              --title "PartyGameKit ${{ steps.version.outputs.version }}"
+              --title "Dihor.GameKit.Networking ${{ steps.version.outputs.version }}"
           fi
 
       - name: Verify durable GitHub Release NuGet feed
@@ -274,9 +274,9 @@ jobs:
           done < <(jq -r '.nugetPackages[]' release/prerelease.json)
           rm -rf "$VERIFY_ROOT/global-packages"
           NUGET_PACKAGES="$VERIFY_ROOT/global-packages" \
-            dotnet restore packaging/consumer/PartyGameKit.PackageConsumer.csproj \
+            dotnet restore packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj \
             --force \
             --no-cache \
             --configfile "$VERIFY_ROOT/feed/NuGet.Config"
-          dotnet build packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-restore
-          dotnet run --project packaging/consumer/PartyGameKit.PackageConsumer.csproj --configuration Release --no-build
+          dotnet build packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj --configuration Release --no-restore
+          dotnet run --project packaging/consumer/Dihor.GameKit.Networking.PackageConsumer.csproj --configuration Release --no-build

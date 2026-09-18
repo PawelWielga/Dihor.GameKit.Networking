@@ -1,6 +1,6 @@
 # Changelog
 
-All notable PartyGameKit changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
+All notable Dihor.GameKit.Networking changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
 ## 0.2.0-preview.5 - 2026-09-15
 
@@ -27,13 +27,13 @@ Transport-neutral synchronized monotonic timing on the existing protocol-v2 comm
 
 - adds equivalent browser `MonotonicTimingSynchronizer` and `monotonicNowMs()` based on `performance.now()`;
 - adds deterministic .NET and TypeScript tests for known offsets, RTT/jitter variation, uncertainty, timestamp validation, reconnect invalidation, bounded storage and normalized ordering that differs from packet-arrival order;
-- package-only NuGet validation exercises timing offset estimation and timestamp normalization through `PartyGameKit.Core`;
+- package-only NuGet validation exercises timing offset estimation and timestamp normalization through `Dihor.GameKit.Networking.Core`;
 - existing LAN, SignalR, Auto, Dart and real Chromium WebRTC gates remain green;
 - adds no external runtime dependency and keeps wire protocol `2` unchanged.
 
 ### Boundary
 
-- PartyGameKit reports timing facts and uncertainty only; consumers decide whether timing quality is sufficient and what normalized event order means for a game/product;
+- Dihor.GameKit.Networking reports timing facts and uncertainty only; consumers decide whether timing quality is sufficient and what normalized event order means for a game/product;
 - no player, controller, TV, winner, scoring or PartySession semantics are introduced.
 
 ## 0.2.0-preview.4 - 2026-09-13
@@ -81,7 +81,7 @@ Compatible real-time transport expansion on the existing communication-only prot
 - adds browser-native `WebRtcPeer` based on `RTCPeerConnection` / `RTCDataChannel` without a third-party WebRTC runtime;
 - adds explicit `reliable` ordered and `low-latency` unordered/no-retransmit DataChannel profiles;
 - keeps application payloads opaque and peer-to-peer after negotiation;
-- bounds pending ICE candidates and DataChannel buffering instead of maintaining unbounded PartyGameKit send queues;
+- bounds pending ICE candidates and DataChannel buffering instead of maintaining unbounded Dihor.GameKit.Networking send queues;
 - reliable mode reports backpressure while low-latency mode can drop newest stale-prone payloads;
 - adds RTT and RTT-variation diagnostics plus dropped-message counters.
 
@@ -89,7 +89,7 @@ Compatible real-time transport expansion on the existing communication-only prot
 
 - adds a neutral browser signaling abstraction separated from application payload transport;
 - adds optional SignalR browser signaling through `@microsoft/signalr`;
-- adds `AddPartyGameKitWebRtcSignaling(...)` and `MapPartyGameKitWebRtcSignaling(...)` to the ASP.NET Core server package;
+- adds `AddDihorGameKitNetworkingWebRtcSignaling(...)` and `MapDihorGameKitNetworkingWebRtcSignaling(...)` to the ASP.NET Core server package;
 - SignalR routes only SDP/ICE negotiation data between transient connections sharing the same technical `ChannelId`;
 - cross-channel signaling is rejected and signaling payloads are bounded;
 - stable `PeerId`, players, PartyBeam parties, product roles and game state remain outside the signaling backend.
@@ -104,7 +104,7 @@ Compatible real-time transport expansion on the existing communication-only prot
 
 ### Dependency policy
 
-- rejects SIPSorcery as a PartyGameKit dependency because its current non-standard license does not match the project's free-commercial-use dependency rule;
+- rejects SIPSorcery as a Dihor.GameKit.Networking dependency because its current non-standard license does not match the project's free-commercial-use dependency rule;
 - does not adopt archived MixedReality-WebRTC or the WebRTCme desktop path;
 - uses browser-native WebRTC, MIT-licensed `@microsoft/signalr`, and Apache-2.0 Playwright as dev-only real-browser test tooling.
 
@@ -119,15 +119,15 @@ Compatible transport expansion on the corrected communication-only protocol-v2 f
 
 ### SignalR relay transport
 
-- adds `PartyGameKit.Transport.SignalR` with `SignalRRelayTransport : IMessageTransport` and `SignalRRelayClient`;
-- adds `PartyGameKit.Transport.SignalR.Server` with minimal ASP.NET Core registration/mapping extensions;
+- adds `Dihor.GameKit.Networking.Transport.SignalR` with `SignalRRelayTransport : IMessageTransport` and `SignalRRelayClient`;
+- adds `Dihor.GameKit.Networking.Transport.SignalR.Server` with minimal ASP.NET Core registration/mapping extensions;
 - keeps the SignalR hub and relay registry internal implementation details;
 - routes opaque bytes using technical `ChannelId` scopes and transient `ConnectionId` values only;
 - preserves the LAN lifecycle rule that a connect/resume handshake is validated before `TransportConnectionOpened` is exposed;
 - supports targeted listener-to-client delivery, broadcast, client-to-listener delivery, disconnect and cleanup;
 - keeps stable `PeerId` continuity and resume tokens above the relay backend;
 - rejects protocol-v1 handshakes before exposing a connection to the application;
-- accounts for SignalR JSON/base64 framing while retaining the configured raw PartyGameKit payload limit;
+- accounts for SignalR JSON/base64 framing while retaining the configured raw Dihor.GameKit.Networking payload limit;
 - closes the physical SignalR connection when a client-side payload limit is violated so backend routing bindings are removed promptly.
 
 ### Validation
@@ -153,7 +153,7 @@ Compatible transport expansion on the corrected communication-only protocol-v2 f
 
 ## 0.2.0-preview.1 - 2026-09-13
 
-Breaking correction of the public architecture boundary. PartyGameKit is now a communication/networking library rather than a generic party/game-session runtime.
+Breaking correction of the public architecture boundary. Dihor.GameKit.Networking is now a communication/networking library rather than a generic party/game-session runtime.
 
 ### Breaking changes
 
@@ -180,9 +180,9 @@ Breaking correction of the public architecture boundary. PartyGameKit is now a c
 
 ### TypeScript and Dart
 
-- `@partygamekit/client` moved to neutral connect/resume APIs with optional stable peer identity;
+- `@dihor/gamekit-networking` moved to neutral connect/resume APIs with optional stable peer identity;
 - browser role requirements (`player`, `shared-screen`) and snapshot projection handling were removed;
-- browser descriptors now use `ConnectionDescriptor` / `partygamekit://connect`;
+- browser descriptors now use `ConnectionDescriptor` / `dihor-gamekit-networking://connect`;
 - the Dart interoperability package moved to protocol v2, neutral peer/connection vocabulary and connection descriptors;
 - both language surfaces validate the same `protocol/fixtures/v2-*.json` contract as C#.
 
@@ -195,8 +195,8 @@ Breaking correction of the public architecture boundary. PartyGameKit is now a c
 
 ### Cross-repository validation
 
-- validated the corrected primitives against the current Państwa Miasta multiplayer/LAN structure without moving `PlayerProfile`, room policy or Countries & Cities game state into PartyGameKit;
-- validated that PartyBeam can keep PartySession, TV/controller/player roles, technical-authority policy and game-state projections entirely above PartyGameKit;
+- validated the corrected primitives against the current Państwa Miasta multiplayer/LAN structure without moving `PlayerProfile`, room policy or Countries & Cities game state into Dihor.GameKit.Networking;
+- validated that PartyBeam can keep PartySession, TV/controller/player roles, technical-authority policy and game-state projections entirely above Dihor.GameKit.Networking;
 - documented required consumer-side follow-up separately in `docs/cross-repo-validation.md`.
 
 ### Validation
