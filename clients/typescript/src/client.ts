@@ -35,7 +35,7 @@ export interface ConnectionInfo {
   resumeToken?: string;
 }
 
-export interface PartyGameClientEvents {
+export interface GameKitNetworkingClientEvents {
   state: ConnectionState;
   applicationMessage: ApplicationMessagePayload;
   message: ProtocolEnvelope;
@@ -44,8 +44,8 @@ export interface PartyGameClientEvents {
 }
 
 export type MessageEventData = string | ArrayBuffer | Blob;
-export type ClientEventName = keyof PartyGameClientEvents;
-export type ClientEventListener<K extends ClientEventName> = (value: PartyGameClientEvents[K]) => void;
+export type ClientEventName = keyof GameKitNetworkingClientEvents;
+export type ClientEventListener<K extends ClientEventName> = (value: GameKitNetworkingClientEvents[K]) => void;
 
 export interface WebSocketLike {
   readonly readyState: number;
@@ -58,7 +58,7 @@ export interface WebSocketLike {
   close(code?: number, reason?: string): void;
 }
 
-export interface PartyGameClientOptions {
+export interface GameKitNetworkingClientOptions {
   /**
    * Stable communication identity used only for resume/reconnect. Pass null for
    * an anonymous connection that does not need continuity. When omitted, a
@@ -80,7 +80,7 @@ export class ConnectionRejectedError extends Error {
   }
 }
 
-export class PartyGameClient {
+export class GameKitNetworkingClient {
   private readonly identityStore: PeerIdentityStore;
   private readonly webSocketFactory: (url: string) => WebSocketLike;
   private readonly messageIdFactory: () => string;
@@ -103,7 +103,7 @@ export class PartyGameClient {
   private intentionallyClosing = false;
   private peerId: string | null = null;
 
-  public constructor(options: PartyGameClientOptions = {}) {
+  public constructor(options: GameKitNetworkingClientOptions = {}) {
     this.configuredPeerId = options.peerId;
     this.identityStore = options.identityStore ?? createDefaultIdentityStore();
     this.webSocketFactory = options.webSocketFactory ?? defaultWebSocketFactory;
@@ -424,7 +424,7 @@ export class PartyGameClient {
     this.emit("state", state);
   }
 
-  private emit<K extends ClientEventName>(event: K, value: PartyGameClientEvents[K]): void {
+  private emit<K extends ClientEventName>(event: K, value: GameKitNetworkingClientEvents[K]): void {
     for (const listener of this.listeners.get(event) ?? []) listener(value);
   }
 }

@@ -47,7 +47,7 @@ export class MemoryIdentityStore implements PeerIdentityStore {
 export class LocalStorageIdentityStore implements PeerIdentityStore {
   public constructor(
     private readonly storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
-    private readonly prefix = "partygamekit.client",
+    private readonly prefix = "dihor-gamekit-networking.client",
   ) {}
 
   public getPeerId(): string | null {

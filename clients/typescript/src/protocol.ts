@@ -55,7 +55,7 @@ export function serializeMessage(message: ProtocolEnvelope): string {
 export function parseMessage<TPayload = unknown>(input: string | ArrayBuffer | ArrayBufferView, expectedType?: string): ProtocolEnvelope<TPayload> {
   const json = typeof input === "string" ? input : new TextDecoder().decode(toUint8Array(input));
   let value: unknown;
-  try { value = JSON.parse(json); } catch (error) { throw new ProtocolError("invalid-json", "Invalid PartyGameKit JSON", error); }
+  try { value = JSON.parse(json); } catch (error) { throw new ProtocolError("invalid-json", "Invalid Dihor.GameKit.Networking JSON", error); }
   if (!isRecord(value)) throw new ProtocolError("invalid-contract", "Protocol envelope must be an object");
   if (typeof value.type !== "string" || value.type.trim().length === 0) throw new ProtocolError("missing-message-type", "Protocol message type is required");
   if (expectedType !== undefined && value.type !== expectedType) throw new ProtocolError("message-type-mismatch", `Expected ${expectedType}, received ${value.type}`);
