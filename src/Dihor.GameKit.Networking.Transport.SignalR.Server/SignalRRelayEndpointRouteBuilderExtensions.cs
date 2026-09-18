@@ -5,7 +5,7 @@ namespace Dihor.GameKit.Networking.Transport.SignalR.Server;
 
 public static class SignalRRelayEndpointRouteBuilderExtensions
 {
-    public static HubEndpointConventionBuilder MapDihor.GameKit.NetworkingSignalRRelay(
+    public static HubEndpointConventionBuilder MapGameKitNetworkingSignalRRelay(
         this IEndpointRouteBuilder endpoints,
         string pattern = "/partygamekit-relay")
     {
