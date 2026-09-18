@@ -18,7 +18,7 @@ export interface ReplaySender<TMessage> {
  */
 export class LatestValueReplayBuffer<TMessage> {
   private readonly latest = new Map<string, BufferedMessage<TMessage>>();
-  private readonly activeFlushes = new Map<string, Promise<void>>();
+  private readonly activeFlushes = new Map<string, Promise<number>>();
 
   private binding: SenderBinding<TMessage> | undefined;
   private nextVersion = 0;
@@ -42,7 +42,10 @@ export class LatestValueReplayBuffer<TMessage> {
     const binding = this.binding;
     if (binding === undefined) return;
 
-    await this.getOrStartFlush(normalizedKey, binding);
+    while (this.isCurrentBinding(binding) && this.latest.has(normalizedKey)) {
+      const sentVersion = await this.getOrStartFlush(normalizedKey, binding);
+      if (sentVersion >= version) return;
+    }
   }
 
   /**
@@ -112,7 +115,7 @@ export class LatestValueReplayBuffer<TMessage> {
   private getOrStartFlush(
     key: string,
     binding: SenderBinding<TMessage>,
-  ): Promise<void> {
+  ): Promise<number> {
     const flushId = `${binding.generation}:\u0000:${key}`;
     const active = this.activeFlushes.get(flushId);
     if (active !== undefined) return active;
@@ -130,34 +133,37 @@ export class LatestValueReplayBuffer<TMessage> {
   private async flushKey(
     key: string,
     binding: SenderBinding<TMessage>,
-  ): Promise<void> {
+  ): Promise<number> {
+    let lastSentVersion = 0;
+
     while (true) {
-      if (!this.isCurrentBinding(binding)) return;
+      if (!this.isCurrentBinding(binding)) return lastSentVersion;
 
       const buffered = this.latest.get(key);
-      if (buffered === undefined) return;
+      if (buffered === undefined) return lastSentVersion;
 
       try {
         await binding.sender.send(buffered.message, binding.abortController.signal);
+        lastSentVersion = buffered.version;
       } catch (error) {
-        if (binding.abortController.signal.aborted) return;
+        if (binding.abortController.signal.aborted) return lastSentVersion;
         throw error;
       }
 
       if (!this.isCurrentBinding(binding)) {
         // Delivery on a connection replaced while the send was in flight is
         // ambiguous. Keep the same staged message for replay on the replacement.
-        return;
+        return lastSentVersion;
       }
 
       const current = this.latest.get(key);
-      if (current === undefined) return;
+      if (current === undefined) return lastSentVersion;
 
       if (current.version === buffered.version) {
         // A locally completed send is not a receiver acknowledgement. Keep the
         // latest value staged so a replacement connection can replay the same
         // message (and therefore the same protocol messageId).
-        return;
+        return lastSentVersion;
       }
 
       // A newer value was staged while the previous send was in flight. Loop
