@@ -1,1 +1,1 @@
-{"type":"connection.discovery.announce","protocolVersion":2,"descriptor":{"protocolVersion":2,"transport":"lan-websocket","endpoint":"ws://192.168.1.10:45678/partygamekit","channelId":"channel-a"}}
+{"type":"connection.discovery.announce","protocolVersion":2,"descriptor":{"protocolVersion":2,"transport":"lan-websocket","endpoint":"ws://192.168.1.10:45678/dihor-gamekit-networking","channelId":"channel-a"}}
