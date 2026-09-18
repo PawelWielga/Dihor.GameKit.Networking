@@ -123,7 +123,7 @@ See [Automatic connectivity](docs/automatic-connectivity.md) for policy, diagnos
 
 `LatestValueReplayBuffer` provides optional reconnect-safe delivery for transient application values whose older revisions become obsolete. Each caller-owned key stores only the newest staged value, and a caller-owned scope/epoch prevents stale data from replaying into a new logical context.
 
-Replay stays on the ordinary application-data path. `connection.heartbeat` remains liveness-only, and changing transport does not move replay state into LAN, WebRTC or SignalR implementations. A failed send retains the newest buffered value for the replacement connection.
+Replay stays on the ordinary application-data path. `connection.heartbeat` remains liveness-only, and changing transport does not move replay state into LAN, WebRTC or SignalR implementations. The newest staged value remains retained even after a locally successful send, because that is not a receiver ACK; `ClearLatest` / scope invalidation explicitly retire replay state.
 
 Latest-value replay is not exactly-once delivery. A new logical value gets a new protocol `messageId`; replay of that same staged value reuses the same serialized message so receiver-side bounded deduplication can recognize duplicates.
 
