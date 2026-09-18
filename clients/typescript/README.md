@@ -28,7 +28,7 @@ The protocol-v2 client provides:
 - optional stable `PeerId` persistence;
 - resume credentials and automatic reconnect on a replacement WebSocket;
 - protocol-v2 admission and compatibility checks;
-- `dihor-gamekit-networking://connect` / JSON `ConnectionDescriptor` parsing;
+- `partygamekit://connect` / JSON `ConnectionDescriptor` parsing;
 - `application.message` delivery with consumer-owned data;
 - heartbeat support;
 - raw message events for frames outside Dihor.GameKit.Networking's protocol envelope.
@@ -48,7 +48,7 @@ import {
 } from "@dihor/gamekit-networking";
 
 const signaling = new SignalRWebRtcSignalingClient({
-  endpoint: "https://example.test/dihor-gamekit-networking-webrtc-signaling",
+  endpoint: "https://example.test/partygamekit-webrtc-signaling",
   channelId: "technical-scope-a",
 });
 
