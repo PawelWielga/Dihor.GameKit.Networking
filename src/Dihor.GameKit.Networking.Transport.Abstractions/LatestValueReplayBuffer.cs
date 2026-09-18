@@ -1,0 +1,380 @@
+namespace Dihor.GameKit.Networking.Transport.Abstractions;
+
+/// <summary>
+/// Buffers at most one replayable application payload per caller-owned key and
+/// replays the newest still-valid value whenever a replacement sender is bound.
+/// </summary>
+/// <remarks>
+/// The buffer intentionally operates on opaque wire payloads. Callers remain
+/// responsible for constructing an <c>application.message</c> envelope and for
+/// assigning a new protocol message id whenever the logical value changes.
+/// Replays of the same staged value reuse the exact buffered bytes and therefore
+/// preserve that message id.
+/// </remarks>
+public sealed class LatestValueReplayBuffer : IDisposable
+{
+    private readonly object _sync = new();
+    private readonly Dictionary<string, BufferedMessage> _latest = new(StringComparer.Ordinal);
+    private readonly Dictionary<FlushKey, Task> _activeFlushes = new();
+
+    private Binding? _binding;
+    private long _nextVersion;
+    private long _nextGeneration;
+    private bool _disposed;
+
+    /// <summary>
+    /// Gets the number of caller-owned replay keys that currently have an
+    /// undelivered latest value.
+    /// </summary>
+    public int BufferedCount
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _latest.Count;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Replaces the buffered value for <paramref name="key"/> and, when a sender
+    /// is currently bound, immediately attempts to deliver the newest value.
+    /// </summary>
+    public async Task StageLatestAsync(
+        string key,
+        string scope,
+        ReadOnlyMemory<byte> message,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+
+        var normalizedKey = RequiredToken(key, nameof(key));
+        var normalizedScope = RequiredToken(scope, nameof(scope));
+        Binding? binding;
+
+        lock (_sync)
+        {
+            ThrowIfDisposed();
+            _latest[normalizedKey] = new BufferedMessage(
+                normalizedScope,
+                message.ToArray(),
+                checked(++_nextVersion));
+            binding = _binding;
+        }
+
+        if (binding is null)
+        {
+            return;
+        }
+
+        await WaitForFlushAsync(
+                GetOrStartFlush(normalizedKey, binding),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Binds an active connection and immediately replays every currently
+    /// buffered latest value. Binding a replacement connection cancels retries
+    /// against the previous sender without disposing either transport.
+    /// </summary>
+    public async Task BindSenderAsync(
+        IMessageTransportClient sender,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sender);
+        ThrowIfDisposed();
+
+        Binding? previous;
+        Binding current;
+        string[] keys;
+
+        lock (_sync)
+        {
+            ThrowIfDisposed();
+            previous = _binding;
+            current = new Binding(
+                checked(++_nextGeneration),
+                sender,
+                new CancellationTokenSource());
+            _binding = current;
+            keys = _latest.Keys.ToArray();
+        }
+
+        CancelBinding(previous);
+
+        var flushes = keys
+            .Select(key => GetOrStartFlush(key, current))
+            .ToArray();
+
+        if (flushes.Length == 0)
+        {
+            return;
+        }
+
+        await WaitForFlushAsync(Task.WhenAll(flushes), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Removes the current sender binding. When <paramref name="sender"/> is
+    /// supplied, a stale connection can only unbind itself and cannot detach a
+    /// newer replacement connection.
+    /// </summary>
+    public void UnbindSender(IMessageTransportClient? sender = null)
+    {
+        ThrowIfDisposed();
+
+        Binding? removed;
+
+        lock (_sync)
+        {
+            ThrowIfDisposed();
+
+            if (_binding is null)
+            {
+                return;
+            }
+
+            if (sender is not null && !ReferenceEquals(_binding.Sender, sender))
+            {
+                return;
+            }
+
+            removed = _binding;
+            _binding = null;
+        }
+
+        CancelBinding(removed);
+    }
+
+    /// <summary>
+    /// Clears one buffered value. When <paramref name="scope"/> is supplied,
+    /// the value is removed only when the current buffered scope still matches.
+    /// </summary>
+    public bool ClearLatest(string key, string? scope = null)
+    {
+        ThrowIfDisposed();
+
+        var normalizedKey = RequiredToken(key, nameof(key));
+        var normalizedScope = scope is null ? null : RequiredToken(scope, nameof(scope));
+
+        lock (_sync)
+        {
+            ThrowIfDisposed();
+
+            if (!_latest.TryGetValue(normalizedKey, out var current))
+            {
+                return false;
+            }
+
+            if (normalizedScope is not null &&
+                !StringComparer.Ordinal.Equals(current.Scope, normalizedScope))
+            {
+                return false;
+            }
+
+            return _latest.Remove(normalizedKey);
+        }
+    }
+
+    /// <summary>
+    /// Invalidates every buffered value that belongs to the supplied caller-owned
+    /// scope/epoch token.
+    /// </summary>
+    public int InvalidateScope(string scope)
+    {
+        ThrowIfDisposed();
+
+        var normalizedScope = RequiredToken(scope, nameof(scope));
+
+        lock (_sync)
+        {
+            ThrowIfDisposed();
+
+            var keys = _latest
+                .Where(pair => StringComparer.Ordinal.Equals(pair.Value.Scope, normalizedScope))
+                .Select(pair => pair.Key)
+                .ToArray();
+
+            foreach (var key in keys)
+            {
+                _latest.Remove(key);
+            }
+
+            return keys.Length;
+        }
+    }
+
+    public void Dispose()
+    {
+        Binding? binding;
+
+        lock (_sync)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            binding = _binding;
+            _binding = null;
+            _latest.Clear();
+        }
+
+        CancelBinding(binding);
+    }
+
+    private Task GetOrStartFlush(string key, Binding binding)
+    {
+        TaskCompletionSource completion;
+        var flushKey = new FlushKey(binding.Generation, key);
+
+        lock (_sync)
+        {
+            if (_activeFlushes.TryGetValue(flushKey, out var active))
+            {
+                return active;
+            }
+
+            completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _activeFlushes.Add(flushKey, completion.Task);
+        }
+
+        _ = RunFlushAsync(key, binding, flushKey, completion);
+        return completion.Task;
+    }
+
+    private async Task RunFlushAsync(
+        string key,
+        Binding binding,
+        FlushKey flushKey,
+        TaskCompletionSource completion)
+    {
+        try
+        {
+            await FlushCoreAsync(key, binding).ConfigureAwait(false);
+            completion.TrySetResult();
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
+        }
+        finally
+        {
+            lock (_sync)
+            {
+                _activeFlushes.Remove(flushKey);
+            }
+        }
+    }
+
+    private async Task FlushCoreAsync(string key, Binding binding)
+    {
+        while (true)
+        {
+            BufferedMessage buffered;
+
+            lock (_sync)
+            {
+                if (!IsCurrentBinding(binding) ||
+                    !_latest.TryGetValue(key, out buffered!))
+                {
+                    return;
+                }
+            }
+
+            try
+            {
+                await binding.Sender
+                    .SendAsync(buffered.Payload, binding.Cancellation.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (binding.Cancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
+            lock (_sync)
+            {
+                if (!IsCurrentBinding(binding))
+                {
+                    // Delivery on a connection that was replaced while the send
+                    // was in flight is ambiguous. Keep the value so the current
+                    // connection can replay it with the same message id.
+                    return;
+                }
+
+                if (!_latest.TryGetValue(key, out var current))
+                {
+                    return;
+                }
+
+                if (current.Version == buffered.Version)
+                {
+                    _latest.Remove(key);
+                    return;
+                }
+
+                // A newer value replaced the one that just completed. Continue
+                // on the same sender and deliver only the current latest value.
+            }
+        }
+    }
+
+    private bool IsCurrentBinding(Binding binding) =>
+        _binding is not null && _binding.Generation == binding.Generation;
+
+    private static async Task WaitForFlushAsync(Task flush, CancellationToken cancellationToken)
+    {
+        if (!cancellationToken.CanBeCanceled)
+        {
+            await flush.ConfigureAwait(false);
+            return;
+        }
+
+        await flush.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void CancelBinding(Binding? binding)
+    {
+        if (binding is null)
+        {
+            return;
+        }
+
+        try
+        {
+            binding.Cancellation.Cancel();
+        }
+        finally
+        {
+            binding.Cancellation.Dispose();
+        }
+    }
+
+    private static string RequiredToken(string value, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        var normalized = value.Trim();
+        if (normalized.Length == 0)
+        {
+            throw new ArgumentException("Value cannot be empty or whitespace.", parameterName);
+        }
+
+        return normalized;
+    }
+
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
+
+    private sealed record BufferedMessage(string Scope, byte[] Payload, long Version);
+
+    private sealed record Binding(
+        long Generation,
+        IMessageTransportClient Sender,
+        CancellationTokenSource Cancellation);
+
+    private readonly record struct FlushKey(long Generation, string Key);
+}
