@@ -75,7 +75,7 @@ The .NET prerelease is split by communication responsibility:
 - `Dihor.GameKit.Networking.Transport.SignalR.Server` — ASP.NET Core endpoints for opaque SignalR relay traffic and optional WebRTC SDP/ICE signaling;
 - `Dihor.GameKit.Networking.Discovery.Lan` — optional UDP LAN discovery.
 
-Browser consumers use `@dihor/gamekit-networking`, which includes protocol-v2 WebSocket connectivity, native browser WebRTC DataChannels, generic automatic transport selection and synchronized monotonic timing helpers. Flutter/Dart consumers can use the small `interop/dart` protocol package when they need canonical protocol compatibility without a duplicated game/session engine.
+Browser consumers use `@dihor/gamekit-networking`, which includes protocol-v2 WebSocket connectivity, native browser WebRTC DataChannels, generic automatic transport selection and synchronized monotonic timing helpers. Dart/Flutter consumers have two layers: `dihor_gamekit_networking_protocol` in `interop/dart` for the language-neutral wire contract, and `dihor_gamekit_networking` in `clients/dart` for the first-class Dart VM runtime with direct LAN WebSocket connectivity and protocol-v2 application messaging.
 
 ## Cross-language contract
 
