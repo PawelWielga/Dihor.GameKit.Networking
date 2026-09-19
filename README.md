@@ -129,7 +129,9 @@ Replay stays on the ordinary application-data path. `connection.heartbeat` remai
 
 Latest-value replay is not exactly-once delivery. A new logical value gets a new protocol `messageId`; replay of that same staged value reuses the same serialized message so receiver-side bounded deduplication can recognize duplicates.
 
-See [Transient latest-value replay](docs/transient-replay.md). Receiver-side message-id deduplication is tracked separately in issue [25].
+`MessageIdDeduplicator` provides that receiver-side protection with a bounded `(PeerId, messageId)` window that survives replacement `ConnectionId` values and transport fallback. Capacity and retention are configurable, and `ForgetPeer` releases state when stable peer continuity ends.
+
+See [Transient latest-value replay](docs/transient-replay.md) and [Message-id deduplication](docs/message-id-deduplication.md).
 
 ## Synchronized monotonic timing
 
