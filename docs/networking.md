@@ -83,9 +83,9 @@ Staging while disconnected only updates the buffer. Binding a replacement sender
 
 Replay stays separate from heartbeat and concrete transports, so the same buffered application message can survive an automatic LAN -> WebRTC -> SignalR path change.
 
-Replay is not exactly-once delivery. The same staged `messageId` may be observed more than once after an ambiguous disconnect; bounded receiver-side deduplication is tracked in issue [25].
+Replay is not exactly-once delivery. The same staged `messageId` may be observed more than once after an ambiguous disconnect. `MessageIdDeduplicator` optionally rejects duplicate `(PeerId, messageId)` pairs across replacement connections and transport fallback while keeping memory bounded by capacity and retention.
 
-See [Transient latest-value replay](transient-replay.md).
+See [Transient latest-value replay](transient-replay.md) and [Message-id deduplication](message-id-deduplication.md).
 
 ## Connection health
 

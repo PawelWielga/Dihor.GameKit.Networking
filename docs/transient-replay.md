@@ -75,7 +75,7 @@ For protocol-v2 `application.message` values:
 
 - every new logical value should receive a new `messageId`;
 - replay of that same staged value should reuse the same serialized envelope/bytes and therefore the same `messageId`;
-- receiver-side bounded deduplication by `messageId` is tracked separately in [issue [25]](https://github.com/PawelWielga/Dihor.GameKit.Networking/issues/51).
+- receiver-side bounded deduplication by stable `PeerId` plus `messageId` is available through `MessageIdDeduplicator`; see [Message-id deduplication](message-id-deduplication.md).
 
 Commands that require acknowledgement, retry-until-ACK or exactly-once-like business guarantees need a separate reliable-command protocol. They should not overload latest-value replay.
 

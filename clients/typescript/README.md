@@ -61,7 +61,23 @@ await replay.bindSender(sender);
 
 Call `replay.unbindSender(sender)` as soon as reconnect begins. Values staged while unbound do not touch the stale connection. Binding a replacement sender immediately replays the newest still-valid value.
 
-A locally successful `send` is not treated as a receiver acknowledgement, so the latest value remains staged until `clearLatest` / `invalidateScope` retires it. A new logical value should use a new `messageId`; replay of that same staged value should reuse its existing serialized message. This is not exactly-once delivery. Receiver-side bounded deduplication is tracked separately in issue [25].
+A locally successful `send` is not treated as a receiver acknowledgement, so the latest value remains staged until `clearLatest` / `invalidateScope` retires it. A new logical value should use a new `messageId`; replay of that same staged value should reuse its existing serialized message. This is not exactly-once delivery.
+
+On the receiver, `MessageIdDeduplicator` can reject duplicate `(peerId, messageId)` pairs across reconnect or transport fallback:
+
+```ts
+const deduplicator = new MessageIdDeduplicator({
+  capacity: 2048,
+  retentionMs: 10 * 60 * 1000,
+});
+
+client.on("message", (envelope) => {
+  if (!deduplicator.tryAccept(peerId, envelope.messageId)) return;
+  processApplicationMessage(envelope);
+});
+```
+
+Call `deduplicator.forgetPeer(peerId)` when stable peer continuity is deliberately discarded or its reconnect window expires. Deduplication is bounded and does not add acknowledgements, retry-until-ACK or exactly-once delivery semantics.
 
 ## WebRTC DataChannel
 

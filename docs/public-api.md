@@ -13,7 +13,8 @@ The public Core surface is intentionally small:
 - `ChannelId` — optional technical routing/discovery scope;
 - `ConnectionDescriptor` — transport, endpoint, protocol version and optional channel;
 - `ConnectionContinuityCoordinator` and related presence/result types — neutral peer continuity across replaced connections;
-- `MessageSequence` / `SequenceGate` — optional generic ordering/deduplication utility.
+- `MessageSequence` / `SequenceGate` — optional monotonic ordering utility;
+- `MessageIdDeduplicator` — bounded duplicate detection keyed by stable `PeerId` plus protocol `messageId`, with configurable capacity/retention and explicit peer cleanup.
 
 Core does not expose `PlayerId`, `AuthorityId`, `ClientRole`, `RoomSession`, player membership/capacity/admission or game snapshot projections.
 
@@ -110,7 +111,8 @@ Discovery locates technical endpoints, not product lobbies or game sessions.
 - resume/reconnect;
 - protocol-v2 parsing/serialization;
 - `ConnectionDescriptor` JSON/URI parsing;
-- `LatestValueReplayBuffer<TMessage>` and `ReplaySender<TMessage>` for reconnect-safe transient replay.
+- `LatestValueReplayBuffer<TMessage>` and `ReplaySender<TMessage>` for reconnect-safe transient replay;
+- `MessageIdDeduplicator` for bounded receiver-side duplicate detection across replacement connections.
 
 The base SDK has no required player/shared-screen/host role and no public/private game-state projection model.
 
