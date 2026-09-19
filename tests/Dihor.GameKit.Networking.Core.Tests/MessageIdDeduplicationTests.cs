@@ -128,7 +128,7 @@ public sealed class MessageIdDeduplicationTests
 
         var deduplicator = new MessageIdDeduplicator();
 
-        Assert.Throws<ArgumentException>(
+        Assert.Throws<ArgumentNullException>(
             () => deduplicator.TryAccept(default, "message-1"));
         Assert.Throws<ArgumentException>(
             () => deduplicator.TryAccept(new PeerId("peer-a"), " "));
