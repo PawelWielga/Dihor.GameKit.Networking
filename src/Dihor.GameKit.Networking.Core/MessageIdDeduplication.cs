@@ -79,11 +79,15 @@ public sealed class MessageIdDeduplicator
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
         var normalizedMessageId = messageId.Trim();
-        var now = _timeProvider.GetTimestamp();
         var key = new MessageKey(peerId, normalizedMessageId);
 
         lock (_gate)
         {
+            // Capture the timestamp while holding the same lock that defines
+            // acceptance/insertion order. Otherwise two concurrent callers can
+            // observe timestamps in one order and enter the oldest-first list
+            // in the opposite order, breaking deterministic expiration.
+            var now = _timeProvider.GetTimestamp();
             RemoveExpiredLocked(now);
 
             if (_entries.ContainsKey(key))
