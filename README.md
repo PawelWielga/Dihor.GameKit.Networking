@@ -34,6 +34,7 @@ Protocol v2 and the base APIs use communication-neutral concepts:
 - `ConnectionDescriptor` for transport/endpoint discovery and direct connection;
 - connect/resume/heartbeat/disconnect control messages;
 - opaque `application.message` payloads owned by the consumer;
+- optional reconnect-safe latest-value replay for transient application messages, separate from heartbeat;
 - transport-neutral send/receive, targeted delivery and broadcast;
 - deterministic connection continuity and generic ordering helpers;
 - direct LAN WebSocket transport and optional UDP LAN discovery;
@@ -119,6 +120,16 @@ Reconnect in `Auto` mode first retries the previously successful transport. If i
 Automatic fallback applies to connection establishment/reconnect only. Dihor.GameKit.Networking does not silently interpret application-level failures as a reason to change transport. Connect/resume handshakes, stable `PeerId` continuity and application payload bytes stay outside the selector's interpretation.
 
 See [Automatic connectivity](docs/automatic-connectivity.md) for policy, diagnostics, cancellation behavior and .NET/TypeScript examples.
+
+## Transient latest-value replay
+
+`LatestValueReplayBuffer` provides optional reconnect-safe delivery for transient application values whose older revisions become obsolete. Each caller-owned key stores only the newest staged value, and a caller-owned scope/epoch prevents stale data from replaying into a new logical context.
+
+Replay stays on the ordinary application-data path. `connection.heartbeat` remains liveness-only, and changing transport does not move replay state into LAN, WebRTC or SignalR implementations. The newest staged value remains retained even after a locally successful send, because that is not a receiver ACK; `ClearLatest` / scope invalidation explicitly retire replay state.
+
+Latest-value replay is not exactly-once delivery. A new logical value gets a new protocol `messageId`; replay of that same staged value reuses the same serialized message so receiver-side bounded deduplication can recognize duplicates.
+
+See [Transient latest-value replay](docs/transient-replay.md). Receiver-side message-id deduplication is tracked separately in issue [25].
 
 ## Synchronized monotonic timing
 
@@ -268,6 +279,7 @@ CI also packs all .NET packages and runs `packaging/consumer` from those generat
 - [WebRTC DataChannel](docs/webrtc-datachannel.md)
 - [Automatic connectivity](docs/automatic-connectivity.md)
 - [Synchronized monotonic timing](docs/monotonic-timing.md)
+- [Transient latest-value replay](docs/transient-replay.md)
 - [LAN discovery](docs/discovery.md)
 - [Compatibility matrix](docs/compatibility.md)
 - [Versioning](docs/versioning.md)

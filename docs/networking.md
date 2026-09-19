@@ -75,9 +75,21 @@ None of those schemas become Dihor.GameKit.Networking base API.
 
 LAN WebSocket and SignalR relay carry protocol-v2 `application.message` payloads. Browser WebRTC DataChannels carry opaque binary consumer data directly. A consumer may serialize the same logical schema for all three paths, but Dihor.GameKit.Networking does not require a game-specific schema.
 
+## Transient latest-value replay
+
+`LatestValueReplayBuffer` is an optional layer above a connected sender. It is intended for transient state where only the newest value remains useful.
+
+Staging while disconnected only updates the buffer. Binding a replacement sender after connect/resume immediately replays the newest value for each key. Scope/epoch replacement and explicit clear/invalidate prevent stale buffered state from leaking into a new logical context.
+
+Replay stays separate from heartbeat and concrete transports, so the same buffered application message can survive an automatic LAN -> WebRTC -> SignalR path change.
+
+Replay is not exactly-once delivery. The same staged `messageId` may be observed more than once after an ambiguous disconnect; bounded receiver-side deduplication is tracked in issue [25].
+
+See [Transient latest-value replay](transient-replay.md).
+
 ## Connection health
 
-Heartbeat/timeout reports connectivity. It does not trigger player leave, game pause or authority migration.
+Heartbeat/timeout reports connectivity. It does not carry transient application replay state and does not trigger player leave, game pause or authority migration.
 
 Consumers subscribe to communication state and apply their own product policies.
 

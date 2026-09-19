@@ -112,9 +112,21 @@ Consumer data uses `application.message`:
 
 Consumers may version their own application payload schemas without changing Dihor.GameKit.Networking protocol version 2, provided the Dihor.GameKit.Networking envelope/control contract does not change.
 
+## Transient latest-value replay
+
+Reconnect-safe transient replay does not add a new control-message family. Replayable values continue to travel as ordinary `application.message` envelopes.
+
+`LatestValueReplayBuffer` stores the complete staged application message outside concrete transports. Multiple updates for one caller-owned key coalesce to the newest value, and a caller-owned scope/epoch token prevents an old value from replaying into a new logical context.
+
+A new logical value should use a new `messageId`. If that staged value must be replayed after connection replacement, the exact same envelope should be sent again so its `messageId` remains stable across the ambiguous retry.
+
+This mechanism is not exactly-once delivery. Receiver-side bounded `messageId` deduplication is tracked in issue [25]. Commands that need acknowledgement/retry-until-ACK semantics require a separate reliable-command mechanism.
+
+See [Transient latest-value replay](transient-replay.md).
+
 ## Heartbeat
 
-`connection.heartbeat` communicates liveness. It may reference the neutral peer when available but does not encode game presence, player-leave policy or snapshot progress.
+`connection.heartbeat` communicates liveness. It may reference the neutral peer when available but does not encode game presence, player-leave policy, snapshot progress or replayable application data.
 
 Heartbeat timeout reports communication state only. The consumer decides what a timeout means for its product/session.
 

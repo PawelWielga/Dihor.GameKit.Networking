@@ -78,6 +78,20 @@ The abstraction operates on transient `ConnectionId` plus opaque bytes. It has n
 
 Not every runtime-specific communication capability must pretend to implement this exact .NET interface. The browser WebRTC endpoint is exposed through the TypeScript SDK using native browser APIs while preserving the same communication-only ownership boundary.
 
+## Transient application replay
+
+Reconnect-safe transient application delivery is an application-data concern, not a heartbeat or concrete-transport concern.
+
+`LatestValueReplayBuffer` lives in `Dihor.GameKit.Networking.Transport.Abstractions`. It stores opaque application-message bytes by caller-owned replay key and caller-owned scope/epoch. TypeScript exposes the same lifecycle through `LatestValueReplayBuffer<TMessage>` and `ReplaySender<TMessage>`.
+
+The primitive intentionally uses latest-value/coalescing semantics rather than an unbounded FIFO retry queue. Rebinding a replacement sender immediately replays the newest still-valid buffered value, including when automatic connectivity chooses a different physical transport.
+
+The buffer preserves a staged message across ambiguous reconnect retry but does not promise exactly-once delivery. Receiver-side bounded `messageId` deduplication is a separate concern tracked by issue [25]. Reliable command/ACK semantics remain a future, stronger mechanism.
+
+Heartbeat remains control-plane liveness only and never carries consumer replay state.
+
+See [Transient latest-value replay](transient-replay.md).
+
 ## Concrete communication paths
 
 Concrete adapters remain separate by technology/runtime:

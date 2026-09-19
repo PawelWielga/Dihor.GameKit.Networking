@@ -3,6 +3,7 @@ export * from "./connection-descriptor.js";
 export * from "./connectivity.js";
 export * from "./identity.js";
 export * from "./protocol.js";
+export * from "./replay.js";
 export * from "./signalr-webrtc-signaling.js";
 export * from "./timing.js";
 export * from "./webrtc.js";
