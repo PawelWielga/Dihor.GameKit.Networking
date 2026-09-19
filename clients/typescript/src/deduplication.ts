@@ -108,13 +108,9 @@ export class MessageIdDeduplicator {
 
   private removeExpired(now: number): void {
     for (const [key, entry] of this.entries) {
-      if (now - entry.acceptedAt < this.retentionMsValue) {
-        // Map insertion order is oldest-first, so later entries cannot yet be
-        // expired when the oldest surviving entry is still within retention.
-        return;
+      if (now - entry.acceptedAt >= this.retentionMsValue) {
+        this.entries.delete(key);
       }
-
-      this.entries.delete(key);
     }
   }
 
