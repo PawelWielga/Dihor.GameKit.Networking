@@ -144,11 +144,7 @@ public sealed class MessageIdDeduplicationTests
 
         public void Advance(TimeSpan duration)
         {
-            if (duration < TimeSpan.Zero)
-            {
-                throw new ArgumentOutOfRangeException(nameof(duration));
-            }
-
+            ArgumentOutOfRangeException.ThrowIfLessThan(duration, TimeSpan.Zero);
             _timestamp = checked(_timestamp + duration.Ticks);
         }
     }
