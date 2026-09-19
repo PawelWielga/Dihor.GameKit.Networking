@@ -13,7 +13,8 @@ The public Core surface is intentionally small:
 - `ChannelId` — optional technical routing/discovery scope;
 - `ConnectionDescriptor` — transport, endpoint, protocol version and optional channel;
 - `ConnectionContinuityCoordinator` and related presence/result types — neutral peer continuity across replaced connections;
-- `MessageSequence` / `SequenceGate` — optional generic ordering/deduplication utility.
+- `MessageSequence` / `SequenceGate` — optional monotonic ordering utility;
+- `MessageIdDeduplicator` — bounded duplicate detection keyed by stable `PeerId` plus protocol `messageId`, with configurable capacity/retention and explicit peer cleanup.
 
 Core does not expose `PlayerId`, `AuthorityId`, `ClientRole`, `RoomSession`, player membership/capacity/admission or game snapshot projections.
 
