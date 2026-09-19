@@ -1,0 +1,15 @@
+name: dihor_gamekit_networking
+version: 0.2.0-preview.6
+description: Cross-platform Dart runtime for Dihor.GameKit.Networking protocol v2 and supported transports.
+publish_to: none
+repository: https://github.com/PawelWielga/Dihor.GameKit.Networking
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  dihor_gamekit_networking_protocol:
+    path: ../../interop/dart
+
+dev_dependencies:
+  test: ^1.25.0
