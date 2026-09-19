@@ -1,3 +1,4 @@
+using Dihor.GameKit.Networking.Core;
 using Dihor.GameKit.Networking.Transport.Abstractions;
 
 namespace Dihor.GameKit.Networking.Transport.Tests;
@@ -365,6 +366,65 @@ public sealed class LatestValueReplayBufferTests
 
         Assert.Equal(new byte[] { 7 }, Assert.Single(webRtc.SentPayloads));
         Assert.Equal(new byte[] { 8 }, Assert.Single(signalR.SentPayloads));
+    }
+
+    [Fact]
+    public async Task ReplayAfterAutomaticTransportFallbackIsRejectedForSameStablePeerAndMessageId()
+    {
+        using var buffer = new LatestValueReplayBuffer();
+        var deduplicator = new MessageIdDeduplicator();
+        var peerId = new PeerId("peer-stable");
+        const string messageId = "message-stable-replay";
+        var webRtcAvailable = true;
+        var webRtc = new FakeClient();
+        var signalR = new FakeClient();
+
+        var selector = new AutomaticTransportSelector(
+            [
+                new TransportClientCandidate(
+                    TransportIds.WebRtcDataChannel,
+                    (_, _) => webRtcAvailable
+                        ? Task.FromResult<IMessageTransportClient>(webRtc)
+                        : Task.FromException<IMessageTransportClient>(
+                            new IOException("WebRTC unavailable"))),
+                new TransportClientCandidate(
+                    TransportIds.SignalRRelay,
+                    (_, _) => Task.FromResult<IMessageTransportClient>(signalR)),
+            ],
+            new ConnectivitySelectionOptions(
+                TimeSpan.FromMilliseconds(250),
+                [TransportIds.WebRtcDataChannel, TransportIds.SignalRRelay]));
+
+        await buffer.StageLatestAsync(
+            "transient-value",
+            "scope-1",
+            new byte[] { 4, 2 },
+            TestContext.Current.CancellationToken);
+
+        await using (var initial = await selector.ConnectAsync(
+                         "peer=stable;phase=connect",
+                         cancellationToken: TestContext.Current.CancellationToken))
+        {
+            Assert.Equal(TransportIds.WebRtcDataChannel, initial.TransportId);
+            await buffer.BindSenderAsync(initial, TestContext.Current.CancellationToken);
+
+            Assert.Equal(new byte[] { 4, 2 }, Assert.Single(webRtc.SentPayloads));
+            Assert.True(deduplicator.TryAccept(peerId, messageId));
+
+            buffer.UnbindSender(initial);
+        }
+
+        webRtcAvailable = false;
+
+        await using var replacement = await selector.ReconnectAsync(
+            "peer=stable;phase=resume",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(TransportIds.SignalRRelay, replacement.TransportId);
+        await buffer.BindSenderAsync(replacement, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new byte[] { 4, 2 }, Assert.Single(signalR.SentPayloads));
+        Assert.False(deduplicator.TryAccept(peerId, messageId));
     }
 
     private sealed class BlockingClient : IMessageTransportClient
