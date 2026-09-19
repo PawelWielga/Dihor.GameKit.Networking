@@ -14,7 +14,7 @@ It covers:
 - portable `ConnectionDescriptor` JSON and `partygamekit://connect` URI forms;
 - LAN discovery announcement parsing.
 
-It deliberately does **not** contain a Dart transport, Flutter UI, player model, party/session engine or game state.
+It deliberately does **not** contain a Dart transport, Flutter UI, player model, party/session engine or game state. The separate `clients/dart` package (`dihor_gamekit_networking`) builds on this contract and provides the first-class Dart VM LAN WebSocket runtime.
 
 ## Preview consumption
 
