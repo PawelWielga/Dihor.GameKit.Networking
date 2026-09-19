@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:dihor_gamekit_networking_protocol/dihor_gamekit_networking_protocol.dart';
 
@@ -95,7 +96,6 @@ final class DihorGameKitNetworkingClient {
   DihorGameKitNetworkingConnectionInfo? _connection;
   Completer<DihorGameKitNetworkingConnectionInfo>? _pendingConnection;
   bool _controllersClosed = false;
-  int _messageSequence = 0;
 
   static Future<DihorGameKitNetworkingClient> connectLan(
     DihorGameKitNetworkingConnectionDescriptor descriptor, {
@@ -220,7 +220,7 @@ final class DihorGameKitNetworkingClient {
         ),
       );
     } finally {
-      if (identical(_pendingConnection, pending) && pending.isCompleted) {
+      if (identical(_pendingConnection, pending)) {
         _pendingConnection = null;
       }
     }
@@ -413,5 +413,6 @@ final class DihorGameKitNetworkingClient {
   }
 
   static String _defaultMessageIdFactory() =>
-      'dart-${DateTime.now().microsecondsSinceEpoch}';
+      'dart-${DateTime.now().microsecondsSinceEpoch}-'
+      '${Random.secure().nextInt(0x7fffffff)}';
 }
