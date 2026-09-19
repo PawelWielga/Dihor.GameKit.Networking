@@ -120,9 +120,9 @@ Reconnect-safe transient replay does not add a new control-message family. Repla
 
 A new logical value should use a new `messageId`. If that staged value must be replayed after connection replacement, the exact same envelope should be sent again so its `messageId` remains stable across the ambiguous retry.
 
-This mechanism is not exactly-once delivery. Receiver-side bounded `messageId` deduplication is tracked in issue [25]. Commands that need acknowledgement/retry-until-ACK semantics require a separate reliable-command mechanism.
+This mechanism is not exactly-once delivery. `MessageIdDeduplicator` can reject a replayed `(PeerId, messageId)` inside a bounded receiver window without treating `ConnectionId` or transport identity as part of the logical key. Commands that need acknowledgement/retry-until-ACK semantics require a separate reliable-command mechanism.
 
-See [Transient latest-value replay](transient-replay.md).
+See [Transient latest-value replay](transient-replay.md) and [Message-id deduplication](message-id-deduplication.md).
 
 ## Heartbeat
 
