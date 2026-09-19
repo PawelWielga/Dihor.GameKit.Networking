@@ -254,7 +254,7 @@ npx playwright install --with-deps chromium
 npm run test:browser
 ```
 
-Dart:
+Dart protocol compatibility:
 
 ```bash
 cd interop/dart
@@ -263,6 +263,18 @@ dart format --output=none --set-exit-if-changed .
 dart analyze
 dart test
 ```
+
+Dart runtime:
+
+```bash
+cd clients/dart
+dart pub get
+dart format --output=none --set-exit-if-changed .
+dart analyze
+dart test
+```
+
+CI additionally connects the Dart runtime to the real .NET `LanWebSocketTransport` and verifies protocol-v2 handshake plus opaque application-message round-trip.
 
 CI also packs all .NET packages and runs `packaging/consumer` from those generated NuGet artifacts only. The package-only consumer verifies opaque message exchange, neutral peer resume, monotonic timing normalization and availability of the SignalR client/server packages without source-project references.
 
