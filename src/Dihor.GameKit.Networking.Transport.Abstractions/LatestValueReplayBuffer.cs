@@ -254,6 +254,15 @@ public sealed class LatestValueReplayBuffer : IDisposable
 
         lock (_sync)
         {
+            // Binding replacement/unbind uses the same lock before cancellation
+            // and disposal. Refuse to register work for a binding that already
+            // stopped being current; if we register first, _activeFlushes keeps
+            // the retired binding alive until this flush finishes.
+            if (!IsCurrentBinding(binding))
+            {
+                return Task.FromResult(0L);
+            }
+
             if (_activeFlushes.TryGetValue(flushKey, out var active))
             {
                 return active;
