@@ -111,7 +111,8 @@ Discovery locates technical endpoints, not product lobbies or game sessions.
 - resume/reconnect;
 - protocol-v2 parsing/serialization;
 - `ConnectionDescriptor` JSON/URI parsing;
-- `LatestValueReplayBuffer<TMessage>` and `ReplaySender<TMessage>` for reconnect-safe transient replay.
+- `LatestValueReplayBuffer<TMessage>` and `ReplaySender<TMessage>` for reconnect-safe transient replay;
+- `MessageIdDeduplicator` for bounded receiver-side duplicate detection across replacement connections.
 
 The base SDK has no required player/shared-screen/host role and no public/private game-state projection model.
 
