@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-preview.7
+
+- Aligns the Dart LAN runtime with the preview.7 compatibility line.
+- Keeps protocol v2 and the direct LAN WebSocket runtime behavior unchanged.
+
 ## 0.2.0-preview.6
 
 - Added the first Dart runtime package for Dihor.GameKit.Networking.

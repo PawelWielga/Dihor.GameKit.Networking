@@ -1,6 +1,6 @@
 {
   "name": "@dihor/gamekit-networking",
-  "version": "0.2.0-preview.6",
+  "version": "0.2.0-preview.7",
   "description": "Communication-neutral browser client for Dihor.GameKit.Networking protocol v2, WebRTC, automatic transport selection and synchronized monotonic timing.",
   "license": "MIT",
   "type": "module",

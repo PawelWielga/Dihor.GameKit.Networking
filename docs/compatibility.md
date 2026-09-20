@@ -6,15 +6,15 @@ The language-neutral Dihor.GameKit.Networking wire protocol is the compatibility
 
 | Implementation | Package line | Protocol | Runtime target | Scope |
 | --- | --- | ---: | --- | --- |
-| .NET | `Dihor.GameKit.Networking.*` `0.2.0-preview.5` | 2 | .NET 10 | neutral connection continuity, protocol, in-memory/LAN/SignalR transports, automatic client selection, monotonic timing, WebRTC signaling and LAN discovery |
-| TypeScript | `@dihor/gamekit-networking` `0.2.0-preview.5` | 2 | ES2022 browser | neutral connect/resume, opaque application messages, native WebRTC DataChannels, generic automatic transport selection and monotonic timing |
-| Dart protocol | `dihor_gamekit_networking_protocol` `0.2.0-preview.6` | 2 | Dart `>=3.3 <4.0` | canonical protocol-v2 envelopes, connection descriptors and discovery announcement parsing |
-| Dart runtime | `dihor_gamekit_networking` `0.2.0-preview.6` | 2 | Dart VM / Flutter mobile and desktop | direct LAN WebSocket client, protocol-v2 initial connect handshake and opaque application-message send/receive; reconnect/discovery/automatic selection/timing follow in later issues |
+| .NET | `Dihor.GameKit.Networking.*` `0.2.0-preview.7` | 2 | .NET 10 | connection runtime, protocol, in-memory/LAN/SignalR transports, automatic client selection, replay/deduplication, synchronized timing, WebRTC signaling and LAN discovery |
+| TypeScript | `@dihor/gamekit-networking` `0.2.0-preview.7` | 2 | ES2022 browser | neutral connect/resume, opaque application messages, reconnect replay/deduplication, native WebRTC DataChannels, automatic selection and monotonic timing |
+| Dart protocol | `dihor_gamekit_networking_protocol` `0.2.0-preview.7` | 2 | Dart `>=3.3 <4.0` | canonical protocol-v2 envelopes, connection descriptors and discovery announcement parsing |
+| Dart runtime | `dihor_gamekit_networking` `0.2.0-preview.7` | 2 | Dart VM / Flutter mobile and desktop | direct LAN WebSocket client, protocol-v2 initial connect handshake and opaque application-message send/receive; reconnect/discovery/automatic selection/timing follow in later issues |
 | Państwa Miasta current LAN | application-owned contract | separate contract | Flutter/Dart | existing product/game protocol remains consumer-owned until an adapter migration is scheduled |
 
 The Dihor.GameKit.Networking C#, TypeScript and Dart protocol surfaces continue to validate the same v2 canonical fixtures. A consumer does not need to adopt Dihor.GameKit.Networking protocol v2 merely to keep its existing product protocol alive; migration can happen behind an adapter boundary.
 
-`0.2.0-preview.5` does not change the wire protocol from preview.1-preview.4. It adds synchronized monotonic timing as an optional utility while existing connect/resume and opaque application data remain unchanged.
+`0.2.0-preview.7` keeps the wire protocol introduced in preview.1. Runtime orchestration, replay/deduplication, synchronized timing and the Dart LAN runtime use the existing connect/resume and opaque application envelopes.
 
 ## Protocol-v2 rules
 
