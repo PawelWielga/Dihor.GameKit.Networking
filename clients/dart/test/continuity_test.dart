@@ -310,6 +310,127 @@ void main() {
       );
     });
 
+    test('transient resume rejection preserves credential and retries',
+        () async {
+      final dropFirst = Completer<void>();
+      var connectionCount = 0;
+
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
+        connectionCount = connectionIndex;
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          if (connectionIndex == 1) {
+            final connect = await _nextEnvelope(iterator);
+            socket.add(
+              _wire(
+                DihorGameKitNetworkingEnvelope.create(
+                  type: DihorGameKitNetworkingMessageTypes.connectAccepted,
+                  messageId: 'accepted-transient',
+                  correlationId: connect.messageId,
+                  payload: <String, Object?>{
+                    'connectionId': 'transient-connection-1',
+                    'peerId': 'peer-transient',
+                    'resumeToken': 'transient-token-1',
+                  },
+                ),
+              ),
+            );
+            await dropFirst.future;
+            await socket.close(
+              WebSocketStatus.goingAway,
+              'drop-before-transient-reject',
+            );
+            return;
+          }
+
+          final resumeRequest = await _nextEnvelope(iterator);
+          expect(
+            resumeRequest.type,
+            DihorGameKitNetworkingMessageTypes.resumeRequest,
+          );
+          expect(resumeRequest.payload['peerId'], 'peer-transient');
+          expect(
+            resumeRequest.payload['resumeToken'],
+            'transient-token-1',
+          );
+
+          if (connectionIndex == 2) {
+            socket.add(
+              _wire(
+                DihorGameKitNetworkingEnvelope.create(
+                  type: DihorGameKitNetworkingMessageTypes.resumeRejected,
+                  messageId: 'resume-transient-rejected',
+                  correlationId: resumeRequest.messageId,
+                  payload: <String, Object?>{
+                    'peerId': 'peer-transient',
+                    'code': 'peer-already-connected',
+                    'reason': 'old connection cleanup is still in flight',
+                  },
+                ),
+              ),
+            );
+            return;
+          }
+
+          expect(connectionIndex, 3);
+          socket.add(
+            _wire(
+              DihorGameKitNetworkingEnvelope.create(
+                type: DihorGameKitNetworkingMessageTypes.resumeAccepted,
+                messageId: 'resume-transient-accepted',
+                correlationId: resumeRequest.messageId,
+                payload: <String, Object?>{
+                  'connectionId': 'transient-connection-3',
+                  'peerId': 'peer-transient',
+                  'resumeToken': 'transient-token-2',
+                },
+              ),
+            ),
+          );
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(() async {
+        if (!dropFirst.isCompleted) dropFirst.complete();
+        await server.close();
+      });
+
+      final store = MemoryDihorGameKitNetworkingIdentityStore();
+      final client = await DihorGameKitNetworkingClient.connectLan(
+        server.descriptor,
+        peerId: 'peer-transient',
+        identityStore: store,
+        heartbeatInterval: const Duration(seconds: 30),
+      );
+      addTearDown(client.close);
+
+      final closed = client.stateChanges.firstWhere(
+        (state) => state == DihorGameKitNetworkingConnectionState.closed,
+      );
+      dropFirst.complete();
+      await closed.timeout(const Duration(seconds: 2));
+
+      final replacement = await client.reconnect(
+        policy: DihorGameKitNetworkingReconnectPolicy(
+          maxAttempts: 2,
+          delay: const Duration(milliseconds: 10),
+        ),
+      );
+
+      expect(connectionCount, 3);
+      expect(replacement.connectionId, 'transient-connection-3');
+      expect(replacement.peerId, 'peer-transient');
+      expect(
+        store
+            .getResumeCredential('lan-websocket:channel:continuity-test')
+            ?.resumeToken,
+        'transient-token-2',
+      );
+      expect(client.state, DihorGameKitNetworkingConnectionState.connected);
+    });
+
     test('resume rejection is deterministic and clears stale credential',
         () async {
       final dropFirst = Completer<void>();
