@@ -761,8 +761,7 @@ final class DihorGameKitNetworkingClient {
     );
   }
 
-  static bool _isTerminalResumeRejection(String code) =>
-      switch (code) {
+  static bool _isTerminalResumeRejection(String code) => switch (code) {
         'peer-already-connected' || 'connection-already-bound' => false,
         _ => true,
       };
