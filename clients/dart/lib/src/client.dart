@@ -107,7 +107,8 @@ final class DihorGameKitNetworkingClient {
         DihorGameKitNetworkingLanWebSocketTransport.defaultMaxMessageBytes,
     String Function()? messageIdFactory,
   }) async {
-    final normalizedPeerId = peerId == null ? null : _required(peerId, 'peerId');
+    final normalizedPeerId =
+        peerId == null ? null : _required(peerId, 'peerId');
     if (handshakeTimeout <= Duration.zero) {
       throw ArgumentError.value(
         handshakeTimeout,
