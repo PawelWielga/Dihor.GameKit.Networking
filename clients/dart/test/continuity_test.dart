@@ -698,15 +698,15 @@ void main() {
           delay: const Duration(seconds: 5),
         ),
       );
+      final reconnectCancelled = expectLater(
+        reconnect,
+        throwsA(isA<DihorGameKitNetworkingOperationCancelledException>()),
+      );
 
       await rejectionObserved.timeout(const Duration(seconds: 2));
       await Future<void>.delayed(const Duration(milliseconds: 20));
       await client.disconnect(reason: 'cancel-reconnect-delay');
-
-      await expectLater(
-        reconnect,
-        throwsA(isA<DihorGameKitNetworkingOperationCancelledException>()),
-      );
+      await reconnectCancelled;
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(connectionCount, 2);
       expect(client.state, DihorGameKitNetworkingConnectionState.closed);
@@ -784,13 +784,14 @@ void main() {
           delay: const Duration(milliseconds: 10),
         ),
       );
-      await resumeSeen.future.timeout(const Duration(seconds: 2));
-
-      await client.disconnect(reason: 'cancel-reconnect-handshake');
-      await expectLater(
+      final reconnectCancelled = expectLater(
         reconnect,
         throwsA(isA<DihorGameKitNetworkingOperationCancelledException>()),
       );
+      await resumeSeen.future.timeout(const Duration(seconds: 2));
+
+      await client.disconnect(reason: 'cancel-reconnect-handshake');
+      await reconnectCancelled;
 
       expect(connectionCount, 2);
       expect(client.state, DihorGameKitNetworkingConnectionState.closed);
