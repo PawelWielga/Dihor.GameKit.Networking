@@ -148,6 +148,34 @@ void main() {
       await server.done;
     });
 
+    test('handshake timeout is surfaced deterministically', () async {
+      final releaseServer = Completer<void>();
+      final server = await _TestLanServer.start((socket) async {
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          expect(await iterator.moveNext(), isTrue);
+          await releaseServer.future;
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(() async {
+        if (!releaseServer.isCompleted) releaseServer.complete();
+        await server.close();
+      });
+
+      await expectLater(
+        DihorGameKitNetworkingClient.connectLan(
+          server.descriptor,
+          handshakeTimeout: const Duration(milliseconds: 50),
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+
+      if (!releaseServer.isCompleted) releaseServer.complete();
+      await server.done;
+    });
+
     test('connect rejection is surfaced to the caller', () async {
       final server = await _TestLanServer.start((socket) async {
         final iterator = StreamIterator<dynamic>(socket);
