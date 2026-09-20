@@ -198,10 +198,11 @@ final class DihorGameKitNetworkingLanWebSocketTransport
     }
 
     try {
-      await _subscription.cancel();
-      if (socketClose != null) {
-        await socketClose.timeout(closeTimeout);
-      }
+      final shutdown = <Future<dynamic>>[
+        _subscription.cancel(),
+        if (socketClose != null) socketClose,
+      ];
+      await Future.wait<dynamic>(shutdown).timeout(closeTimeout);
     } catch (_) {
       // Timeout/close failures must not keep client lifecycle operations stuck.
     } finally {
@@ -266,6 +267,10 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   Future<void> _closeMessageController() async {
     if (_messageControllerClosed) return;
     _messageControllerClosed = true;
-    await _messageController.close();
+    try {
+      await _messageController.close().timeout(closeTimeout);
+    } catch (_) {
+      // A paused/abandoned consumer must not block local transport disposal.
+    }
   }
 }
