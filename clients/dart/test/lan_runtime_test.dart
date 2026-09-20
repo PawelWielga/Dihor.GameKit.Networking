@@ -57,6 +57,64 @@ void main() {
       await server.done;
     });
 
+    test(
+        'client buffers application message sent immediately after connect accepted',
+        () async {
+      final server = await _TestLanServer.start((socket) async {
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          expect(await iterator.moveNext(), isTrue);
+          final connect = DihorGameKitNetworkingEnvelope.parse(
+            utf8.decode(_bytes(iterator.current)),
+          );
+
+          socket.add(
+            utf8.encode(
+              DihorGameKitNetworkingEnvelope.create(
+                type: DihorGameKitNetworkingMessageTypes.connectAccepted,
+                messageId: 'accepted-early',
+                correlationId: connect.messageId,
+                payload: <String, Object?>{
+                  'connectionId': 'dotnet-connection-early',
+                },
+              ).toJsonString(),
+            ),
+          );
+          socket.add(
+            utf8.encode(
+              DihorGameKitNetworkingEnvelope.create(
+                type: DihorGameKitNetworkingMessageTypes.applicationMessage,
+                messageId: 'early-message',
+                payload: <String, Object?>{
+                  'applicationType': 'demo.early',
+                  'data': <String, Object?>{'value': 7},
+                },
+              ).toJsonString(),
+            ),
+          );
+
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(server.close);
+
+      final client =
+          await DihorGameKitNetworkingClient.connectLan(server.descriptor);
+      addTearDown(client.close);
+
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      final received = await client.applicationMessages.first.timeout(
+        const Duration(seconds: 2),
+      );
+      expect(received.messageId, 'early-message');
+      expect(received.applicationType, 'demo.early');
+      expect(received.data, <String, Object?>{'value': 7});
+      await server.done;
+    });
+
     test('client performs protocol-v2 connect and opaque application exchange',
         () async {
       final server = await _TestLanServer.start((socket) async {
