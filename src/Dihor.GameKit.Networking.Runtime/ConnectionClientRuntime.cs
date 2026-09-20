@@ -202,8 +202,6 @@ public sealed class ConnectionClientRuntime : IAsyncDisposable
         }
 
         await DisconnectAsync(clearResumeCredential: false).ConfigureAwait(false);
-        _lifecycleGate.Dispose();
-        _sendGate.Dispose();
     }
 
     private async Task RunAsync(

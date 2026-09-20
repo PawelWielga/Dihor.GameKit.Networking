@@ -92,6 +92,28 @@ public sealed class ConnectionClientRuntimeTests
         Assert.Equal("resume-2", (await credentials.ReadAsync("room:1", cancellationToken))?.ResumeToken);
     }
 
+    [Fact]
+    public async Task DisposeIsIdempotentAfterConnectedRuntimeStops()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var peerId = new PeerId("peer-1");
+        var client = new RecordingClient();
+        client.Enqueue(Serialize(
+            ProtocolMessageTypes.ConnectAccepted,
+            "accepted-1",
+            new ConnectAcceptedPayload(new ConnectionId("connection-1"), peerId, "resume-1")));
+        var runtime = new ConnectionClientRuntime(
+            new RecordingConnector(client),
+            new MemoryConnectionResumeCredentialStore(),
+            new ConnectionClientOptions(TimeSpan.FromMinutes(1), TimeSpan.Zero));
+        await runtime.ConnectAsync(peerId, "room:1", cancellationToken);
+
+        await runtime.DisposeAsync();
+        await runtime.DisposeAsync();
+
+        Assert.Equal(ConnectionClientState.Closed, runtime.State);
+    }
+
     private static ClientTransportMessage Serialize<TPayload>(
         string type,
         string messageId,
