@@ -324,7 +324,7 @@ final class DihorGameKitNetworkingClient {
 
   void _handleProtocolError(Object error, StackTrace stackTrace) {
     if (!_controllersClosed) {
-      _errorController.addError(error, stackTrace);
+      _errorController.add(error);
     }
 
     final pending = _pendingConnection;
@@ -335,7 +335,7 @@ final class DihorGameKitNetworkingClient {
 
   void _handleTransportError(Object error, StackTrace stackTrace) {
     if (!_controllersClosed) {
-      _errorController.addError(error, stackTrace);
+      _errorController.add(error);
     }
 
     final pending = _pendingConnection;
