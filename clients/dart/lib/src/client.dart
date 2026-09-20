@@ -259,29 +259,33 @@ final class DihorGameKitNetworkingClient {
     _setState(DihorGameKitNetworkingConnectionState.reconnecting);
 
     Object? lastError;
-    for (var attempt = 1; attempt <= reconnectPolicy.maxAttempts; attempt++) {
-      cancellation?.throwIfCancellationRequested();
+    try {
+      for (var attempt = 1; attempt <= reconnectPolicy.maxAttempts; attempt++) {
+        cancellation?.throwIfCancellationRequested();
 
-      if (attempt > 1 && reconnectPolicy.delay > Duration.zero) {
-        await _delayWithCancellation(reconnectPolicy.delay, cancellation);
-      }
+        if (attempt > 1 && reconnectPolicy.delay > Duration.zero) {
+          await _delayWithCancellation(reconnectPolicy.delay, cancellation);
+        }
 
-      try {
-        return await _openAndHandshake(
-          resume: true,
-          cancellation: cancellation,
-        );
-      } on DihorGameKitNetworkingOperationCancelledException {
-        _setState(DihorGameKitNetworkingConnectionState.closed);
-        rethrow;
-      } on DihorGameKitNetworkingConnectionRejectedException {
-        _setState(DihorGameKitNetworkingConnectionState.closed);
-        rethrow;
-      } catch (error) {
-        lastError = error;
-        _reportError(error);
-        await _disposeCurrentTransport();
+        try {
+          return await _openAndHandshake(
+            resume: true,
+            cancellation: cancellation,
+          );
+        } on DihorGameKitNetworkingOperationCancelledException {
+          rethrow;
+        } on DihorGameKitNetworkingConnectionRejectedException {
+          _setState(DihorGameKitNetworkingConnectionState.closed);
+          rethrow;
+        } catch (error) {
+          lastError = error;
+          _reportError(error);
+          await _disposeCurrentTransport();
+        }
       }
+    } on DihorGameKitNetworkingOperationCancelledException {
+      _setState(DihorGameKitNetworkingConnectionState.closed);
+      rethrow;
     }
 
     _setState(DihorGameKitNetworkingConnectionState.closed);
