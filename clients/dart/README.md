@@ -15,7 +15,11 @@ The `[27]` runtime supports:
 - optional neutral stable `peerId` on initial connect;
 - sending and receiving opaque `application.message` values;
 - observable connection state, remote close and transport/protocol errors;
-- configurable connection/handshake timeouts and message-size limit.
+- configurable connection/handshake timeouts and message-size limit;
+- neutral in-memory identity/resume-credential storage with a pluggable persistence interface;
+- protocol-v2 heartbeat and explicit disconnect control messages;
+- manual bounded reconnect/resume on a replacement connection;
+- cancellation of connection/reconnect attempts without leaking late sockets.
 
 The LAN implementation is intended for Dart VM and Flutter mobile/desktop platforms where `dart:io` WebSocket is available. Browser Dart needs a browser-specific transport implementation.
 
