@@ -12,6 +12,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/AutoConnectivityDemo/Dihor.GameKit.Networking.Sample.AutoConnectivityDemo.csproj" />
     <Project Path="samples/CommunicationDemo/Dihor.GameKit.Networking.Sample.CommunicationDemo.csproj" />
+    <Project Path="samples/DartLanInteropHost/Dihor.GameKit.Networking.Sample.DartLanInteropHost.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Dihor.GameKit.Networking.Core.Tests/Dihor.GameKit.Networking.Core.Tests.csproj" />

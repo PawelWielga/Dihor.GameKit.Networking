@@ -114,11 +114,81 @@ jobs:
         working-directory: interop/dart
         run: dart test
 
+      - name: Restore Dart runtime package dependencies
+        working-directory: clients/dart
+        run: dart pub get
+
+      - name: Check Dart runtime formatting
+        working-directory: clients/dart
+        run: |
+          dart format .
+          git diff --exit-code -- .
+
+      - name: Analyze Dart runtime package
+        working-directory: clients/dart
+        run: dart analyze
+
+      - name: Test Dart runtime package
+        working-directory: clients/dart
+        run: dart test
+
+      - name: Test Dart client against .NET LAN listener
+        shell: bash
+        run: |
+          set -euo pipefail
+          DESCRIPTOR_FILE="$RUNNER_TEMP/dihor-dart-lan-descriptor.txt"
+          HOST_LOG="$RUNNER_TEMP/dihor-dart-lan-host.log"
+          rm -f "$DESCRIPTOR_FILE" "$HOST_LOG"
+
+          dotnet run \
+            --project samples/DartLanInteropHost/Dihor.GameKit.Networking.Sample.DartLanInteropHost.csproj \
+            --configuration Release \
+            --no-build \
+            -- "$DESCRIPTOR_FILE" >"$HOST_LOG" 2>&1 &
+          HOST_PID=$!
+
+          cleanup() {
+            kill "$HOST_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in {1..100}; do
+            if [[ -s "$DESCRIPTOR_FILE" ]]; then
+              break
+            fi
+            if ! kill -0 "$HOST_PID" 2>/dev/null; then
+              cat "$HOST_LOG"
+              wait "$HOST_PID"
+              exit 1
+            fi
+            sleep 0.1
+          done
+
+          if [[ ! -s "$DESCRIPTOR_FILE" ]]; then
+            cat "$HOST_LOG"
+            echo "Dart interop host did not publish a connection descriptor." >&2
+            exit 1
+          fi
+
+          (
+            cd clients/dart
+            dart run tool/dotnet_lan_integration.dart "$DESCRIPTOR_FILE"
+          )
+          wait "$HOST_PID"
+          cat "$HOST_LOG"
+          trap - EXIT
+
       - name: Pack Dart protocol source artifact
         run: |
           mkdir -p artifacts/dart
           tar -czf "artifacts/dart/dihor_gamekit_networking_protocol-${{ steps.version.outputs.version }}.tar.gz" \
             -C interop/dart pubspec.yaml README.md CHANGELOG.md lib
+
+      - name: Pack Dart runtime source artifact
+        run: |
+          mkdir -p artifacts/dart
+          tar -czf "artifacts/dart/dihor_gamekit_networking-${{ steps.version.outputs.version }}.tar.gz" \
+            -C clients/dart pubspec.yaml README.md CHANGELOG.md lib
 
       - name: Setup Node
         uses: actions/setup-node@v4

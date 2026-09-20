@@ -118,18 +118,28 @@ The base SDK has no required player/shared-screen/host role and no public/privat
 
 Preview.2 does not add a browser SignalR implementation; its version is aligned with the supported Dihor.GameKit.Networking compatibility line while the browser API stays protocol-v2 compatible with preview.1.
 
-## Dart interoperability package
+## Dart packages
 
-`dihor_gamekit_networking_protocol` `0.2.0-preview.2` implements the protocol-v2 compatibility layer in Dart:
+`dihor_gamekit_networking_protocol` implements the protocol-v2 compatibility layer in Dart:
 
-- envelope parsing/version admission;
-- `Dihor.GameKit.NetworkingConnectionDescriptor`;
+- envelope parsing, creation, serialization and version admission;
+- `DihorGameKitNetworkingConnectionDescriptor`;
 - discovery announcement parsing;
 - neutral peer/resume fields;
 - opaque application-message payload parsing;
 - generic message sequence gating.
 
-It deliberately does not duplicate a game/session engine or Dart transport runtime. Preview.2 does not add a Dart SignalR client.
+`dihor_gamekit_networking` in `clients/dart` is the first Dart runtime layer. Its `[27]` public surface adds:
+
+- `DihorGameKitNetworkingClientTransport` and neutral transport messages;
+- `DihorGameKitNetworkingLanWebSocketTransport` for Dart VM / Flutter mobile and desktop;
+- `DihorGameKitNetworkingClient.connectLan(...)`;
+- protocol-v2 initial connect handshake;
+- observable connection state and transport/protocol errors;
+- opaque application-message send/receive;
+- configurable connect/handshake timeouts and message-size limit.
+
+The Dart runtime still contains no player/session/game model. Reconnect/resume, heartbeat, discovery and automatic connectivity are tracked in follow-up runtime issues rather than being faked by the LAN transport.
 
 ## Retired v0.1 concepts
 

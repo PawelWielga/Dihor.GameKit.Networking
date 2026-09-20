@@ -96,6 +96,31 @@ void main() {
       expect(gate.lastAcceptedSequence, 43);
     });
 
+    test('created envelopes serialize and round-trip through protocol v2', () {
+      final created = DihorGameKitNetworkingEnvelope.create(
+        type: DihorGameKitNetworkingMessageTypes.applicationMessage,
+        messageId: 'dart-created-message',
+        correlationId: 'request-1',
+        payload: <String, Object?>{
+          'applicationType': 'consumer.command',
+          'data': <String, Object?>{'value': 42},
+        },
+      );
+
+      final parsed =
+          DihorGameKitNetworkingEnvelope.parse(created.toJsonString());
+
+      expect(
+        parsed.type,
+        DihorGameKitNetworkingMessageTypes.applicationMessage,
+      );
+      expect(parsed.protocolVersion, dihorGameKitNetworkingProtocolVersion);
+      expect(parsed.messageId, 'dart-created-message');
+      expect(parsed.correlationId, 'request-1');
+      expect(parsed.payload['applicationType'], 'consumer.command');
+      expect(parsed.payload['data'], <String, Object?>{'value': 42});
+    });
+
     test('unsupported protocol version is rejected before payload use', () {
       final incompatible = _fixture('v2-resume-request.json').replaceFirst(
         '"protocolVersion":2',

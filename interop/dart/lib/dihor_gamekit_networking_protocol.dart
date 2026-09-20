@@ -2,6 +2,18 @@ import 'dart:convert';
 
 const dihorGameKitNetworkingProtocolVersion = 2;
 
+abstract final class DihorGameKitNetworkingMessageTypes {
+  static const connectRequest = 'connection.connect.request';
+  static const connectAccepted = 'connection.connect.accepted';
+  static const connectRejected = 'connection.connect.rejected';
+  static const resumeRequest = 'connection.resume.request';
+  static const resumeAccepted = 'connection.resume.accepted';
+  static const resumeRejected = 'connection.resume.rejected';
+  static const heartbeat = 'connection.heartbeat';
+  static const disconnect = 'connection.disconnect';
+  static const applicationMessage = 'application.message';
+}
+
 final class DihorGameKitNetworkingEnvelope {
   DihorGameKitNetworkingEnvelope(
       {required this.type,
@@ -9,6 +21,20 @@ final class DihorGameKitNetworkingEnvelope {
       required this.messageId,
       required this.payload,
       this.correlationId});
+
+  factory DihorGameKitNetworkingEnvelope.create({
+    required String type,
+    required String messageId,
+    required Map<String, Object?> payload,
+    String? correlationId,
+  }) =>
+      DihorGameKitNetworkingEnvelope(
+        type: _normalizeRequired(type, 'type'),
+        protocolVersion: dihorGameKitNetworkingProtocolVersion,
+        messageId: _normalizeRequired(messageId, 'messageId'),
+        correlationId: _normalizeOptional(correlationId, 'correlationId'),
+        payload: Map<String, Object?>.unmodifiable(payload),
+      );
 
   factory DihorGameKitNetworkingEnvelope.parse(String source) {
     final json = _jsonObject(jsonDecode(source), 'envelope');
@@ -31,6 +57,16 @@ final class DihorGameKitNetworkingEnvelope {
   final String messageId;
   final String? correlationId;
   final Map<String, Object?> payload;
+
+  Map<String, Object?> toJsonObject() => <String, Object?>{
+        'type': type,
+        'protocolVersion': protocolVersion,
+        'messageId': messageId,
+        if (correlationId != null) 'correlationId': correlationId,
+        'payload': payload,
+      };
+
+  String toJsonString() => jsonEncode(toJsonObject());
 }
 
 final class DihorGameKitNetworkingConnectionDescriptor {
