@@ -350,6 +350,88 @@ void main() {
       expect(client.state, DihorGameKitNetworkingConnectionState.closed);
     });
 
+    test('resume handshake timeout is bounded', () async {
+      final dropFirst = Completer<void>();
+      final releaseSecond = Completer<void>();
+      final resumeSeen = Completer<void>();
+
+      final server = await _ContinuityServer.start((socket, connectionIndex) async {
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          if (connectionIndex == 1) {
+            final connect = await _nextEnvelope(iterator);
+            socket.add(
+              _wire(
+                DihorGameKitNetworkingEnvelope.create(
+                  type: DihorGameKitNetworkingMessageTypes.connectAccepted,
+                  messageId: 'accepted-timeout',
+                  correlationId: connect.messageId,
+                  payload: <String, Object?>{
+                    'connectionId': 'timeout-connection-1',
+                    'peerId': 'peer-timeout',
+                    'resumeToken': 'timeout-resume-token',
+                  },
+                ),
+              ),
+            );
+            await dropFirst.future;
+            await socket.close(
+              WebSocketStatus.goingAway,
+              'drop-before-resume-timeout',
+            );
+            return;
+          }
+
+          final resumeRequest = await _nextEnvelope(iterator);
+          expect(
+            resumeRequest.type,
+            DihorGameKitNetworkingMessageTypes.resumeRequest,
+          );
+          if (!resumeSeen.isCompleted) resumeSeen.complete();
+          await releaseSecond.future;
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(() async {
+        if (!dropFirst.isCompleted) dropFirst.complete();
+        if (!releaseSecond.isCompleted) releaseSecond.complete();
+        await server.close();
+      });
+
+      final client = await DihorGameKitNetworkingClient.connectLan(
+        server.descriptor,
+        peerId: 'peer-timeout',
+        handshakeTimeout: const Duration(milliseconds: 50),
+        heartbeatInterval: const Duration(seconds: 30),
+      );
+      addTearDown(client.close);
+
+      final closed = client.stateChanges.firstWhere(
+        (state) => state == DihorGameKitNetworkingConnectionState.closed,
+      );
+      dropFirst.complete();
+      await closed.timeout(const Duration(seconds: 2));
+
+      await expectLater(
+        client.reconnect(
+          policy: DihorGameKitNetworkingReconnectPolicy(maxAttempts: 1),
+        ),
+        throwsA(
+          isA<DihorGameKitNetworkingReconnectFailedException>()
+              .having(
+                (error) => error.lastError,
+                'lastError',
+                isA<TimeoutException>(),
+              ),
+        ),
+      );
+      await resumeSeen.future.timeout(const Duration(seconds: 2));
+      expect(client.state, DihorGameKitNetworkingConnectionState.closed);
+
+      if (!releaseSecond.isCompleted) releaseSecond.complete();
+    });
+
     test('reconnect retries are bounded and delay can be cancelled', () async {
       final dropFirst = Completer<void>();
 
