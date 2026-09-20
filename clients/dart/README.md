@@ -52,6 +52,49 @@ await client.close();
 
 The application payload remains consumer-owned. The runtime validates only the Dihor.GameKit.Networking envelope and transport semantics.
 
+## Reconnect and resume
+
+A stable peer can keep a resume credential in a `DihorGameKitNetworkingIdentityStore`. The default `MemoryDihorGameKitNetworkingIdentityStore` survives transport replacement while the client/process remains alive; applications that need restart persistence can provide their own store implementation.
+
+```dart
+final store = MemoryDihorGameKitNetworkingIdentityStore();
+
+final client = await DihorGameKitNetworkingClient.connectLan(
+  descriptor,
+  peerId: 'device-a',
+  identityStore: store,
+);
+
+final replacement = await client.reconnect(
+  policy: DihorGameKitNetworkingReconnectPolicy(
+    maxAttempts: 3,
+    delay: const Duration(milliseconds: 500),
+  ),
+);
+
+print(replacement.connectionId); // new transient connection
+```
+
+`connectLan` also resumes automatically when the supplied identity store already contains a matching resume credential. This supports application-owned persistence without adding Flutter UI/lifecycle policy to the networking package.
+
+Reconnect is **manual policy**: a network drop moves the client to `closed`; the consumer decides if and when to call `reconnect`. The reconnect operation itself is bounded by max attempts, transport/handshake timeouts and optional `DihorGameKitNetworkingCancellationSignal`.
+
+Heartbeat carries only the optional stable `peerId`. It never carries transient application replay/state. A successful local send or resume still does not imply exactly-once delivery.
+
+```dart
+final cancellation = DihorGameKitNetworkingCancellationSignal();
+
+final reconnect = client.reconnect(
+  policy: DihorGameKitNetworkingReconnectPolicy(maxAttempts: 5),
+  cancellation: cancellation,
+);
+
+// Consumer policy can cancel the attempt at any time.
+cancellation.cancel();
+```
+
+Use `disconnect(reason: ...)` for an explicit protocol-v2 disconnect while keeping the resume credential, or pass `clearResumeCredential: true` when the old continuity identity must be retired.
+
 ## Raw transport
 
 Consumers that need a lower-level adapter can use `DihorGameKitNetworkingLanWebSocketTransport` through the neutral `DihorGameKitNetworkingClientTransport` interface.
