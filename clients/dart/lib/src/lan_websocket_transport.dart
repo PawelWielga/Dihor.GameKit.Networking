@@ -89,7 +89,8 @@ final class DihorGameKitNetworkingLanWebSocketTransport
         ),
         if (cancellation != null)
           cancellation.whenCancelled.then<WebSocket>(
-            (_) => throw const DihorGameKitNetworkingOperationCancelledException(),
+            (_) =>
+                throw const DihorGameKitNetworkingOperationCancelledException(),
           ),
       ]);
       cancellation?.throwIfCancellationRequested();
