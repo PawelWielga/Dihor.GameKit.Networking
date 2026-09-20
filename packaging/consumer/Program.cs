@@ -3,6 +3,7 @@ using System.Text.Json;
 using Dihor.GameKit.Networking.Core;
 using Dihor.GameKit.Networking.Discovery.Lan;
 using Dihor.GameKit.Networking.Protocol;
+using Dihor.GameKit.Networking.Runtime;
 using Dihor.GameKit.Networking.Transport.Abstractions;
 using Dihor.GameKit.Networking.Transport.InMemory;
 using Dihor.GameKit.Networking.Transport.Lan;
@@ -79,6 +80,7 @@ Console.WriteLine($"{descriptor.Transport}:{channelId.Value}:v{ProtocolVersions.
 Console.WriteLine("Package-only opaque message exchange: OK");
 Console.WriteLine("Package-only neutral peer resume: OK");
 Console.WriteLine("Package-only monotonic timing normalization: OK");
+Console.WriteLine(typeof(ConnectionHostRuntime).FullName);
 Console.WriteLine(typeof(LanWebSocketTransport).FullName);
 Console.WriteLine(typeof(UdpLanDiscoveryAdvertiser).FullName);
 Console.WriteLine(typeof(SignalRRelayTransport).FullName);

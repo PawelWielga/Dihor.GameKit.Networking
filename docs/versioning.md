@@ -13,6 +13,7 @@ Compatible transport/capability expansions on that corrected boundary use later 
 - `0.2.0-preview.4` adds bounded automatic transport selection/fallback and reconnect preference across registered communication paths;
 - `0.2.0-preview.5` adds transport-neutral synchronized monotonic timing, RTT/jitter/uncertainty metrics and peer timestamp normalization;
 - `0.2.0-preview.6` makes the direct LAN WebSocket client/host and UDP discovery package path consumable from `net10.0-android` API 28+ without an ASP.NET Core runtime dependency.
+- `0.2.0-preview.7` adds the transport-neutral .NET connection runtime, lifecycle-safe timing scheduler, reconnect-safe latest-value replay, bounded message-id deduplication and the first-class Dart LAN runtime.
 
 For preview releases:
 
@@ -34,6 +35,7 @@ Package version and protocol version are independent:
 - `0.2.0-preview.4` also uses wire protocol `2`; automatic transport selection changes connection orchestration only and carries the same opaque protocol/application data;
 - `0.2.0-preview.5` also uses wire protocol `2`; synchronized timing is an optional transport-neutral utility whose probe/reply data can travel inside existing consumer-owned payloads without changing the base envelope;
 - `0.2.0-preview.6` also uses wire protocol `2`; replacing the LAN host implementation and expanding platform compatibility does not change connect/resume/application-message semantics.
+- `0.2.0-preview.7` also uses wire protocol `2`; lifecycle orchestration, replay/deduplication and the Dart runtime reuse the existing control and opaque application envelopes.
 
 A wire-incompatible change requires a new protocol version even while package versions are pre-1.0. Clients must reject unsupported protocol versions before using payload data.
 
@@ -71,12 +73,12 @@ SignalR relay integration tests prove the same v2 connect/resume/application-mes
 
 Matching package versions do not imply every language/runtime implements every transport or optional utility.
 
-For `0.2.0-preview.6`:
+For `0.2.0-preview.7`:
 
-- .NET desktop/server provides LAN WebSocket, SignalR relay, the transport-neutral automatic client selector, optional WebRTC signaling hosting and `MonotonicTimingSynchronizer` in `Dihor.GameKit.Networking.Core`;
-- .NET Android API 28+ can consume the direct LAN WebSocket client and host from `Dihor.GameKit.Networking.Transport.Lan` plus UDP discovery from `Dihor.GameKit.Networking.Discovery.Lan` without `Microsoft.AspNetCore.App`; package-only Android client/host builds are release gates;
+- .NET desktop/server provides LAN WebSocket, SignalR relay, the automatic selector, `ConnectionHostRuntime` / `ConnectionClientRuntime`, optional WebRTC signaling hosting and synchronized timing;
+- .NET Android API 28+ can consume the connection runtime, direct LAN WebSocket client and host plus UDP discovery without `Microsoft.AspNetCore.App`; package-only Android client/host builds are release gates;
 - TypeScript/browser provides protocol-v2 WebSocket connectivity, native WebRTC DataChannels, the generic automatic selector and an equivalent `MonotonicTimingSynchronizer`/`monotonicNowMs()` timing surface;
-- Dart provides protocol-v2 interoperability only and does not claim a LAN/SignalR/WebRTC transport runtime, automatic transport implementation or synchronized timing implementation.
+- Dart provides protocol-v2 interoperability and direct LAN WebSocket client connectivity; it does not yet claim resume/reconnect, discovery, automatic selection, SignalR, WebRTC or synchronized timing.
 
 Android package compatibility does not imply that Dihor.GameKit.Networking owns Android application permissions, Wi-Fi policy or product-specific interface selection. Those remain consumer/platform responsibilities. See `docs/android-lan.md`.
 

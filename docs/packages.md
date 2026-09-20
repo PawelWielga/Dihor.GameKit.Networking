@@ -1,6 +1,6 @@
 # Package boundaries
 
-Dihor.GameKit.Networking `0.2.0-preview.5` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
+Dihor.GameKit.Networking `0.2.0-preview.7` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
 
 The authoritative ownership decision is [Communication boundary](communication-boundary.md).
 
@@ -38,6 +38,18 @@ Owns the language-neutral protocol-v2 communication contract:
 - LAN discovery announcement codec.
 
 Synchronized timing does not add a protocol-v2 control message. Probe/reply data remains caller/adapter-owned payload data.
+
+### `Dihor.GameKit.Networking.Runtime`
+
+Owns reusable protocol-v2 communication lifecycle above transport abstractions:
+
+- `ConnectionHostRuntime` for connect/resume admission, heartbeat timeout, reconnect windows, targeted opaque application messages and bounded message-id deduplication;
+- `ConnectionClientRuntime` for connect/resume handshakes, resume-token rotation, heartbeats, reconnect attempts and opaque application messages;
+- `IConnectionTransportConnector` and `AutomaticTransportConnector` for composing the client lifecycle with one or more transport candidates;
+- `IConnectionResumeCredentialStore` for caller-controlled durable or in-memory resume credentials;
+- `MonotonicTimingScheduler` for per-peer timing state, immediate probes, periodic refresh and reset/reacquisition after reconnect.
+
+The runtime reports neutral `PeerId` connectivity and opaque application messages. It does not map peers to players, decide admission/capacity, restore game state or interpret application payloads.
 
 ### `Dihor.GameKit.Networking.Transport.Abstractions`
 
@@ -103,7 +115,7 @@ Optional UDP discovery for technical `ConnectionDescriptor` endpoints. Discovery
 
 ### `@dihor/gamekit-networking`
 
-The `0.2.0-preview.5` browser client exposes protocol-v2 WebSocket, native WebRTC, generic transport-selection and monotonic-timing capabilities.
+The `0.2.0-preview.7` browser client exposes protocol-v2 WebSocket, native WebRTC, generic transport selection, reconnect replay/deduplication and monotonic timing.
 
 Protocol-v2 WebSocket capabilities:
 
@@ -190,7 +202,7 @@ WebRTC is validated separately in the browser package through unit tests and a r
         └────────────────┴──── optional discovery   backend      SDP/ICE signaling
                                            │
                                   automatic selector
-                         timing stays transport-neutral
+                  runtime lifecycle + timing scheduler
 ```
 
 No base package may depend upward on PartyBeam or concrete game semantics.

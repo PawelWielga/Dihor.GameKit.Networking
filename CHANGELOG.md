@@ -2,6 +2,25 @@
 
 All notable Dihor.GameKit.Networking changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
+## 0.2.0-preview.7 - 2026-09-20
+
+Reusable connection lifecycle and reconnect-safe transient delivery on protocol v2.
+
+### .NET runtime
+
+- adds `Dihor.GameKit.Networking.Runtime` with transport-neutral host and client orchestration;
+- owns connect/resume negotiation, rotated resume credentials, heartbeat, timeout, reconnect and neutral application-message dispatch above `IMessageTransport` / `IMessageTransportClient`;
+- composes client reconnect with `AutomaticTransportSelector` without adding product roles or session policy;
+- adds `MonotonicTimingScheduler` for per-peer immediate acquisition, periodic refresh and reconnect reset;
+- validates the new runtime package through package-only .NET and Android client/host consumers.
+
+### Reconnect delivery and cross-platform runtime
+
+- adds bounded message-id deduplication keyed by stable peer identity;
+- adds reconnect-safe latest-value replay for transient application messages whose older revisions become obsolete;
+- adds the first-class Dart LAN WebSocket runtime with protocol-v2 connect and opaque application-message exchange;
+- keeps wire protocol `2` unchanged and leaves players, parties, game sessions, authority and application payload meaning to consumers.
+
 ## 0.2.0-preview.5 - 2026-09-15
 
 Transport-neutral synchronized monotonic timing on the existing protocol-v2 communication foundation.

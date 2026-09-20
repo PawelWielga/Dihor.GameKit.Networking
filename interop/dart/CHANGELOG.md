@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-preview.7
+
+- Aligns the Dart protocol package with the preview.7 compatibility line.
+- Keeps the canonical protocol-v2 wire contract unchanged.
+
 ## 0.2.0-preview.5
 
 - Aligns the Dart protocol package version with the Dihor.GameKit.Networking preview.5 release line.

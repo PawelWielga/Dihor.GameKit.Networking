@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-preview.7 - 2026-09-20
+
+- Adds reconnect-safe latest-value replay and bounded receiver-side message-id deduplication.
+- Keeps protocol v2 and existing browser transport behavior unchanged.
+
 ## 0.2.0-preview.5 - 2026-09-15
 
 - Adds `MonotonicTimingSynchronizer` for bounded peer/reference monotonic clock-offset estimation.
