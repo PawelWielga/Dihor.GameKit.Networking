@@ -141,17 +141,20 @@ Preview.2 does not add a browser SignalR implementation; its version is aligned 
 - opaque application-message payload parsing;
 - generic message sequence gating.
 
-`dihor_gamekit_networking` in `clients/dart` is the first Dart runtime layer. Its `[27]` public surface adds:
+`dihor_gamekit_networking` in `clients/dart` is the first Dart runtime layer. Its current `[27]` + `[28]` public surface includes:
 
 - `DihorGameKitNetworkingClientTransport` and neutral transport messages;
 - `DihorGameKitNetworkingLanWebSocketTransport` for Dart VM / Flutter mobile and desktop;
 - `DihorGameKitNetworkingClient.connectLan(...)`;
-- protocol-v2 initial connect handshake;
+- protocol-v2 initial connect and resume handshakes;
+- optional stable `PeerId` plus pluggable identity/resume-credential storage;
+- heartbeat and explicit disconnect control messages;
+- manual bounded/cancellable reconnect on a replacement connection;
 - observable connection state and transport/protocol errors;
-- opaque application-message send/receive;
+- opaque application-message send/receive before and after resume;
 - configurable connect/handshake timeouts and message-size limit.
 
-The Dart runtime still contains no player/session/game model. Reconnect/resume, heartbeat, discovery and automatic connectivity are tracked in follow-up runtime issues rather than being faked by the LAN transport.
+The Dart runtime still contains no player/session/game model. Discovery, automatic connectivity, SignalR, WebRTC and synchronized timing remain follow-up runtime work rather than being faked by the LAN transport.
 
 ## Retired v0.1 concepts
 

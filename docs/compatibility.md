@@ -9,7 +9,7 @@ The language-neutral Dihor.GameKit.Networking wire protocol is the compatibility
 | .NET | `Dihor.GameKit.Networking.*` `0.2.0-preview.7` | 2 | .NET 10 | connection runtime, protocol, in-memory/LAN/SignalR transports, automatic client selection, replay/deduplication, synchronized timing, WebRTC signaling and LAN discovery |
 | TypeScript | `@dihor/gamekit-networking` `0.2.0-preview.7` | 2 | ES2022 browser | neutral connect/resume, opaque application messages, reconnect replay/deduplication, native WebRTC DataChannels, automatic selection and monotonic timing |
 | Dart protocol | `dihor_gamekit_networking_protocol` `0.2.0-preview.7` | 2 | Dart `>=3.3 <4.0` | canonical protocol-v2 envelopes, connection descriptors and discovery announcement parsing |
-| Dart runtime | `dihor_gamekit_networking` `0.2.0-preview.7` | 2 | Dart VM / Flutter mobile and desktop | direct LAN WebSocket client, protocol-v2 initial connect handshake and opaque application-message send/receive; reconnect/discovery/automatic selection/timing follow in later issues |
+| Dart runtime | `dihor_gamekit_networking` `0.2.0-preview.7` | 2 | Dart VM / Flutter mobile and desktop | direct LAN WebSocket client, connect/resume continuity, heartbeat, explicit disconnect, bounded/cancellable reconnect and opaque application-message send/receive; discovery/automatic selection/timing follow in later issues |
 | Państwa Miasta current LAN | application-owned contract | separate contract | Flutter/Dart | existing product/game protocol remains consumer-owned until an adapter migration is scheduled |
 
 The Dihor.GameKit.Networking C#, TypeScript and Dart protocol surfaces continue to validate the same v2 canonical fixtures. A consumer does not need to adopt Dihor.GameKit.Networking protocol v2 merely to keep its existing product protocol alive; migration can happen behind an adapter boundary.
@@ -39,7 +39,7 @@ The TypeScript selector is generic and can orchestrate browser-specific adapters
 
 Monotonic timing is transport-independent in both .NET and TypeScript. Callers decide how to carry probe IDs and peer timestamps over LAN, WebRTC, SignalR or another adapter. A reconnect or path replacement requires timing-state reset and resynchronization.
 
-Dart is no longer protocol-only: `clients/dart` provides direct LAN WebSocket connectivity against the same .NET listener and protocol-v2 application-message path. The current Dart runtime does not yet claim resume/reconnect, UDP discovery, automatic transport selection, SignalR, WebRTC or synchronized timing; those capabilities remain explicit follow-up work.
+Dart is no longer protocol-only: `clients/dart` provides direct LAN WebSocket connectivity against the same .NET listener, stable `PeerId` resume on replacement connections, liveness-only heartbeat, explicit disconnect and bounded/cancellable reconnect. The current Dart runtime does not yet claim UDP discovery, automatic transport selection, SignalR, WebRTC or synchronized timing; those capabilities remain explicit follow-up work.
 
 ## Version mismatch
 

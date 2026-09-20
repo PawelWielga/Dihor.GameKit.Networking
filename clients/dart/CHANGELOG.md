@@ -3,7 +3,11 @@
 ## 0.2.0-preview.7
 
 - Aligns the Dart LAN runtime with the preview.7 compatibility line.
-- Keeps protocol v2 and the direct LAN WebSocket runtime behavior unchanged.
+- Added stable Dart peer identity and resume-credential storage.
+- Added protocol-v2 resume, heartbeat and explicit disconnect control flow.
+- Added manual bounded/cancellable reconnect with replacement ConnectionId semantics.
+- Added reconnect timeout/cancellation/network-drop tests and real Dart-to-.NET resume interoperability.
+- Keeps protocol v2 wire compatibility unchanged.
 
 ## 0.2.0-preview.6
 

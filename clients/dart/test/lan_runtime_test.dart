@@ -324,6 +324,51 @@ void main() {
       await server.done;
     });
 
+    test('client close is bounded when peer stops reading', () async {
+      final releaseServer = Completer<void>();
+      final server = await _TestLanServer.start((socket) async {
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          expect(await iterator.moveNext(), isTrue);
+          final connect = DihorGameKitNetworkingEnvelope.parse(
+            utf8.decode(_bytes(iterator.current)),
+          );
+          socket.add(
+            utf8.encode(
+              DihorGameKitNetworkingEnvelope.create(
+                type: DihorGameKitNetworkingMessageTypes.connectAccepted,
+                messageId: 'accepted-stalled-close',
+                correlationId: connect.messageId,
+                payload: <String, Object?>{
+                  'connectionId': 'dotnet-connection-stalled-close',
+                },
+              ).toJsonString(),
+            ),
+          );
+
+          // Deliberately stop reading client frames. The client must still be
+          // able to dispose its local transport without waiting indefinitely
+          // for the peer's WebSocket close handshake.
+          await releaseServer.future;
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(() async {
+        if (!releaseServer.isCompleted) releaseServer.complete();
+        await server.close();
+      });
+
+      final client =
+          await DihorGameKitNetworkingClient.connectLan(server.descriptor);
+
+      await client.close().timeout(const Duration(seconds: 2));
+      expect(client.state, DihorGameKitNetworkingConnectionState.closed);
+
+      if (!releaseServer.isCompleted) releaseServer.complete();
+      await server.done;
+    });
+
     test('remote close becomes observable connection state', () async {
       final releaseClose = Completer<void>();
       final server = await _TestLanServer.start((socket) async {

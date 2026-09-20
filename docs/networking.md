@@ -91,6 +91,8 @@ See [Transient latest-value replay](transient-replay.md) and [Message-id dedupli
 
 Heartbeat/timeout reports connectivity. It does not carry transient application replay state and does not trigger player leave, game pause or authority migration.
 
+The Dart runtime follows the same separation: heartbeat carries only neutral connection-health identity, while application data continues through `application.message`. A dropped Dart connection moves to a reconnectable communication state; the consumer decides whether and when to invoke bounded `reconnect()`.
+
 Consumers subscribe to communication state and apply their own product policies.
 
 For WebRTC, `sampleDiagnostics()` exposes communication-only values such as candidate-pair RTT, RTT variation, buffered bytes and dropped-message count.

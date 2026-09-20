@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:dihor_gamekit_networking_protocol/dihor_gamekit_networking_protocol.dart';
 
+import 'reconnect.dart';
 import 'transport.dart';
 
 final class DihorGameKitNetworkingLanWebSocketTransport
@@ -11,6 +12,7 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   DihorGameKitNetworkingLanWebSocketTransport._(
     this._socket,
     this.maxMessageBytes,
+    this.closeTimeout,
   ) {
     _subscription = _socket.listen(
       _handleData,
@@ -23,9 +25,11 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   static const transportName = 'lan-websocket';
   static const defaultMaxMessageBytes = 256 * 1024;
   static const defaultConnectTimeout = Duration(seconds: 5);
+  static const defaultCloseTimeout = Duration(milliseconds: 500);
 
   final WebSocket _socket;
   final int maxMessageBytes;
+  final Duration closeTimeout;
   final StreamController<DihorGameKitNetworkingTransportMessage>
       _messageController =
       StreamController<DihorGameKitNetworkingTransportMessage>();
@@ -37,7 +41,9 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   static Future<DihorGameKitNetworkingLanWebSocketTransport> connect(
     DihorGameKitNetworkingConnectionDescriptor descriptor, {
     Duration connectTimeout = defaultConnectTimeout,
+    Duration closeTimeout = defaultCloseTimeout,
     int maxMessageBytes = defaultMaxMessageBytes,
+    DihorGameKitNetworkingCancellationSignal? cancellation,
   }) async {
     if (descriptor.protocolVersion != dihorGameKitNetworkingProtocolVersion) {
       throw FormatException(
@@ -57,6 +63,13 @@ final class DihorGameKitNetworkingLanWebSocketTransport
         'Must be positive.',
       );
     }
+    if (closeTimeout <= Duration.zero) {
+      throw ArgumentError.value(
+        closeTimeout,
+        'closeTimeout',
+        'Must be positive.',
+      );
+    }
     if (maxMessageBytes <= 0) {
       throw ArgumentError.value(
         maxMessageBytes,
@@ -72,25 +85,52 @@ final class DihorGameKitNetworkingLanWebSocketTransport
       );
     }
 
+    cancellation?.throwIfCancellationRequested();
+    final socketFuture = WebSocket.connect(endpoint.toString());
+
     try {
-      final socket = await WebSocket.connect(endpoint.toString()).timeout(
-        connectTimeout,
-        onTimeout: () => throw TimeoutException(
-          'Timed out connecting to LAN WebSocket endpoint.',
+      final socket = await Future.any<WebSocket>(<Future<WebSocket>>[
+        socketFuture,
+        Future<WebSocket>.delayed(
           connectTimeout,
+          () => throw TimeoutException(
+            'Timed out connecting to LAN WebSocket endpoint.',
+            connectTimeout,
+          ),
         ),
-      );
+        if (cancellation != null)
+          cancellation.whenCancelled.then<WebSocket>(
+            (_) =>
+                throw const DihorGameKitNetworkingOperationCancelledException(),
+          ),
+      ]);
+      cancellation?.throwIfCancellationRequested();
       return DihorGameKitNetworkingLanWebSocketTransport._(
         socket,
         maxMessageBytes,
+        closeTimeout,
       );
-    } on DihorGameKitNetworkingTransportException {
+    } on DihorGameKitNetworkingOperationCancelledException {
+      unawaited(_closeLateSocket(socketFuture));
       rethrow;
     } catch (error) {
+      unawaited(_closeLateSocket(socketFuture));
       throw DihorGameKitNetworkingTransportException(
         'Unable to connect to LAN WebSocket endpoint.',
         error,
       );
+    }
+  }
+
+  static Future<void> _closeLateSocket(Future<WebSocket> socketFuture) async {
+    try {
+      final socket = await socketFuture;
+      await socket.close(
+        WebSocketStatus.goingAway,
+        'connection-attempt-abandoned',
+      );
+    } catch (_) {
+      // The original connection attempt failed, so there is nothing to close.
     }
   }
 
@@ -145,12 +185,27 @@ final class DihorGameKitNetworkingLanWebSocketTransport
     }
 
     _closed = true;
+    Future<dynamic>? socketClose;
     try {
-      await _socket.close(code ?? WebSocketStatus.normalClosure, reason);
+      // Initiate the WebSocket close frame first, but do not let a peer that
+      // stops reading block local transport disposal indefinitely.
+      socketClose = _socket.close(
+        code ?? WebSocketStatus.normalClosure,
+        reason,
+      );
     } catch (_) {
-      // Closing is best effort. Transport errors remain observable on messages.
+      // Closing is best effort. Local cleanup still continues below.
+    }
+
+    try {
+      final shutdown = <Future<dynamic>>[
+        _subscription.cancel(),
+        if (socketClose != null) socketClose,
+      ];
+      await Future.wait<dynamic>(shutdown).timeout(closeTimeout);
+    } catch (_) {
+      // Timeout/close failures must not keep client lifecycle operations stuck.
     } finally {
-      await _subscription.cancel();
       await _closeMessageController();
     }
   }
@@ -212,6 +267,10 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   Future<void> _closeMessageController() async {
     if (_messageControllerClosed) return;
     _messageControllerClosed = true;
-    await _messageController.close();
+    try {
+      await _messageController.close().timeout(closeTimeout);
+    } catch (_) {
+      // A paused/abandoned consumer must not block local transport disposal.
+    }
   }
 }
