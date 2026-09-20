@@ -88,6 +88,7 @@ final class DihorGameKitNetworkingClient {
 
   static const defaultHandshakeTimeout = Duration(seconds: 5);
   static const defaultHeartbeatInterval = Duration(seconds: 10);
+  static const _controllerCloseTimeout = Duration(milliseconds: 500);
 
   final DihorGameKitNetworkingConnectionDescriptor _descriptor;
   final DihorGameKitNetworkingIdentityStore _identityStore;
@@ -806,12 +807,16 @@ final class DihorGameKitNetworkingClient {
   Future<void> _closeControllers() async {
     if (_controllersClosed) return;
     _controllersClosed = true;
-    await Future.wait<void>(<Future<void>>[
-      _messageController.close(),
-      _applicationController.close(),
-      _stateController.close(),
-      _errorController.close(),
-    ]);
+    try {
+      await Future.wait<void>(<Future<void>>[
+        _messageController.close(),
+        _applicationController.close(),
+        _stateController.close(),
+        _errorController.close(),
+      ]).timeout(_controllerCloseTimeout);
+    } catch (_) {
+      // A paused or abandoned consumer stream must not block disposal.
+    }
   }
 
   void _throwIfDisposed() {
