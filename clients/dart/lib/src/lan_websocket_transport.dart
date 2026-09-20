@@ -12,6 +12,7 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   DihorGameKitNetworkingLanWebSocketTransport._(
     this._socket,
     this.maxMessageBytes,
+    this.closeTimeout,
   ) {
     _subscription = _socket.listen(
       _handleData,
@@ -24,9 +25,11 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   static const transportName = 'lan-websocket';
   static const defaultMaxMessageBytes = 256 * 1024;
   static const defaultConnectTimeout = Duration(seconds: 5);
+  static const defaultCloseTimeout = Duration(seconds: 1);
 
   final WebSocket _socket;
   final int maxMessageBytes;
+  final Duration closeTimeout;
   final StreamController<DihorGameKitNetworkingTransportMessage>
       _messageController =
       StreamController<DihorGameKitNetworkingTransportMessage>();
@@ -38,6 +41,7 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   static Future<DihorGameKitNetworkingLanWebSocketTransport> connect(
     DihorGameKitNetworkingConnectionDescriptor descriptor, {
     Duration connectTimeout = defaultConnectTimeout,
+    Duration closeTimeout = defaultCloseTimeout,
     int maxMessageBytes = defaultMaxMessageBytes,
     DihorGameKitNetworkingCancellationSignal? cancellation,
   }) async {
@@ -56,6 +60,13 @@ final class DihorGameKitNetworkingLanWebSocketTransport
       throw ArgumentError.value(
         connectTimeout,
         'connectTimeout',
+        'Must be positive.',
+      );
+    }
+    if (closeTimeout <= Duration.zero) {
+      throw ArgumentError.value(
+        closeTimeout,
+        'closeTimeout',
         'Must be positive.',
       );
     }
@@ -97,6 +108,7 @@ final class DihorGameKitNetworkingLanWebSocketTransport
       return DihorGameKitNetworkingLanWebSocketTransport._(
         socket,
         maxMessageBytes,
+        closeTimeout,
       );
     } on DihorGameKitNetworkingOperationCancelledException {
       unawaited(_closeLateSocket(socketFuture));
@@ -173,12 +185,26 @@ final class DihorGameKitNetworkingLanWebSocketTransport
     }
 
     _closed = true;
+    Future<dynamic>? socketClose;
     try {
-      await _socket.close(code ?? WebSocketStatus.normalClosure, reason);
+      // Initiate the WebSocket close frame first, but do not let a peer that
+      // stops reading block local transport disposal indefinitely.
+      socketClose = _socket.close(
+        code ?? WebSocketStatus.normalClosure,
+        reason,
+      );
     } catch (_) {
-      // Closing is best effort. Transport errors remain observable on messages.
-    } finally {
+      // Closing is best effort. Local cleanup still continues below.
+    }
+
+    try {
       await _subscription.cancel();
+      if (socketClose != null) {
+        await socketClose.timeout(closeTimeout);
+      }
+    } catch (_) {
+      // Timeout/close failures must not keep client lifecycle operations stuck.
+    } finally {
       await _closeMessageController();
     }
   }
