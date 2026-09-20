@@ -118,6 +118,7 @@ final class DihorGameKitNetworkingClient {
   String? _peerId;
   Timer? _heartbeatTimer;
   int _transportGeneration = 0;
+  DihorGameKitNetworkingCancellationSignal? _activeReconnectCancellation;
   bool _controllersClosed = false;
   bool _disposed = false;
 
@@ -238,8 +239,9 @@ final class DihorGameKitNetworkingClient {
     _throwIfDisposed();
     if (_state == DihorGameKitNetworkingConnectionState.connected ||
         _state == DihorGameKitNetworkingConnectionState.connecting ||
-        _state == DihorGameKitNetworkingConnectionState.reconnecting) {
-      throw StateError('Client is already connected or connecting.');
+        _state == DihorGameKitNetworkingConnectionState.reconnecting ||
+        _state == DihorGameKitNetworkingConnectionState.closing) {
+      throw StateError('Client is not available for reconnect.');
     }
 
     final peerId = _peerId ?? _identityStore.getPeerId();
@@ -255,21 +257,40 @@ final class DihorGameKitNetworkingClient {
     }
 
     final reconnectPolicy = policy ?? DihorGameKitNetworkingReconnectPolicy();
+    final reconnectCancellation =
+        DihorGameKitNetworkingCancellationSignal();
+    _activeReconnectCancellation = reconnectCancellation;
+
+    if (cancellation != null) {
+      if (cancellation.isCancellationRequested) {
+        reconnectCancellation.cancel();
+      } else {
+        unawaited(
+          cancellation.whenCancelled.then<void>(
+            (_) => reconnectCancellation.cancel(),
+          ),
+        );
+      }
+    }
+
     _setState(DihorGameKitNetworkingConnectionState.reconnecting);
 
     Object? lastError;
     try {
       for (var attempt = 1; attempt <= reconnectPolicy.maxAttempts; attempt++) {
-        cancellation?.throwIfCancellationRequested();
+        reconnectCancellation.throwIfCancellationRequested();
 
         if (attempt > 1 && reconnectPolicy.delay > Duration.zero) {
-          await _delayWithCancellation(reconnectPolicy.delay, cancellation);
+          await _delayWithCancellation(
+            reconnectPolicy.delay,
+            reconnectCancellation,
+          );
         }
 
         try {
           return await _openAndHandshake(
             resume: true,
-            cancellation: cancellation,
+            cancellation: reconnectCancellation,
           );
         } on DihorGameKitNetworkingOperationCancelledException {
           rethrow;
@@ -288,8 +309,15 @@ final class DihorGameKitNetworkingClient {
         }
       }
     } on DihorGameKitNetworkingOperationCancelledException {
-      _setState(DihorGameKitNetworkingConnectionState.closed);
+      if (_state == DihorGameKitNetworkingConnectionState.reconnecting ||
+          _state == DihorGameKitNetworkingConnectionState.connecting) {
+        _setState(DihorGameKitNetworkingConnectionState.closed);
+      }
       rethrow;
+    } finally {
+      if (identical(_activeReconnectCancellation, reconnectCancellation)) {
+        _activeReconnectCancellation = null;
+      }
     }
 
     _setState(DihorGameKitNetworkingConnectionState.closed);
@@ -305,6 +333,7 @@ final class DihorGameKitNetworkingClient {
     bool clearResumeCredential = false,
   }) async {
     _throwIfDisposed();
+    _cancelActiveReconnect();
 
     final normalizedReason =
         reason == null ? null : _required(reason, 'reason');
@@ -342,6 +371,7 @@ final class DihorGameKitNetworkingClient {
   Future<void> close({bool clearResumeCredential = false}) async {
     if (_disposed) return;
 
+    _cancelActiveReconnect();
     _disposed = true;
     _stopHeartbeat();
     _setState(DihorGameKitNetworkingConnectionState.closing);
@@ -762,6 +792,10 @@ final class DihorGameKitNetworkingClient {
   void _stopHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
+  }
+
+  void _cancelActiveReconnect() {
+    _activeReconnectCancellation?.cancel();
   }
 
   void _storeResumeCredential(String? peerId, String? resumeToken) {
