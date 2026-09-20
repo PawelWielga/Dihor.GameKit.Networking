@@ -178,7 +178,8 @@ public sealed class ConnectionHostRuntime : IAsyncDisposable
 
             if (!source.IsCancellationRequested)
             {
-                throw new InvalidOperationException("Transport event stream ended while the connection host was running.");
+                throw new InvalidOperationException(
+                    "Transport event stream ended unexpectedly while the connection host was running.");
             }
         }
         catch (OperationCanceledException) when (source.IsCancellationRequested)
