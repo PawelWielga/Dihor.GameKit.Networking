@@ -54,6 +54,44 @@ public sealed class ConnectionClientRuntimeTests
         Assert.Equal(ConnectionClientState.Closed, runtime.State);
     }
 
+    [Fact]
+    public async Task RejectedResumeFallsBackToConnectAndRotatesCredential()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var peerId = new PeerId("peer-1");
+        var resumeClient = new RecordingClient();
+        resumeClient.Enqueue(Serialize(
+            ProtocolMessageTypes.ResumeRejected,
+            "resume-rejected-1",
+            new ResumeRejectedPayload(peerId, ConnectionRejectionCode.ReconnectWindowExpired)));
+        var connectClient = new RecordingClient();
+        connectClient.Enqueue(Serialize(
+            ProtocolMessageTypes.ConnectAccepted,
+            "accepted-1",
+            new ConnectAcceptedPayload(new ConnectionId("connection-2"), peerId, "resume-2")));
+        var connector = new RecordingConnector(resumeClient, connectClient);
+        var credentials = new MemoryConnectionResumeCredentialStore();
+        await credentials.WriteAsync(
+            new ConnectionResumeCredential("room:1", peerId, "resume-1"),
+            cancellationToken);
+        await using var runtime = new ConnectionClientRuntime(
+            connector,
+            credentials,
+            new ConnectionClientOptions(TimeSpan.FromMinutes(1), TimeSpan.Zero),
+            messageIdFactory: SequenceIds("client"));
+
+        await runtime.ConnectAsync(peerId, "room:1", cancellationToken);
+
+        Assert.Equal(2, connector.Handshakes.Count);
+        Assert.True(ProtocolJson.Read<ResumeRequestPayload>(
+            connector.Handshakes[0],
+            ProtocolMessageTypes.ResumeRequest).IsSuccess);
+        Assert.True(ProtocolJson.Read<ConnectRequestPayload>(
+            connector.Handshakes[1],
+            ProtocolMessageTypes.ConnectRequest).IsSuccess);
+        Assert.Equal("resume-2", (await credentials.ReadAsync("room:1", cancellationToken))?.ResumeToken);
+    }
+
     private static ClientTransportMessage Serialize<TPayload>(
         string type,
         string messageId,
@@ -67,9 +105,13 @@ public sealed class ConnectionClientRuntimeTests
         return () => $"{prefix}-{Interlocked.Increment(ref sequence)}";
     }
 
-    private sealed class RecordingConnector(IMessageTransportClient client) : IConnectionTransportConnector
+    private sealed class RecordingConnector(params IMessageTransportClient[] clients) : IConnectionTransportConnector
     {
-        public string? LastHandshake { get; private set; }
+        private readonly Queue<IMessageTransportClient> _clients = new(clients);
+
+        public List<string> Handshakes { get; } = [];
+
+        public string? LastHandshake => Handshakes.LastOrDefault();
 
         public bool LastWasReconnect { get; private set; }
 
@@ -79,9 +121,9 @@ public sealed class ConnectionClientRuntimeTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            LastHandshake = handshake;
+            Handshakes.Add(handshake);
             LastWasReconnect = isReconnect;
-            return Task.FromResult(client);
+            return Task.FromResult(_clients.Dequeue());
         }
     }
 

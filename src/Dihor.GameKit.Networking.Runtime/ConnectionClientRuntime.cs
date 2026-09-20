@@ -429,11 +429,6 @@ public sealed class ConnectionClientRuntime : IAsyncDisposable
                 {
                     await _credentialStore.ClearAsync(credentialScope, cancellationToken).ConfigureAwait(false);
                     await openedClient.DisposeAsync().ConfigureAwait(false);
-                    ConnectionFailed?.Invoke(
-                        this,
-                        new ConnectionRejectedException(
-                            rejectedMessage.Payload.Code,
-                            rejectedMessage.Payload.Reason));
                     return await OpenAsync(
                         peerId,
                         credentialScope,
