@@ -7,6 +7,29 @@ import 'package:test/test.dart';
 
 void main() {
   group('Dart LAN WebSocket runtime', () {
+    test('raw transport buffers an early message until receiver subscribes',
+        () async {
+      final server = await _TestLanServer.start((socket) async {
+        socket.add(<int>[9, 8, 7]);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      addTearDown(server.close);
+
+      final transport =
+          await DihorGameKitNetworkingLanWebSocketTransport.connect(
+        server.descriptor,
+      );
+      addTearDown(transport.close);
+
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      final message = await transport.messages.first.timeout(
+        const Duration(seconds: 2),
+      );
+      expect(message.payload, <int>[9, 8, 7]);
+      await server.done;
+    });
+
     test('raw transport sends and receives opaque binary payloads', () async {
       final server = await _TestLanServer.start((socket) async {
         final iterator = StreamIterator<dynamic>(socket);
