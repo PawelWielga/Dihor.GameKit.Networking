@@ -41,7 +41,8 @@ Future<void> main(List<String> args) async {
       );
     }
     if (reply.correlationId != messageId) {
-      throw StateError('Interop reply correlationId did not match Dart request.');
+      throw StateError(
+          'Interop reply correlationId did not match Dart request.');
     }
 
     final data = reply.data;
