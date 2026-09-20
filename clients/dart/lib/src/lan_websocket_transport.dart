@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:dihor_gamekit_networking_protocol/dihor_gamekit_networking_protocol.dart';
 
+import 'reconnect.dart';
 import 'transport.dart';
 
 final class DihorGameKitNetworkingLanWebSocketTransport
@@ -38,6 +39,7 @@ final class DihorGameKitNetworkingLanWebSocketTransport
     DihorGameKitNetworkingConnectionDescriptor descriptor, {
     Duration connectTimeout = defaultConnectTimeout,
     int maxMessageBytes = defaultMaxMessageBytes,
+    DihorGameKitNetworkingCancellationSignal? cancellation,
   }) async {
     if (descriptor.protocolVersion != dihorGameKitNetworkingProtocolVersion) {
       throw FormatException(
@@ -72,25 +74,50 @@ final class DihorGameKitNetworkingLanWebSocketTransport
       );
     }
 
+    cancellation?.throwIfCancellationRequested();
+    final socketFuture = WebSocket.connect(endpoint.toString());
+
     try {
-      final socket = await WebSocket.connect(endpoint.toString()).timeout(
-        connectTimeout,
-        onTimeout: () => throw TimeoutException(
-          'Timed out connecting to LAN WebSocket endpoint.',
+      final socket = await Future.any<WebSocket>(<Future<WebSocket>>[
+        socketFuture,
+        Future<WebSocket>.delayed(
           connectTimeout,
+          () => throw TimeoutException(
+            'Timed out connecting to LAN WebSocket endpoint.',
+            connectTimeout,
+          ),
         ),
-      );
+        if (cancellation != null)
+          cancellation.whenCancelled.then<WebSocket>(
+            (_) => throw const DihorGameKitNetworkingOperationCancelledException(),
+          ),
+      ]);
+      cancellation?.throwIfCancellationRequested();
       return DihorGameKitNetworkingLanWebSocketTransport._(
         socket,
         maxMessageBytes,
       );
-    } on DihorGameKitNetworkingTransportException {
+    } on DihorGameKitNetworkingOperationCancelledException {
+      unawaited(_closeLateSocket(socketFuture));
       rethrow;
     } catch (error) {
+      unawaited(_closeLateSocket(socketFuture));
       throw DihorGameKitNetworkingTransportException(
         'Unable to connect to LAN WebSocket endpoint.',
         error,
       );
+    }
+  }
+
+  static Future<void> _closeLateSocket(Future<WebSocket> socketFuture) async {
+    try {
+      final socket = await socketFuture;
+      await socket.close(
+        WebSocketStatus.goingAway,
+        'connection-attempt-abandoned',
+      );
+    } catch (_) {
+      // The original connection attempt failed, so there is nothing to close.
     }
   }
 
