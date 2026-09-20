@@ -11,7 +11,8 @@ void main() {
       final heartbeat = Completer<DihorGameKitNetworkingEnvelope>();
       final disconnect = Completer<DihorGameKitNetworkingEnvelope>();
 
-      final server = await _ContinuityServer.start((socket, connectionIndex) async {
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
         expect(connectionIndex, 1);
         final iterator = StreamIterator<dynamic>(socket);
         try {
@@ -39,13 +40,11 @@ void main() {
             final message = DihorGameKitNetworkingEnvelope.parse(
               utf8.decode(_bytes(iterator.current)),
             );
-            if (message.type ==
-                DihorGameKitNetworkingMessageTypes.heartbeat) {
+            if (message.type == DihorGameKitNetworkingMessageTypes.heartbeat) {
               if (!heartbeat.isCompleted) heartbeat.complete(message);
               continue;
             }
-            if (message.type ==
-                DihorGameKitNetworkingMessageTypes.disconnect) {
+            if (message.type == DihorGameKitNetworkingMessageTypes.disconnect) {
               if (!disconnect.isCompleted) disconnect.complete(message);
               return;
             }
@@ -85,7 +84,8 @@ void main() {
       expect(disconnectMessage.payload['reason'], 'test-complete');
       expect(client.state, DihorGameKitNetworkingConnectionState.closed);
       expect(
-        store.getResumeCredential('lan-websocket:channel:continuity-test')
+        store
+            .getResumeCredential('lan-websocket:channel:continuity-test')
             ?.resumeToken,
         'resume-heartbeat',
       );
@@ -97,7 +97,8 @@ void main() {
       final firstClosed = Completer<void>();
       final resumed = Completer<void>();
 
-      final server = await _ContinuityServer.start((socket, connectionIndex) async {
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
         final iterator = StreamIterator<dynamic>(socket);
         try {
           if (connectionIndex == 1) {
@@ -159,8 +160,8 @@ void main() {
           DihorGameKitNetworkingEnvelope application;
           do {
             application = await _nextEnvelope(iterator);
-          } while (application.type ==
-              DihorGameKitNetworkingMessageTypes.heartbeat);
+          } while (
+              application.type == DihorGameKitNetworkingMessageTypes.heartbeat);
 
           expect(
             application.type,
@@ -227,13 +228,13 @@ void main() {
       expect(replacement.connectionId, isNot(initialConnectionId));
       expect(client.stablePeerId, 'peer-resume');
       expect(
-        store.getResumeCredential('lan-websocket:channel:continuity-test')
+        store
+            .getResumeCredential('lan-websocket:channel:continuity-test')
             ?.resumeToken,
         'resume-token-2',
       );
 
-      final messages =
-          StreamIterator<DihorGameKitNetworkingApplicationMessage>(
+      final messages = StreamIterator<DihorGameKitNetworkingApplicationMessage>(
         client.applicationMessages,
       );
       addTearDown(messages.cancel);
@@ -249,7 +250,8 @@ void main() {
     });
 
     test('connectLan resumes from a persisted identity store', () async {
-      final server = await _ContinuityServer.start((socket, connectionIndex) async {
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
         expect(connectionIndex, 1);
         final iterator = StreamIterator<dynamic>(socket);
         try {
@@ -301,7 +303,8 @@ void main() {
       expect(client.stablePeerId, 'peer-persisted');
       expect(client.activeConnection?.connectionId, 'persisted-connection-2');
       expect(
-        store.getResumeCredential('lan-websocket:channel:continuity-test')
+        store
+            .getResumeCredential('lan-websocket:channel:continuity-test')
             ?.resumeToken,
         'persisted-token-2',
       );
@@ -312,7 +315,8 @@ void main() {
       final dropFirst = Completer<void>();
       var connectionCount = 0;
 
-      final server = await _ContinuityServer.start((socket, connectionIndex) async {
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
         connectionCount = connectionIndex;
         final iterator = StreamIterator<dynamic>(socket);
         try {
@@ -414,7 +418,8 @@ void main() {
       final releaseSecond = Completer<void>();
       final resumeSeen = Completer<void>();
 
-      final server = await _ContinuityServer.start((socket, connectionIndex) async {
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
         final iterator = StreamIterator<dynamic>(socket);
         try {
           if (connectionIndex == 1) {
@@ -477,12 +482,11 @@ void main() {
           policy: DihorGameKitNetworkingReconnectPolicy(maxAttempts: 1),
         ),
         throwsA(
-          isA<DihorGameKitNetworkingReconnectFailedException>()
-              .having(
-                (error) => error.lastError,
-                'lastError',
-                isA<TimeoutException>(),
-              ),
+          isA<DihorGameKitNetworkingReconnectFailedException>().having(
+            (error) => error.lastError,
+            'lastError',
+            isA<TimeoutException>(),
+          ),
         ),
       );
       await resumeSeen.future.timeout(const Duration(seconds: 2));
@@ -494,7 +498,8 @@ void main() {
     test('reconnect retries are bounded and delay can be cancelled', () async {
       final dropFirst = Completer<void>();
 
-      final server = await _ContinuityServer.start((socket, connectionIndex) async {
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
         expect(connectionIndex, 1);
         final iterator = StreamIterator<dynamic>(socket);
         try {
