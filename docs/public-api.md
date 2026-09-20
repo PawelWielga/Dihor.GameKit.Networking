@@ -52,6 +52,18 @@ The transport package exposes technology-neutral message transport concepts:
 
 The abstraction deals only with `ConnectionId` plus opaque bytes. It does not require a player, room or game session.
 
+## Connection runtime
+
+`Dihor.GameKit.Networking.Runtime` exposes the reusable communication lifecycle that previously had to be rebuilt by each .NET consumer:
+
+- `ConnectionHostRuntime` and neutral host events;
+- `ConnectionClientRuntime`, state and application-message events;
+- transport connector and resume-credential-store contracts;
+- host/client timeout, heartbeat and reconnect options;
+- `MonotonicTimingScheduler` and refresh diagnostics.
+
+The runtime composes Core, Protocol and Transport.Abstractions. Its public API contains no product participant, role, lobby, party, game-session or projection type.
+
 ## Concrete transports
 
 ### In-memory

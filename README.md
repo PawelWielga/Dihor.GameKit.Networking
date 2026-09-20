@@ -41,6 +41,7 @@ Protocol v2 and the base APIs use communication-neutral concepts:
 - optional backend-assisted SignalR relay transport;
 - browser-native WebRTC DataChannels for direct low-latency peer communication;
 - deterministic automatic client transport selection with bounded fallback and structured diagnostics;
+- transport-neutral host/client connection runtimes for connect, resume, heartbeat, timeout, reconnect and bounded message-id deduplication;
 - transport-neutral monotonic clock synchronization with bounded RTT/jitter/uncertainty estimation and timestamp normalization.
 
 The migration from v0.1 is intentionally breaking. See [Migration 0.1 → 0.2](docs/migration-0.1-to-0.2.md).
@@ -68,6 +69,7 @@ The .NET prerelease is split by communication responsibility:
 
 - `Dihor.GameKit.Networking.Core` — neutral identity, connection continuity, ordering and monotonic timing primitives;
 - `Dihor.GameKit.Networking.Protocol` — protocol v2 envelopes, connection descriptors and codecs;
+- `Dihor.GameKit.Networking.Runtime` — transport-neutral host/client connection lifecycle and periodic timing orchestration;
 - `Dihor.GameKit.Networking.Transport.Abstractions` — transport-neutral host and client message contracts plus automatic connectivity orchestration;
 - `Dihor.GameKit.Networking.Transport.InMemory` — deterministic reference/test transport;
 - `Dihor.GameKit.Networking.Transport.Lan` — direct LAN WebSocket transport;
@@ -117,7 +119,7 @@ Selection is deterministic and bounded. Every candidate is attempted at most onc
 
 Reconnect in `Auto` mode first retries the previously successful transport. If it no longer works, fallback continues through the configured order. Callers can still force LAN, WebRTC or SignalR for tests and product requirements.
 
-Automatic fallback applies to connection establishment/reconnect only. Dihor.GameKit.Networking does not silently interpret application-level failures as a reason to change transport. Connect/resume handshakes, stable `PeerId` continuity and application payload bytes stay outside the selector's interpretation.
+Automatic fallback applies to connection establishment/reconnect only. Dihor.GameKit.Networking does not silently interpret application-level failures as a reason to change transport. `ConnectionClientRuntime` composes the selector with protocol-v2 connect/resume handshakes and stable `PeerId` continuity while application payloads remain opaque.
 
 See [Automatic connectivity](docs/automatic-connectivity.md) for policy, diagnostics, cancellation behavior and .NET/TypeScript examples.
 
@@ -135,7 +137,7 @@ See [Transient latest-value replay](docs/transient-replay.md) and [Message-id de
 
 ## Synchronized monotonic timing
 
-`MonotonicTimingSynchronizer` lets a reference side estimate peer-to-reference monotonic clock offset from bounded probe/reply samples. The model exposes RTT, jitter and uncertainty and can normalize a peer-local event timestamp into the reference clock domain.
+`MonotonicTimingSynchronizer` lets a reference side estimate peer-to-reference monotonic clock offset from bounded probe/reply samples. `MonotonicTimingScheduler` owns per-peer state, immediate acquisition and periodic refresh while a consumer-supplied callback carries probes through opaque application messages. The model exposes RTT, jitter and uncertainty and can normalize a peer-local event timestamp into the reference clock domain.
 
 The synchronizer rejects unknown probes, invalid timing evidence, stale models, non-monotonic event timestamps, excessively old events and implausibly future events. A reconnect or transport replacement must reset the model and reacquire samples rather than trusting an old path estimate.
 
