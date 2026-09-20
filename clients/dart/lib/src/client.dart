@@ -117,8 +117,7 @@ final class DihorGameKitNetworkingClient {
       );
     }
 
-    final transport =
-        await DihorGameKitNetworkingLanWebSocketTransport.connect(
+    final transport = await DihorGameKitNetworkingLanWebSocketTransport.connect(
       descriptor,
       connectTimeout: connectTimeout,
       maxMessageBytes: maxMessageBytes,
