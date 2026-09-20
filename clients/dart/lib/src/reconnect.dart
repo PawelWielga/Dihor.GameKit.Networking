@@ -64,7 +64,6 @@ final class DihorGameKitNetworkingReconnectFailedException
   final Object lastError;
 
   @override
-  String toString() =>
-      'DihorGameKitNetworkingReconnectFailedException: '
+  String toString() => 'DihorGameKitNetworkingReconnectFailedException: '
       '$attempts reconnect attempts failed; last error: $lastError';
 }
