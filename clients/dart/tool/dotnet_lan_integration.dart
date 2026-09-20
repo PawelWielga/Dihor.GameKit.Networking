@@ -46,9 +46,7 @@ Future<void> main(List<String> args) async {
     }
 
     final data = reply.data;
-    if (data is! Map ||
-        data['value'] != 42 ||
-        data['runtime'] != 'dotnet') {
+    if (data is! Map || data['value'] != 42 || data['runtime'] != 'dotnet') {
       throw StateError('Opaque .NET application payload was not preserved.');
     }
 
