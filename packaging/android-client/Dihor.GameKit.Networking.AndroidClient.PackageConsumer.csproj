@@ -8,6 +8,7 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Dihor.GameKit.Networking.Runtime" Version="0.2.0-preview.6" />
     <PackageReference Include="Dihor.GameKit.Networking.Transport.Lan" Version="0.2.0-preview.6" />
   </ItemGroup>
 </Project>
