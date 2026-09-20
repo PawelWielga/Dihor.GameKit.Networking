@@ -60,6 +60,14 @@ A neutral resume flow is:
 
 Application state restoration may be implemented by the consumer sending its latest snapshot/state as an ordinary opaque message after resume.
 
+## .NET runtime orchestration
+
+`ConnectionHostRuntime` applies `ConnectionContinuityCoordinator` to an `IMessageTransport`. It validates protocol-v2 connect/resume/heartbeat/disconnect messages, rotates resume tokens, sweeps heartbeat and reconnect deadlines, deduplicates application messages by stable peer and emits neutral connection events.
+
+`ConnectionClientRuntime` accepts an `IConnectionTransportConnector` and `IConnectionResumeCredentialStore`. It chooses connect or resume, validates the handshake response, persists rotated credentials, sends heartbeats and reconnects after transport closure. `AutomaticTransportConnector` composes this lifecycle with `AutomaticTransportSelector` so a reconnect can prefer the previous path and then follow configured fallback order.
+
+Consumers still decide what a connected, disconnected or resumed `PeerId` means to their product model.
+
 ## Historical v0.1 implementation
 
 The current `SessionContinuityCoordinator<TPublicState,TPrivateState>` couples valid reconnect mechanics to:

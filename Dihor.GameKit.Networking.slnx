@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Dihor.GameKit.Networking.Core/Dihor.GameKit.Networking.Core.csproj" />
     <Project Path="src/Dihor.GameKit.Networking.Protocol/Dihor.GameKit.Networking.Protocol.csproj" />
+    <Project Path="src/Dihor.GameKit.Networking.Runtime/Dihor.GameKit.Networking.Runtime.csproj" />
     <Project Path="src/Dihor.GameKit.Networking.Discovery.Lan/Dihor.GameKit.Networking.Discovery.Lan.csproj" />
     <Project Path="src/Dihor.GameKit.Networking.Transport.Abstractions/Dihor.GameKit.Networking.Transport.Abstractions.csproj" />
     <Project Path="src/Dihor.GameKit.Networking.Transport.InMemory/Dihor.GameKit.Networking.Transport.InMemory.csproj" />
@@ -17,6 +18,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Dihor.GameKit.Networking.Core.Tests/Dihor.GameKit.Networking.Core.Tests.csproj" />
     <Project Path="tests/Dihor.GameKit.Networking.Protocol.Tests/Dihor.GameKit.Networking.Protocol.Tests.csproj" />
+    <Project Path="tests/Dihor.GameKit.Networking.Runtime.Tests/Dihor.GameKit.Networking.Runtime.Tests.csproj" />
     <Project Path="tests/Dihor.GameKit.Networking.Discovery.Tests/Dihor.GameKit.Networking.Discovery.Tests.csproj" />
     <Project Path="tests/Dihor.GameKit.Networking.Transport.Tests/Dihor.GameKit.Networking.Transport.Tests.csproj" />
   </Folder>

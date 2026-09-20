@@ -108,6 +108,12 @@ A consumer may carry the probe ID and peer timestamps inside its existing opaque
 
 This keeps protocol version `2` unchanged.
 
+## Periodic .NET orchestration
+
+`MonotonicTimingScheduler` owns one bounded `MonotonicTimingSynchronizer` per active `PeerId`. Activation sends an immediate probe; a configurable interval refreshes every active peer; reconnect reset clears the old path model and immediately reacquires a sample. The scheduler stops its timer through cancellation and exposes refresh failures without ending probes for unrelated peers.
+
+The callback supplied to the scheduler sends a `TimingProbe` through the consumer's existing application protocol. Reply serialization and product quality policy stay outside the package.
+
 ## Evidence validation
 
 A synchronization reply is rejected when:
@@ -159,4 +165,4 @@ For an explicit path migration use `TransportChanged` / `"transport-changed"`. R
 - last reset reason;
 - current timing model.
 
-Both sample history and probe bookkeeping are bounded. There is no background retry loop and no transport-owned synchronization traffic. The consumer controls probe cadence and decides when enough samples/quality are available for its use case.
+Both sample history and probe bookkeeping are bounded. Consumers can drive `MonotonicTimingSynchronizer` directly or use `MonotonicTimingScheduler` for a lifecycle-safe periodic cadence. There is no transport-owned synchronization message type; the consumer decides when enough samples and quality are available for its use case.
