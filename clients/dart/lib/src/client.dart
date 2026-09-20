@@ -168,9 +168,15 @@ final class DihorGameKitNetworkingClient {
       maxMessageBytes: maxMessageBytes,
     );
 
+    final storedCredential =
+        store.getResumeCredential(_resumeScope(descriptor));
+    final shouldResume = resolvedPeerId != null &&
+        storedCredential != null &&
+        storedCredential.peerId == resolvedPeerId;
+
     try {
       await client._openAndHandshake(
-        resume: false,
+        resume: shouldResume,
         cancellation: cancellation,
       );
       return client;
@@ -268,7 +274,7 @@ final class DihorGameKitNetworkingClient {
       } on DihorGameKitNetworkingOperationCancelledException {
         _setState(DihorGameKitNetworkingConnectionState.closed);
         rethrow;
-      } on DihorGameKitNetworkingConnectionRejectedException catch (error) {
+      } on DihorGameKitNetworkingConnectionRejectedException {
         _setState(DihorGameKitNetworkingConnectionState.closed);
         rethrow;
       } catch (error) {
@@ -357,21 +363,21 @@ final class DihorGameKitNetworkingClient {
       maxMessageBytes: _maxMessageBytes,
       cancellation: cancellation,
     );
-    cancellation?.throwIfCancellationRequested();
-
     _bindTransport(transport);
-    _connection = null;
-    _setState(
-      resume
-          ? DihorGameKitNetworkingConnectionState.reconnecting
-          : DihorGameKitNetworkingConnectionState.connecting,
-    );
 
     final pending = Completer<DihorGameKitNetworkingConnectionInfo>();
     _pendingConnection = pending;
     _pendingResume = resume;
 
     try {
+      cancellation?.throwIfCancellationRequested();
+      _connection = null;
+      _setState(
+        resume
+            ? DihorGameKitNetworkingConnectionState.reconnecting
+            : DihorGameKitNetworkingConnectionState.connecting,
+      );
+
       await _sendEnvelope(
         resume ? _createResumeRequest() : _createConnectRequest(),
       );
