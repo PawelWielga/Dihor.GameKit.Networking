@@ -85,8 +85,7 @@ final class DihorGameKitNetworkingClient {
   final StreamController<DihorGameKitNetworkingConnectionState>
       _stateController =
       StreamController<DihorGameKitNetworkingConnectionState>.broadcast();
-  final StreamController<Object> _errorController =
-      StreamController<Object>();
+  final StreamController<Object> _errorController = StreamController<Object>();
 
   late final StreamSubscription<DihorGameKitNetworkingTransportMessage>
       _subscription;
