@@ -281,10 +281,8 @@ final class _TestLanServer {
       server,
       DihorGameKitNetworkingConnectionDescriptor(
         protocolVersion: dihorGameKitNetworkingProtocolVersion,
-        transport:
-            DihorGameKitNetworkingLanWebSocketTransport.transportName,
-        endpoint:
-            'ws://127.0.0.1:${server.port}/partygamekit',
+        transport: DihorGameKitNetworkingLanWebSocketTransport.transportName,
+        endpoint: 'ws://127.0.0.1:${server.port}/partygamekit',
         channelId: 'dart-test',
       ),
       done.future,
