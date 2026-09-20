@@ -148,8 +148,7 @@ final class DihorGameKitNetworkingClient {
       );
     }
 
-    final store =
-        identityStore ?? MemoryDihorGameKitNetworkingIdentityStore();
+    final store = identityStore ?? MemoryDihorGameKitNetworkingIdentityStore();
     final configuredPeerId =
         peerId == null ? null : _required(peerId, 'peerId');
     if (configuredPeerId != null) {
@@ -254,8 +253,7 @@ final class DihorGameKitNetworkingClient {
       throw StateError('No matching resume credential is available.');
     }
 
-    final reconnectPolicy =
-        policy ?? DihorGameKitNetworkingReconnectPolicy();
+    final reconnectPolicy = policy ?? DihorGameKitNetworkingReconnectPolicy();
     _setState(DihorGameKitNetworkingConnectionState.reconnecting);
 
     Object? lastError;
@@ -309,9 +307,7 @@ final class DihorGameKitNetworkingClient {
     _stopHeartbeat();
     _setState(DihorGameKitNetworkingConnectionState.closing);
 
-    if (transport != null &&
-        transport.isOpen &&
-        _connection != null) {
+    if (transport != null && transport.isOpen && _connection != null) {
       try {
         await _sendEnvelope(
           DihorGameKitNetworkingEnvelope.create(
@@ -451,9 +447,9 @@ final class DihorGameKitNetworkingClient {
           ),
         ),
         if (cancellation != null)
-          cancellation.whenCancelled
-              .then<DihorGameKitNetworkingConnectionInfo>(
-            (_) => throw const DihorGameKitNetworkingOperationCancelledException(),
+          cancellation.whenCancelled.then<DihorGameKitNetworkingConnectionInfo>(
+            (_) =>
+                throw const DihorGameKitNetworkingOperationCancelledException(),
           ),
       ],
     );
