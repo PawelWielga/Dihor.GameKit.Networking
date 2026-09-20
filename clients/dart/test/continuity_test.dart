@@ -616,6 +616,188 @@ void main() {
       if (!releaseSecond.isCompleted) releaseSecond.complete();
     });
 
+    test('disconnect cancels reconnect during retry delay', () async {
+      final dropFirst = Completer<void>();
+      var connectionCount = 0;
+
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
+        connectionCount = connectionIndex;
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          if (connectionIndex == 1) {
+            final connect = await _nextEnvelope(iterator);
+            socket.add(
+              _wire(
+                DihorGameKitNetworkingEnvelope.create(
+                  type: DihorGameKitNetworkingMessageTypes.connectAccepted,
+                  messageId: 'accepted-disconnect-delay',
+                  correlationId: connect.messageId,
+                  payload: <String, Object?>{
+                    'connectionId': 'disconnect-delay-1',
+                    'peerId': 'peer-disconnect-delay',
+                    'resumeToken': 'disconnect-delay-token',
+                  },
+                ),
+              ),
+            );
+            await dropFirst.future;
+            await socket.close(
+              WebSocketStatus.goingAway,
+              'drop-before-disconnect-delay',
+            );
+            return;
+          }
+
+          expect(connectionIndex, 2);
+          final resumeRequest = await _nextEnvelope(iterator);
+          socket.add(
+            _wire(
+              DihorGameKitNetworkingEnvelope.create(
+                type: DihorGameKitNetworkingMessageTypes.resumeRejected,
+                messageId: 'disconnect-delay-rejected',
+                correlationId: resumeRequest.messageId,
+                payload: <String, Object?>{
+                  'peerId': 'peer-disconnect-delay',
+                  'code': 'peer-already-connected',
+                  'reason': 'retry after old connection cleanup',
+                },
+              ),
+            ),
+          );
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(() async {
+        if (!dropFirst.isCompleted) dropFirst.complete();
+        await server.close();
+      });
+
+      final client = await DihorGameKitNetworkingClient.connectLan(
+        server.descriptor,
+        peerId: 'peer-disconnect-delay',
+        heartbeatInterval: const Duration(seconds: 30),
+      );
+      addTearDown(client.close);
+
+      final closed = client.stateChanges.firstWhere(
+        (state) => state == DihorGameKitNetworkingConnectionState.closed,
+      );
+      dropFirst.complete();
+      await closed.timeout(const Duration(seconds: 2));
+
+      final rejectionObserved = client.errors.firstWhere(
+        (error) =>
+            error is DihorGameKitNetworkingConnectionRejectedException &&
+            error.code == 'peer-already-connected',
+      );
+      final reconnect = client.reconnect(
+        policy: DihorGameKitNetworkingReconnectPolicy(
+          maxAttempts: 3,
+          delay: const Duration(seconds: 5),
+        ),
+      );
+
+      await rejectionObserved.timeout(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await client.disconnect(reason: 'cancel-reconnect-delay');
+
+      await expectLater(
+        reconnect,
+        throwsA(isA<DihorGameKitNetworkingOperationCancelledException>()),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(connectionCount, 2);
+      expect(client.state, DihorGameKitNetworkingConnectionState.closed);
+    });
+
+    test('disconnect cancels reconnect during resume handshake', () async {
+      final dropFirst = Completer<void>();
+      final resumeSeen = Completer<void>();
+      final releaseResume = Completer<void>();
+      var connectionCount = 0;
+
+      final server =
+          await _ContinuityServer.start((socket, connectionIndex) async {
+        connectionCount = connectionIndex;
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          if (connectionIndex == 1) {
+            final connect = await _nextEnvelope(iterator);
+            socket.add(
+              _wire(
+                DihorGameKitNetworkingEnvelope.create(
+                  type: DihorGameKitNetworkingMessageTypes.connectAccepted,
+                  messageId: 'accepted-disconnect-handshake',
+                  correlationId: connect.messageId,
+                  payload: <String, Object?>{
+                    'connectionId': 'disconnect-handshake-1',
+                    'peerId': 'peer-disconnect-handshake',
+                    'resumeToken': 'disconnect-handshake-token',
+                  },
+                ),
+              ),
+            );
+            await dropFirst.future;
+            await socket.close(
+              WebSocketStatus.goingAway,
+              'drop-before-disconnect-handshake',
+            );
+            return;
+          }
+
+          expect(connectionIndex, 2);
+          final resumeRequest = await _nextEnvelope(iterator);
+          expect(
+            resumeRequest.type,
+            DihorGameKitNetworkingMessageTypes.resumeRequest,
+          );
+          if (!resumeSeen.isCompleted) resumeSeen.complete();
+          await releaseResume.future;
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(() async {
+        if (!dropFirst.isCompleted) dropFirst.complete();
+        if (!releaseResume.isCompleted) releaseResume.complete();
+        await server.close();
+      });
+
+      final client = await DihorGameKitNetworkingClient.connectLan(
+        server.descriptor,
+        peerId: 'peer-disconnect-handshake',
+        heartbeatInterval: const Duration(seconds: 30),
+      );
+      addTearDown(client.close);
+
+      final closed = client.stateChanges.firstWhere(
+        (state) => state == DihorGameKitNetworkingConnectionState.closed,
+      );
+      dropFirst.complete();
+      await closed.timeout(const Duration(seconds: 2));
+
+      final reconnect = client.reconnect(
+        policy: DihorGameKitNetworkingReconnectPolicy(
+          maxAttempts: 3,
+          delay: const Duration(milliseconds: 10),
+        ),
+      );
+      await resumeSeen.future.timeout(const Duration(seconds: 2));
+
+      await client.disconnect(reason: 'cancel-reconnect-handshake');
+      await expectLater(
+        reconnect,
+        throwsA(isA<DihorGameKitNetworkingOperationCancelledException>()),
+      );
+
+      expect(connectionCount, 2);
+      expect(client.state, DihorGameKitNetworkingConnectionState.closed);
+
+      if (!releaseResume.isCompleted) releaseResume.complete();
+    });
+
     test('reconnect retries are bounded and delay can be cancelled', () async {
       final dropFirst = Completer<void>();
 
