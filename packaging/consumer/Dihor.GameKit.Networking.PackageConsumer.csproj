@@ -9,14 +9,14 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Dihor.GameKit.Networking.Core" Version="0.2.0-preview.6" />
-    <PackageReference Include="Dihor.GameKit.Networking.Protocol" Version="0.2.0-preview.6" />
-    <PackageReference Include="Dihor.GameKit.Networking.Runtime" Version="0.2.0-preview.6" />
-    <PackageReference Include="Dihor.GameKit.Networking.Transport.Abstractions" Version="0.2.0-preview.6" />
-    <PackageReference Include="Dihor.GameKit.Networking.Transport.InMemory" Version="0.2.0-preview.6" />
-    <PackageReference Include="Dihor.GameKit.Networking.Transport.Lan" Version="0.2.0-preview.6" />
-    <PackageReference Include="Dihor.GameKit.Networking.Transport.SignalR" Version="0.2.0-preview.6" />
-    <PackageReference Include="Dihor.GameKit.Networking.Transport.SignalR.Server" Version="0.2.0-preview.6" />
-    <PackageReference Include="Dihor.GameKit.Networking.Discovery.Lan" Version="0.2.0-preview.6" />
+    <PackageReference Include="Dihor.GameKit.Networking.Core" Version="0.2.0-preview.7" />
+    <PackageReference Include="Dihor.GameKit.Networking.Protocol" Version="0.2.0-preview.7" />
+    <PackageReference Include="Dihor.GameKit.Networking.Runtime" Version="0.2.0-preview.7" />
+    <PackageReference Include="Dihor.GameKit.Networking.Transport.Abstractions" Version="0.2.0-preview.7" />
+    <PackageReference Include="Dihor.GameKit.Networking.Transport.InMemory" Version="0.2.0-preview.7" />
+    <PackageReference Include="Dihor.GameKit.Networking.Transport.Lan" Version="0.2.0-preview.7" />
+    <PackageReference Include="Dihor.GameKit.Networking.Transport.SignalR" Version="0.2.0-preview.7" />
+    <PackageReference Include="Dihor.GameKit.Networking.Transport.SignalR.Server" Version="0.2.0-preview.7" />
+    <PackageReference Include="Dihor.GameKit.Networking.Discovery.Lan" Version="0.2.0-preview.7" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
 # Android LAN transport
 
-Dihor.GameKit.Networking `0.2.0-preview.6` supports the direct LAN WebSocket path from `net10.0-android` applications without requiring the `Microsoft.AspNetCore.App` runtime pack.
+Dihor.GameKit.Networking `0.2.0-preview.7` supports the direct LAN WebSocket and connection-runtime path from `net10.0-android` applications without requiring the `Microsoft.AspNetCore.App` runtime pack.
 
 The supported PartyBeam consumer baseline is:
 
@@ -24,7 +24,8 @@ Reference the LAN package from the Android application:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Dihor.GameKit.Networking.Transport.Lan" Version="0.2.0-preview.6" />
+  <PackageReference Include="Dihor.GameKit.Networking.Transport.Lan" Version="0.2.0-preview.7" />
+  <PackageReference Include="Dihor.GameKit.Networking.Runtime" Version="0.2.0-preview.7" />
 </ItemGroup>
 ```
 
@@ -73,6 +74,6 @@ Both target `net10.0-android` with Android API 28 as the minimum. They restore f
 
 ## Durable prerelease feed
 
-The supported prerelease is `v0.2.0-preview.6`. The GitHub Release contains the individual NuGet packages and `dihor-gamekit-networking-nuget-feed-0.2.0-preview.6.zip`, which includes the complete package set and a ready `NuGet.Config`.
+The supported prerelease is `v0.2.0-preview.7`. The GitHub Release contains the individual NuGet packages and `dihor-gamekit-networking-nuget-feed-0.2.0-preview.7.zip`, which includes the complete package set and a ready `NuGet.Config`.
 
 Use the durable GitHub Release/feed for downstream repositories. GitHub Actions artifacts are validation outputs and are not the supported long-term dependency source.
