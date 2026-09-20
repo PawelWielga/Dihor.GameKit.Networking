@@ -23,8 +23,7 @@ Future<void> main(List<String> args) async {
     messageIdFactory: () => 'dart-interop-${++sequence}',
   );
 
-  final applications =
-      StreamIterator<DihorGameKitNetworkingApplicationMessage>(
+  final applications = StreamIterator<DihorGameKitNetworkingApplicationMessage>(
     client.applicationMessages,
   );
 
@@ -103,8 +102,8 @@ Future<DihorGameKitNetworkingApplicationMessage> _nextApplication(
   StreamIterator<DihorGameKitNetworkingApplicationMessage> applications,
 ) async {
   final moved = await applications.moveNext().timeout(
-    const Duration(seconds: 5),
-  );
+        const Duration(seconds: 5),
+      );
   if (!moved) {
     throw StateError('Dart application stream closed before .NET reply.');
   }
