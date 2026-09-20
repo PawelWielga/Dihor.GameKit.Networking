@@ -140,7 +140,11 @@ jobs:
           HOST_LOG="$RUNNER_TEMP/dihor-dart-lan-host.log"
           rm -f "$DESCRIPTOR_FILE" "$HOST_LOG"
 
-          dotnet run             --project samples/DartLanInteropHost/Dihor.GameKit.Networking.Sample.DartLanInteropHost.csproj             --configuration Release             --no-build             -- "$DESCRIPTOR_FILE" >"$HOST_LOG" 2>&1 &
+          dotnet run \
+            --project samples/DartLanInteropHost/Dihor.GameKit.Networking.Sample.DartLanInteropHost.csproj \
+            --configuration Release \
+            --no-build \
+            -- "$DESCRIPTOR_FILE" >"$HOST_LOG" 2>&1 &
           HOST_PID=$!
 
           cleanup() {
