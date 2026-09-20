@@ -19,7 +19,7 @@ The `[27]` runtime supports:
 
 The LAN implementation is intended for Dart VM and Flutter mobile/desktop platforms where `dart:io` WebSocket is available. Browser Dart needs a browser-specific transport implementation.
 
-Reconnect/resume, heartbeat and stable identity persistence are intentionally tracked separately in `[28]` / issue #57.
+`[28]` adds neutral connection continuity: optional stable `PeerId`, resume credentials, heartbeat, explicit disconnect and bounded/cancellable reconnect. The library never puts application payloads into heartbeat and does not automatically decide when a Flutter app should reconnect.
 
 ## Connect over LAN
 
