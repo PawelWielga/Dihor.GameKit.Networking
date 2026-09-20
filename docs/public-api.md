@@ -52,6 +52,18 @@ The transport package exposes technology-neutral message transport concepts:
 
 The abstraction deals only with `ConnectionId` plus opaque bytes. It does not require a player, room or game session.
 
+## Connection runtime
+
+`Dihor.GameKit.Networking.Runtime` exposes the reusable communication lifecycle that previously had to be rebuilt by each .NET consumer:
+
+- `ConnectionHostRuntime` and neutral host events;
+- `ConnectionClientRuntime`, state and application-message events;
+- transport connector and resume-credential-store contracts;
+- host/client timeout, heartbeat and reconnect options;
+- `MonotonicTimingScheduler` and refresh diagnostics.
+
+The runtime composes Core, Protocol and Transport.Abstractions. Its public API contains no product participant, role, lobby, party, game-session or projection type.
+
 ## Concrete transports
 
 ### In-memory
@@ -129,7 +141,7 @@ Preview.2 does not add a browser SignalR implementation; its version is aligned 
 - opaque application-message payload parsing;
 - generic message sequence gating.
 
-`dihor_gamekit_networking` in `clients/dart` is the first Dart runtime layer. Its `[27]` public surface adds:
+`dihor_gamekit_networking` in `clients/dart` is the first Dart runtime layer. Its current `[27]` + `[28]` public surface includes:
 
 - `DihorGameKitNetworkingClientTransport` and neutral transport messages;
 - `DihorGameKitNetworkingLanWebSocketTransport` for Dart VM / Flutter mobile and desktop;
@@ -142,7 +154,7 @@ Preview.2 does not add a browser SignalR implementation; its version is aligned 
 - opaque application-message send/receive before and after resume;
 - configurable connect/handshake timeouts and message-size limit.
 
-The Dart runtime still contains no player/session/game model. Reconnect/resume, heartbeat, discovery and automatic connectivity are tracked in follow-up runtime issues rather than being faked by the LAN transport.
+The Dart runtime still contains no player/session/game model. Discovery, automatic connectivity, SignalR, WebRTC and synchronized timing remain follow-up runtime work rather than being faked by the LAN transport.
 
 ## Retired v0.1 concepts
 
