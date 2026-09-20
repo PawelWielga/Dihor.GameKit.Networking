@@ -25,7 +25,7 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   static const transportName = 'lan-websocket';
   static const defaultMaxMessageBytes = 256 * 1024;
   static const defaultConnectTimeout = Duration(seconds: 5);
-  static const defaultCloseTimeout = Duration(seconds: 1);
+  static const defaultCloseTimeout = Duration(milliseconds: 500);
 
   final WebSocket _socket;
   final int maxMessageBytes;
@@ -169,6 +169,7 @@ final class DihorGameKitNetworkingLanWebSocketTransport
           _socket.add(payload);
           break;
       }
+      await _socket.flush();
     } catch (error) {
       throw DihorGameKitNetworkingTransportException(
         'Unable to send LAN WebSocket message.',
