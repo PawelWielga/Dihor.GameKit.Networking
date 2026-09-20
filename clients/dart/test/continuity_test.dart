@@ -248,6 +248,65 @@ void main() {
       expect(messages.current.data, <String, Object?>{'ok': true});
     });
 
+    test('connectLan resumes from a persisted identity store', () async {
+      final server = await _ContinuityServer.start((socket, connectionIndex) async {
+        expect(connectionIndex, 1);
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          final request = await _nextEnvelope(iterator);
+          expect(
+            request.type,
+            DihorGameKitNetworkingMessageTypes.resumeRequest,
+          );
+          expect(request.payload['peerId'], 'peer-persisted');
+          expect(request.payload['resumeToken'], 'persisted-token');
+
+          socket.add(
+            _wire(
+              DihorGameKitNetworkingEnvelope.create(
+                type: DihorGameKitNetworkingMessageTypes.resumeAccepted,
+                messageId: 'persisted-resume-accepted',
+                correlationId: request.messageId,
+                payload: <String, Object?>{
+                  'connectionId': 'persisted-connection-2',
+                  'peerId': 'peer-persisted',
+                  'resumeToken': 'persisted-token-2',
+                },
+              ),
+            ),
+          );
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(server.close);
+
+      final store = MemoryDihorGameKitNetworkingIdentityStore()
+        ..setPeerId('peer-persisted')
+        ..setResumeCredential(
+          DihorGameKitNetworkingResumeCredential(
+            scope: 'lan-websocket:channel:continuity-test',
+            peerId: 'peer-persisted',
+            resumeToken: 'persisted-token',
+          ),
+        );
+
+      final client = await DihorGameKitNetworkingClient.connectLan(
+        server.descriptor,
+        identityStore: store,
+        heartbeatInterval: const Duration(seconds: 30),
+      );
+      addTearDown(client.close);
+
+      expect(client.stablePeerId, 'peer-persisted');
+      expect(client.activeConnection?.connectionId, 'persisted-connection-2');
+      expect(
+        store.getResumeCredential('lan-websocket:channel:continuity-test')
+            ?.resumeToken,
+        'persisted-token-2',
+      );
+    });
+
     test('resume rejection is deterministic and clears stale credential',
         () async {
       final dropFirst = Completer<void>();
