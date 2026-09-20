@@ -222,8 +222,7 @@ void main() {
       );
       final wrongVersion = DihorGameKitNetworkingConnectionDescriptor(
         protocolVersion: 999,
-        transport:
-            DihorGameKitNetworkingLanWebSocketTransport.transportName,
+        transport: DihorGameKitNetworkingLanWebSocketTransport.transportName,
         endpoint: 'ws://127.0.0.1:1/partygamekit',
       );
 
