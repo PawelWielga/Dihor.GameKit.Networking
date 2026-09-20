@@ -39,7 +39,7 @@ The TypeScript selector is generic and can orchestrate browser-specific adapters
 
 Monotonic timing is transport-independent in both .NET and TypeScript. Callers decide how to carry probe IDs and peer timestamps over LAN, WebRTC, SignalR or another adapter. A reconnect or path replacement requires timing-state reset and resynchronization.
 
-Dart is no longer protocol-only: `clients/dart` provides direct LAN WebSocket connectivity against the same .NET listener and protocol-v2 application-message path. The current Dart runtime does not yet claim resume/reconnect, UDP discovery, automatic transport selection, SignalR, WebRTC or synchronized timing; those capabilities remain explicit follow-up work.
+Dart is no longer protocol-only: `clients/dart` provides direct LAN WebSocket connectivity against the same .NET listener, stable `PeerId` resume on replacement connections, liveness-only heartbeat, explicit disconnect and bounded/cancellable reconnect. The current Dart runtime does not yet claim UDP discovery, automatic transport selection, SignalR, WebRTC or synchronized timing; those capabilities remain explicit follow-up work.
 
 ## Version mismatch
 
