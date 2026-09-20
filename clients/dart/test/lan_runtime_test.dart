@@ -272,6 +272,58 @@ void main() {
       await server.done;
     });
 
+    test('protocol failures are exposed through the client error stream',
+        () async {
+      final server = await _TestLanServer.start((socket) async {
+        final iterator = StreamIterator<dynamic>(socket);
+        try {
+          expect(await iterator.moveNext(), isTrue);
+          final connect = DihorGameKitNetworkingEnvelope.parse(
+            utf8.decode(_bytes(iterator.current)),
+          );
+          socket.add(
+            utf8.encode(
+              DihorGameKitNetworkingEnvelope.create(
+                type: DihorGameKitNetworkingMessageTypes.connectAccepted,
+                messageId: 'accepted-error-stream',
+                correlationId: connect.messageId,
+                payload: <String, Object?>{
+                  'connectionId': 'dotnet-connection-error-stream',
+                },
+              ).toJsonString(),
+            ),
+          );
+
+          socket.add(
+            utf8.encode(
+              DihorGameKitNetworkingEnvelope.create(
+                type: DihorGameKitNetworkingMessageTypes.applicationMessage,
+                messageId: 'invalid-application-message',
+                payload: <String, Object?>{
+                  'data': <String, Object?>{'missing': 'applicationType'},
+                },
+              ).toJsonString(),
+            ),
+          );
+
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        } finally {
+          await iterator.cancel();
+        }
+      });
+      addTearDown(server.close);
+
+      final client =
+          await DihorGameKitNetworkingClient.connectLan(server.descriptor);
+      addTearDown(client.close);
+
+      final error = await client.errors.first.timeout(
+        const Duration(seconds: 2),
+      );
+      expect(error, isA<FormatException>());
+      await server.done;
+    });
+
     test('remote close becomes observable connection state', () async {
       final releaseClose = Completer<void>();
       final server = await _TestLanServer.start((socket) async {
