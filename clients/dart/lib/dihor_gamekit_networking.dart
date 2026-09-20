@@ -1,5 +1,3 @@
-library;
-
 export 'package:dihor_gamekit_networking_protocol/dihor_gamekit_networking_protocol.dart';
 
 export 'src/client.dart';
