@@ -257,8 +257,7 @@ final class DihorGameKitNetworkingClient {
     }
 
     final reconnectPolicy = policy ?? DihorGameKitNetworkingReconnectPolicy();
-    final reconnectCancellation =
-        DihorGameKitNetworkingCancellationSignal();
+    final reconnectCancellation = DihorGameKitNetworkingCancellationSignal();
     _activeReconnectCancellation = reconnectCancellation;
 
     if (cancellation != null) {
