@@ -6,7 +6,7 @@ The package builds on the language-neutral `dihor_gamekit_networking_protocol` p
 
 ## Current capabilities
 
-The `[27]` runtime supports:
+The current `[27]` + `[28]` Dart runtime supports:
 
 - a transport-neutral client abstraction;
 - direct LAN WebSocket connectivity through `dart:io`;
@@ -112,7 +112,7 @@ dart analyze
 dart test
 ```
 
-Repository CI additionally starts the real .NET `LanWebSocketTransport` and connects this Dart runtime to it. The cross-runtime check validates protocol-v2 admission and opaque application message round-trip.
+Repository CI additionally starts the real .NET `LanWebSocketTransport` and connects this Dart runtime to it. The cross-runtime check validates protocol-v2 admission, heartbeat, forced transport drop, resume on a replacement connection, opaque application traffic after resume and explicit disconnect.
 
 ## Boundary
 
