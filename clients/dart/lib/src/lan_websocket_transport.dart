@@ -28,7 +28,7 @@ final class DihorGameKitNetworkingLanWebSocketTransport
   final int maxMessageBytes;
   final StreamController<DihorGameKitNetworkingTransportMessage>
       _messageController =
-      StreamController<DihorGameKitNetworkingTransportMessage>.broadcast();
+      StreamController<DihorGameKitNetworkingTransportMessage>();
 
   late final StreamSubscription<dynamic> _subscription;
   bool _closed = false;
