@@ -341,14 +341,28 @@ final class DihorGameKitNetworkingClient {
   Future<void> close({bool clearResumeCredential = false}) async {
     if (_disposed) return;
 
-    try {
-      await disconnect(
-        reason: 'client-closed',
-        clearResumeCredential: clearResumeCredential,
+    _disposed = true;
+    _stopHeartbeat();
+    _setState(DihorGameKitNetworkingConnectionState.closing);
+
+    final pending = _pendingConnection;
+    if (pending != null && !pending.isCompleted) {
+      pending.completeError(
+        const DihorGameKitNetworkingOperationCancelledException(),
       );
+    }
+    _pendingConnection = null;
+
+    try {
+      await _disposeCurrentTransport(reason: 'client-closed');
+      _connection = null;
+
+      if (clearResumeCredential) {
+        _identityStore.clearResumeCredential(_resumeScope(_descriptor));
+      }
+
+      _setState(DihorGameKitNetworkingConnectionState.closed);
     } finally {
-      _disposed = true;
-      _stopHeartbeat();
       await _closeControllers();
     }
   }
