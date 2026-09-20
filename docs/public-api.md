@@ -134,9 +134,12 @@ Preview.2 does not add a browser SignalR implementation; its version is aligned 
 - `DihorGameKitNetworkingClientTransport` and neutral transport messages;
 - `DihorGameKitNetworkingLanWebSocketTransport` for Dart VM / Flutter mobile and desktop;
 - `DihorGameKitNetworkingClient.connectLan(...)`;
-- protocol-v2 initial connect handshake;
+- protocol-v2 initial connect and resume handshakes;
+- optional stable `PeerId` plus pluggable identity/resume-credential storage;
+- heartbeat and explicit disconnect control messages;
+- manual bounded/cancellable reconnect on a replacement connection;
 - observable connection state and transport/protocol errors;
-- opaque application-message send/receive;
+- opaque application-message send/receive before and after resume;
 - configurable connect/handshake timeouts and message-size limit.
 
 The Dart runtime still contains no player/session/game model. Reconnect/resume, heartbeat, discovery and automatic connectivity are tracked in follow-up runtime issues rather than being faked by the LAN transport.
