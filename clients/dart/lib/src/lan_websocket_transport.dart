@@ -169,7 +169,6 @@ final class DihorGameKitNetworkingLanWebSocketTransport
           _socket.add(payload);
           break;
       }
-      await _socket.flush();
     } catch (error) {
       throw DihorGameKitNetworkingTransportException(
         'Unable to send LAN WebSocket message.',
