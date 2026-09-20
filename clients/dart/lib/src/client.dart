@@ -272,9 +272,14 @@ final class DihorGameKitNetworkingClient {
           );
         } on DihorGameKitNetworkingOperationCancelledException {
           rethrow;
-        } on DihorGameKitNetworkingConnectionRejectedException {
-          _setState(DihorGameKitNetworkingConnectionState.closed);
-          rethrow;
+        } on DihorGameKitNetworkingConnectionRejectedException catch (error) {
+          if (_isTerminalResumeRejection(error.code)) {
+            _setState(DihorGameKitNetworkingConnectionState.closed);
+            rethrow;
+          }
+
+          lastError = error;
+          await _disposeCurrentTransport();
         } catch (error) {
           lastError = error;
           _reportError(error);
@@ -487,11 +492,15 @@ final class DihorGameKitNetworkingClient {
     _subscription = null;
     _transportGeneration++;
 
-    if (subscription != null) {
-      await subscription.cancel();
-    }
+    // Close the underlying transport before cancelling the client-facing
+    // subscription. The LAN transport completes its message stream as part of
+    // socket shutdown; awaiting cancellation first can otherwise wait for the
+    // very close that has not happened yet.
     if (transport != null) {
       await transport.close(reason: reason);
+    }
+    if (subscription != null) {
+      await subscription.cancel();
     }
   }
 
@@ -631,7 +640,7 @@ final class DihorGameKitNetworkingClient {
       isResume: isResume,
     );
 
-    if (isResume) {
+    if (isResume && _isTerminalResumeRejection(error.code)) {
       _identityStore.clearResumeCredential(_resumeScope(_descriptor));
     }
     _reportError(error);
@@ -751,6 +760,12 @@ final class DihorGameKitNetworkingClient {
       ),
     );
   }
+
+  static bool _isTerminalResumeRejection(String code) =>
+      switch (code) {
+        'peer-already-connected' || 'connection-already-bound' => false,
+        _ => true,
+      };
 
   void _reportError(Object error) {
     if (!_controllersClosed) {
