@@ -166,7 +166,10 @@ jobs:
             exit 1
           fi
 
-          dart run clients/dart/tool/dotnet_lan_integration.dart "$DESCRIPTOR_FILE"
+          (
+            cd clients/dart
+            dart run tool/dotnet_lan_integration.dart "$DESCRIPTOR_FILE"
+          )
           wait "$HOST_PID"
           cat "$HOST_LOG"
           trap - EXIT
