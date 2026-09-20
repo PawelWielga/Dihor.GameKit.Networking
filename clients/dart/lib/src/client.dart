@@ -78,7 +78,7 @@ final class DihorGameKitNetworkingClient {
   final String? _requestedPeerId;
 
   final StreamController<DihorGameKitNetworkingEnvelope> _messageController =
-      StreamController<DihorGameKitNetworkingEnvelope>();
+      StreamController<DihorGameKitNetworkingEnvelope>.broadcast();
   final StreamController<DihorGameKitNetworkingApplicationMessage>
       _applicationController =
       StreamController<DihorGameKitNetworkingApplicationMessage>();
