@@ -1,6 +1,6 @@
 # Package boundaries
 
-Dihor.GameKit.Networking `0.2.0-preview.7` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
+Dihor.GameKit.Networking `0.2.0-preview.8` is a communication/networking library. The historical `0.1.0-preview.1` room/player/session surface has been removed from the active package line.
 
 The authoritative ownership decision is [Communication boundary](communication-boundary.md).
 
@@ -115,7 +115,7 @@ Optional UDP discovery for technical `ConnectionDescriptor` endpoints. Discovery
 
 ### `@dihor/gamekit-networking`
 
-The `0.2.0-preview.7` browser client exposes protocol-v2 WebSocket, native WebRTC, generic transport selection, reconnect replay/deduplication and monotonic timing.
+The `0.2.0-preview.8` browser client exposes protocol-v2 WebSocket, native WebRTC, generic transport selection, reconnect replay/deduplication and monotonic timing.
 
 Protocol-v2 WebSocket capabilities:
 
