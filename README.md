@@ -22,7 +22,7 @@ PartyBeam / Państwa Miasta / future multiplayer products
 
 `0.1.0-preview.1` proved the LAN transport, discovery and reconnect approach, but also exposed product concepts such as players, client roles, room sessions, authority and public/private game-state projections.
 
-`0.2.0-preview.1` corrected that boundary. Later previews added SignalR relay, browser WebRTC, automatic transport selection, synchronized monotonic timing and Android-compatible LAN hosting. `0.2.0-preview.7` adds reusable .NET connection lifecycle, timing scheduling, reconnect replay/deduplication and the Dart LAN runtime without changing protocol v2 or reintroducing product/session semantics.
+`0.2.0-preview.1` corrected that boundary. Later previews added SignalR relay, browser WebRTC, automatic transport selection, synchronized monotonic timing, Android-compatible LAN hosting, reusable .NET connection lifecycle, reconnect replay/deduplication and the Dart LAN runtime. `0.2.0-preview.8` hardens host lifecycle and deterministic LAN shutdown without changing protocol v2 or reintroducing product/session semantics.
 
 Repository/package/API naming changed to `Dihor.GameKit.Networking`, but protocol-v2 wire identifiers remain stable for compatibility. Existing `partygamekit://connect`, `/partygamekit`, `/partygamekit-relay`, `/partygamekit-webrtc-signaling` and `PartyGameKit.WebRtc*` signaling method names are intentionally preserved until an explicit protocol-versioned migration.
 

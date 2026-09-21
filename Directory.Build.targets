@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup Condition="'$(IsPackable)' == 'true'">
-    <Version>0.2.0-preview.7</Version>
+    <Version>0.2.0-preview.8</Version>
     <Authors>PawelWielga</Authors>
     <Company>Dihor.GameKit.Networking</Company>
     <RepositoryUrl>https://github.com/PawelWielga/Dihor.GameKit.Networking</RepositoryUrl>
@@ -9,7 +9,7 @@
     <PackageTags>multiplayer;communication;networking;lan;signalr;relay;webrtc;datachannel;timing;latency</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReleaseNotes>Dihor.GameKit.Networking 0.2.0-preview.7 adds transport-neutral .NET host/client connection lifecycle, lifecycle-safe timing scheduling, reconnect-safe latest-value replay and bounded message-id deduplication while keeping protocol v2 and product semantics unchanged.</PackageReleaseNotes>
+    <PackageReleaseNotes>Dihor.GameKit.Networking 0.2.0-preview.8 faults host runtimes when transport or maintenance streams end unexpectedly and preserves deterministic LAN shutdown event order while keeping protocol v2 and public APIs unchanged.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IncludeSymbols>true</IncludeSymbols>

@@ -2,7 +2,7 @@
 
 Dihor.GameKit.Networking prereleases are distributed through **GitHub Releases**. GitHub Actions run artifacts are validation outputs only and are not a supported dependency source for downstream repositories.
 
-The current release line is `0.2.0-preview.5`, tagged `v0.2.0-preview.5`.
+The current release line is `0.2.0-preview.8`, tagged `v0.2.0-preview.8`.
 
 ## Release contents
 
@@ -36,16 +36,16 @@ packages/
 From a checkout that contains the Dihor.GameKit.Networking helper script:
 
 ```bash
-bash eng/fetch-release-nuget.sh 0.2.0-preview.5
+bash eng/fetch-release-nuget.sh 0.2.0-preview.8
 
 dotnet restore YourSolution.sln \
-  --configfile .dihor-gamekit-networking/0.2.0-preview.5/feed/NuGet.Config
+  --configfile .dihor-gamekit-networking/0.2.0-preview.8/feed/NuGet.Config
 ```
 
 A downstream repository does not need to copy the helper. It can download the stable release URL directly:
 
 ```bash
-VERSION=0.2.0-preview.5
+VERSION=0.2.0-preview.8
 TAG="v${VERSION}"
 ASSET="dihor-gamekit-networking-nuget-feed-${VERSION}.zip"
 mkdir -p .dihor-gamekit-networking/${VERSION}
@@ -64,10 +64,10 @@ In GitHub Actions this requires no Dihor.GameKit.Networking-specific secret beca
 ## Windows / PowerShell consumption
 
 ```powershell
-./eng/fetch-release-nuget.ps1 -Version 0.2.0-preview.5
+./eng/fetch-release-nuget.ps1 -Version 0.2.0-preview.8
 
 dotnet restore YourSolution.sln `
-  --configfile .dihor-gamekit-networking/0.2.0-preview.5/feed/NuGet.Config
+  --configfile .dihor-gamekit-networking/0.2.0-preview.8/feed/NuGet.Config
 ```
 
 A downstream repository can use the same `Invoke-WebRequest`/`Expand-Archive` logic directly if it does not vendor the helper.
@@ -78,10 +78,10 @@ Once the release feed has been downloaded, projects use normal NuGet references:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Dihor.GameKit.Networking.Core" Version="0.2.0-preview.5" />
-  <PackageReference Include="Dihor.GameKit.Networking.Protocol" Version="0.2.0-preview.5" />
-  <PackageReference Include="Dihor.GameKit.Networking.Transport.Abstractions" Version="0.2.0-preview.5" />
-  <PackageReference Include="Dihor.GameKit.Networking.Transport.Lan" Version="0.2.0-preview.5" />
+  <PackageReference Include="Dihor.GameKit.Networking.Core" Version="0.2.0-preview.8" />
+  <PackageReference Include="Dihor.GameKit.Networking.Protocol" Version="0.2.0-preview.8" />
+  <PackageReference Include="Dihor.GameKit.Networking.Transport.Abstractions" Version="0.2.0-preview.8" />
+  <PackageReference Include="Dihor.GameKit.Networking.Transport.Lan" Version="0.2.0-preview.8" />
 </ItemGroup>
 ```
 

@@ -2,6 +2,17 @@
 
 All notable Dihor.GameKit.Networking changes are documented here. Package versions follow the policy in `docs/versioning.md`; the wire protocol has its own independent version.
 
+## 0.2.0-preview.8 - 2026-09-21
+
+Host lifecycle and deterministic LAN shutdown fixes on protocol v2.
+
+### .NET runtime and LAN transport
+
+- faults `ConnectionHostRuntime` immediately when its transport event stream or maintenance loop ends unexpectedly instead of waiting forever for the other loop;
+- cancels and observes the remaining background task during host shutdown;
+- preserves connection-open order when `LanWebSocketTransport` publishes shutdown close events;
+- keeps wire protocol `2`, public APIs and product-neutral communication semantics unchanged.
+
 ## 0.2.0-preview.7 - 2026-09-20
 
 Reusable connection lifecycle and reconnect-safe transient delivery on protocol v2.

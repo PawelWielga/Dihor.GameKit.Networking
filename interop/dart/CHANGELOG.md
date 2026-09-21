@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-preview.8
+
+- Aligns the Dart protocol package with the preview.8 compatibility line.
+- Keeps the canonical protocol-v2 wire contract unchanged.
+
 ## 0.2.0-preview.7
 
 - Aligns the Dart protocol package with the preview.7 compatibility line.

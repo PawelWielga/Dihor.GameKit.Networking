@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-preview.8 - 2026-09-21
+
+- Aligns the browser package with the preview.8 compatibility line.
+- Keeps protocol v2 and browser runtime behavior unchanged.
+
 ## 0.2.0-preview.7 - 2026-09-20
 
 - Adds reconnect-safe latest-value replay and bounded receiver-side message-id deduplication.

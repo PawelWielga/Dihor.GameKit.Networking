@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-preview.8
+
+- Aligns the Dart LAN runtime with the preview.8 compatibility line.
+- Keeps protocol v2 and the direct LAN WebSocket runtime behavior unchanged.
+
 ## 0.2.0-preview.7
 
 - Aligns the Dart LAN runtime with the preview.7 compatibility line.
