@@ -434,7 +434,6 @@ public sealed class LanWebSocketTransport : IMessageTransport
     private async Task StopCoreAsync()
     {
         Interlocked.Exchange(ref _stopped, 1);
-        _stopSource.Cancel();
 
         var listener = Interlocked.Exchange(ref _listener, null);
         listener?.Stop();
@@ -456,6 +455,8 @@ public sealed class LanWebSocketTransport : IMessageTransport
                 connection.Socket.Abort();
             }
 
+            _stopSource.Cancel();
+
             var acceptLoopTask = _acceptLoopTask;
             if (acceptLoopTask is not null)
             {
@@ -470,6 +471,7 @@ public sealed class LanWebSocketTransport : IMessageTransport
         }
         finally
         {
+            _stopSource.Cancel();
             _events.Writer.TryComplete();
         }
     }
