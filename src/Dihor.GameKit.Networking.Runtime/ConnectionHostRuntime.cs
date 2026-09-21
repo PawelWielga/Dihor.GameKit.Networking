@@ -170,16 +170,20 @@ public sealed class ConnectionHostRuntime : IAsyncDisposable
 
     private async Task RunAsync(CancellationTokenSource source)
     {
+        Task? transportTask = null;
+        Task? maintenanceTask = null;
         try
         {
-            var transportTask = PumpTransportAsync(source.Token);
-            var maintenanceTask = RunMaintenanceAsync(source.Token);
-            await Task.WhenAll(transportTask, maintenanceTask).ConfigureAwait(false);
+            transportTask = PumpTransportAsync(source.Token);
+            maintenanceTask = RunMaintenanceAsync(source.Token);
+            var completedTask = await Task.WhenAny(transportTask, maintenanceTask).ConfigureAwait(false);
+            await completedTask.ConfigureAwait(false);
 
             if (!source.IsCancellationRequested)
             {
+                var component = completedTask == transportTask ? "Transport event stream" : "Maintenance loop";
                 throw new InvalidOperationException(
-                    "Transport event stream ended unexpectedly while the connection host was running.");
+                    $"{component} ended unexpectedly while the connection host was running.");
             }
         }
         catch (OperationCanceledException) when (source.IsCancellationRequested)
@@ -203,6 +207,26 @@ public sealed class ConnectionHostRuntime : IAsyncDisposable
         finally
         {
             source.Cancel();
+            await ObserveShutdownAsync(transportTask).ConfigureAwait(false);
+            await ObserveShutdownAsync(maintenanceTask).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task ObserveShutdownAsync(Task? task)
+    {
+        if (task is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // The primary background failure was already forwarded through the event channel.
+        catch (Exception)
+#pragma warning restore CA1031
+        {
         }
     }
 
