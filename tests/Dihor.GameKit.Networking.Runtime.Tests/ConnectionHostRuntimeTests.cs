@@ -1,14 +1,32 @@
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using Dihor.GameKit.Networking.Core;
 using Dihor.GameKit.Networking.Protocol;
 using Dihor.GameKit.Networking.Runtime;
+using Dihor.GameKit.Networking.Transport.Abstractions;
 using Dihor.GameKit.Networking.Transport.InMemory;
 
 namespace Dihor.GameKit.Networking.Runtime.Tests;
 
 public sealed class ConnectionHostRuntimeTests
 {
+    [Fact]
+    public async Task CompletedTransportEventStreamFaultsHostWithoutWaitingForMaintenance()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var host = new ConnectionHostRuntime(new CompletingTransport());
+        await host.StartAsync(cancellationToken);
+        await using var hostEvents = host.ReadEventsAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await hostEvents.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2), cancellationToken));
+
+        Assert.Equal(
+            "Transport event stream ended unexpectedly while the connection host was running.",
+            exception.Message);
+    }
+
     [Fact]
     public async Task ConnectAndApplicationMessageAreHandledByRuntime()
     {
@@ -100,5 +118,43 @@ public sealed class ConnectionHostRuntimeTests
     {
         var sequence = 0;
         return () => $"{prefix}-{Interlocked.Increment(ref sequence)}";
+    }
+
+    private sealed class CompletingTransport : IMessageTransport
+    {
+        private readonly Channel<TransportEvent> events = CreateCompletedChannel();
+
+        public IAsyncEnumerable<TransportEvent> ReadEventsAsync(
+            CancellationToken cancellationToken = default) =>
+            events.Reader.ReadAllAsync(cancellationToken);
+
+        public ValueTask SendAsync(
+            ConnectionId connectionId,
+            ReadOnlyMemory<byte> payload,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask BroadcastAsync(
+            ReadOnlyMemory<byte> payload,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask DisconnectAsync(
+            ConnectionId connectionId,
+            TransportCloseReason reason = TransportCloseReason.Normal,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask StopAsync(CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+        private static Channel<TransportEvent> CreateCompletedChannel()
+        {
+            var channel = Channel.CreateUnbounded<TransportEvent>();
+            channel.Writer.TryComplete();
+            return channel;
+        }
     }
 }
