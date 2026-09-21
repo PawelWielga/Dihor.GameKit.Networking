@@ -2,7 +2,9 @@
 
 Dihor.GameKit.Networking is a reusable **multiplayer communication/networking library** extracted from networking behavior proven in [Państwa Miasta](https://github.com/PawelWielga/panstwa-miasta).
 
-It is infrastructure below [PartyBeam](https://github.com/PawelWielga/PartyBeam), Państwa Miasta and future multiplayer products. It does not require consumers to adopt a player/host/shared-screen model.
+It is infrastructure below [PartyBeam.Platform](https://github.com/PawelWielga/PartyBeam.Platform), Państwa Miasta and future multiplayer products. It does not require consumers to adopt a player/host/shared-screen model.
+
+For the PartyBeam-specific integration priority and explicit list of work that does **not** block the ecosystem First MVP, see [docs/partybeam-first-mvp-roadmap.md](docs/partybeam-first-mvp-roadmap.md).
 
 ```text
 PartyBeam / Państwa Miasta / future multiplayer products
