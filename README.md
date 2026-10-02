@@ -20,6 +20,24 @@ PartyBeam / Państwa Miasta / future multiplayer products
        LAN / SignalR / WebRTC
 ```
 
+## Relationship to PartyBeam.GameSdk
+
+`PartyBeam.GameSdk` is a PartyBeam-specific game-development contract/tooling project. It is **not** part of Dihor.GameKit.Networking and does not change this library's scope.
+
+The dependency direction is one-way:
+
+```text
+Dihor.GameKit.Networking
+          ^
+          |
+PartyBeam.Platform
+          ^
+          |
+PartyBeam games via PartyBeam product contracts
+```
+
+PartyBeam may translate neutral networking facts into PartyBeam participants/sessions through its own adapter/application layer. This repository must never depend on PartyBeam.Platform, PartyBeam.GameSdk, PartyBeam.GameCatalog or a PartyBeam game.
+
 ## 0.2 communication boundary
 
 `0.1.0-preview.1` proved the LAN transport, discovery and reconnect approach, but also exposed product concepts such as players, client roles, room sessions, authority and public/private game-state projections.
